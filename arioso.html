@@ -519,6 +519,94 @@ body {
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+/* INDEXEDDB PDF PERSISTENCE */
+var DB_NAME = "arioso-db";
+var DB_VERSION = 1;
+var STORE_NAME = "pdfs";
+var db = null;
+
+function openDB(callback) {
+  if (db) { callback(db); return; }
+  var req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = function(e) {
+    e.target.result.createObjectStore(STORE_NAME);
+  };
+  req.onsuccess = function(e) {
+    db = e.target.result;
+    callback(db);
+  };
+  req.onerror = function() {
+    console.log("IndexedDB unavailable");
+  };
+}
+
+function savePDFtoDB(arrayBuffer) {
+  savePDFtoDBKey("current-pdf", arrayBuffer);
+}
+
+function savePDFtoDBKey(key, arrayBuffer) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(arrayBuffer, key);
+  });
+}
+
+function loadPDFfromDB(callback) {
+  loadPDFfromDBKey("current-pdf", callback);
+}
+
+function loadPDFfromDBKey(key, callback) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readonly");
+    var req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = function(e) {
+      if (e.target.result) callback(e.target.result);
+      else callback(null);
+    };
+    req.onerror = function() { callback(null); };
+  });
+}
+
+function clearSavedPDF() {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete("current-pdf");
+    pdfDoc = null;
+    document.getElementById("pdf-pages").innerHTML = "";
+    document.getElementById("pdf-pages").style.display = "none";
+    document.getElementById("upload-zone").style.display = "block";
+    document.getElementById("annotate-btn").style.display = "none";
+    document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("clear-pdf-btn").style.display = "none";
+    annotations = [];
+    document.getElementById("annotations-bar").style.display = "none";
+  });
+}
+
+function initPDF() {
+  loadPDFfromDB(function(arrayBuffer) {
+    pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById("upload-zone").style.display = "none";
+      document.getElementById("pdf-pages").style.display = "block";
+      if(piece) {
+        document.getElementById("annotate-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block";
+      }
+      renderAllPages();
+      showUploadSuccess("Score loaded from last session");
+    });
+  });
+}
+
+function showUploadSuccess(msg) {
+  var banner = document.getElementById("upload-success");
+  if (!banner) return;
+  banner.textContent = msg;
+  banner.style.display = "block";
+  setTimeout(function() { banner.style.display = "none"; }, 3000);
+}
+
 /* ===== SCREEN MANAGEMENT ===== */
 var userName = "";
 var libraryPieces = []; // {id, composer, title, opus, curated, pdfKey}
@@ -1127,99 +1215,9 @@ function stopDraw() {
   if (currentDrawCtx) currentDrawCtx.beginPath();
 }
 
-/* INDEXEDDB PDF PERSISTENCE */
-var DB_NAME = "arioso-db";
-var DB_VERSION = 1;
-var STORE_NAME = "pdfs";
-var db = null;
 
-function openDB(callback) {
-  if (db) { callback(db); return; }
-  var req = indexedDB.open(DB_NAME, DB_VERSION);
-  req.onupgradeneeded = function(e) {
-    e.target.result.createObjectStore(STORE_NAME);
-  };
-  req.onsuccess = function(e) {
-    db = e.target.result;
-    callback(db);
-  };
-  req.onerror = function() {
-    console.log("IndexedDB unavailable");
-  };
-}
 
-function savePDFtoDB(arrayBuffer) {
-  savePDFtoDBKey("current-pdf", arrayBuffer);
-}
 
-function savePDFtoDBKey(key, arrayBuffer) {
-  openDB(function(db) {
-    var tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(arrayBuffer, key);
-  });
-}
-
-function loadPDFfromDB(callback) {
-  loadPDFfromDBKey("current-pdf", callback);
-}
-
-function loadPDFfromDBKey(key, callback) {
-  openDB(function(db) {
-    var tx = db.transaction(STORE_NAME, "readonly");
-    var req = tx.objectStore(STORE_NAME).get(key);
-    req.onsuccess = function(e) {
-      if (e.target.result) callback(e.target.result);
-      else callback(null);
-    };
-    req.onerror = function() { callback(null); };
-  });
-}
-
-function clearSavedPDF() {
-  openDB(function(db) {
-    var tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete("current-pdf");
-    pdfDoc = null;
-    document.getElementById("pdf-pages").innerHTML = "";
-    document.getElementById("pdf-pages").style.display = "none";
-    document.getElementById("upload-zone").style.display = "block";
-    document.getElementById("annotate-btn").style.display = "none";
-    document.getElementById("draw-btn").style.display = "none";
-    document.getElementById("clear-pdf-btn").style.display = "none";
-    annotations = [];
-    document.getElementById("annotations-bar").style.display = "none";
-  });
-}
-
-function initPDF() {
-  loadPDFfromDB(function(arrayBuffer) {
-    pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise.then(function(pdf) {
-      pdfDoc = pdf;
-      document.getElementById("upload-zone").style.display = "none";
-      document.getElementById("pdf-pages").style.display = "block";
-      if(piece) {
-        document.getElementById("annotate-btn").style.display = "block";
-        document.getElementById("draw-btn").style.display = "block";
-      }
-      renderAllPages();
-      showUploadSuccess("Score loaded from last session");
-    });
-  });
-}
-
-function showUploadSuccess(msg) {
-  var banner = document.getElementById("upload-success");
-  if (!banner) return;
-  banner.textContent = msg;
-  banner.style.display = "block";
-  setTimeout(function() { banner.style.display = "none"; }, 3000);
-}
-
-/* INDEXEDDB PDF PERSISTENCE */
-var DB_NAME = "arioso-db";
-var DB_VERSION = 1;
-var STORE_NAME = "pdfs";
-var db = null;
 
 function openDB(callback) {
   if (db) { callback(db); return; }
