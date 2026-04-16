@@ -618,7 +618,15 @@ function openPiece(libIdx) {
   // Load PDF from IndexedDB using piece-specific key
   var pdfKey = libPiece.pdfKey || libPiece.id;
   loadPDFfromDBKey(pdfKey, function(buffer) {
-    if (!buffer) return;
+    if (!buffer) {
+      // No PDF saved yet — show upload zone
+      document.getElementById("upload-zone").style.display = "block";
+      document.getElementById("pdf-pages").style.display = "none";
+      document.getElementById("annotate-btn").style.display = "none";
+      document.getElementById("draw-btn").style.display = "none";
+      document.getElementById("clear-pdf-btn").style.display = "none";
+      return;
+    }
     pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
       pdfDoc = pdf;
       document.getElementById("upload-zone").style.display = "none";
