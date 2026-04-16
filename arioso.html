@@ -212,6 +212,15 @@ body {
 }
 #draw-canvas-container { position: absolute; top: 0; left: 0; pointer-events: none; }
 .draw-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+.draw-tool-btn {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.draw-tool-btn.active { border-color: var(--text); }
+.draw-size-btn {
+  border: 2px solid transparent; cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.draw-size-btn.active { border-color: var(--text); border-radius: 50%; }
 .draw-canvas {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 15;
@@ -252,6 +261,40 @@ body {
 .chord-chip.dominant  { background: #fde8e8; color: #6b1414; border-color: #f5b8b8; }
 .chord-chip.predominant { background: #fef3de; color: #5c3100; border-color: #f7c97a; }
 .chord-chip.chromatic { background: #eeeafd; color: #30237a; border-color: #ccc5f5; }
+
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
 
 /* MEASURE NUMBERS */
 .measure-label {
@@ -497,7 +540,7 @@ body {
         <p id="score-subtitle"></p>
       </div>
       <div id="score-header-actions">
-        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate score</button>
+        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate Score</button>
         <button class="hdr-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
         <button class="hdr-btn" onclick="zoomIn()">+</button>
@@ -509,6 +552,25 @@ body {
     <div id="annotate-banner">
       <span>Draw and annotate directly on the score. Use the chord strip below for harmonic analysis.</span>
       <button onclick="toggleAnnotate()">Done</button>
+    </div>
+    <div id="draw-toolbar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;">Draw</span>
+      <div style="display:flex;gap:4px;" id="draw-color-btns">
+        <button class="draw-tool-btn active" data-color="#e05050" onclick="setDrawColor(this,'#e05050')" style="background:#e05050;" title="Red"></button>
+        <button class="draw-tool-btn" data-color="#2266cc" onclick="setDrawColor(this,'#2266cc')" style="background:#2266cc;" title="Blue"></button>
+        <button class="draw-tool-btn" data-color="#22aa66" onclick="setDrawColor(this,'#22aa66')" style="background:#22aa66;" title="Green"></button>
+        <button class="draw-tool-btn" data-color="#cc8800" onclick="setDrawColor(this,'#cc8800')" style="background:#cc8800;" title="Orange"></button>
+        <button class="draw-tool-btn" data-color="#111111" onclick="setDrawColor(this,'#111111')" style="background:#111111;" title="Black"></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-size:10px;color:var(--text3);">Size</span>
+        <button class="draw-size-btn active" data-size="2" onclick="setDrawSize(this,2)" style="width:14px;height:14px;border-radius:50%;background:var(--text2);" title="Thin"></button>
+        <button class="draw-size-btn" data-size="5" onclick="setDrawSize(this,5)" style="width:18px;height:18px;border-radius:50%;background:var(--text2);" title="Medium"></button>
+        <button class="draw-size-btn" data-size="10" onclick="setDrawSize(this,10)" style="width:22px;height:22px;border-radius:50%;background:var(--text2);" title="Thick"></button>
+      </div>
+      <button onclick="setEraseMode()" id="erase-btn" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2);">Eraser</button>
+      <button onclick="clearDrawings()" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2);">Clear all</button>
+      <button onclick="toggleDraw()" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border);background:var(--text);color:var(--bg);cursor:pointer;font-family:inherit;margin-left:auto;">Done</button>
     </div>
     <div id="score-display">
       <div id="upload-zone" style="position:relative;">
@@ -605,6 +667,40 @@ body {
 </div>
 
 <script>
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
+
 /* MEASURE NUMBERS */
 var measureMode = false;
 var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
@@ -1374,26 +1470,66 @@ function showAddPerformerInput() {
   setTimeout(function(){ input.focus(); }, 50);
 }
 
-function addCustomPerformer(nameYear) {
-  // Parse name and year from input like "Yuja Wang 2019"
-  var parts = nameYear.match(/^(.+?)\s*(\d{4})?$/);
-  var name = parts ? parts[1].trim() : nameYear;
-  var year = parts && parts[2] ? parts[2] : "";
-  var label = year ? name.split(" ").pop() + " " + year : name.split(" ").pop();
-  var id = "custom-" + nameYear.replace(/\s+/g, "-").toLowerCase();
-  var newRec = { id: id, label: label, full: nameYear };
-  // Save to localStorage
-  var customKey = "custom-performers-" + piece.id;
-  var existing = [];
-  try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
-  // Avoid duplicates
-  if (!existing.find(function(r){ return r.id === id; })) {
-    existing.push(newRec);
-    localStorage.setItem(customKey, JSON.stringify(existing));
+function addCustomPerformer(pianistName) {
+  // First ask Arioso for famous recordings of this piece by this pianist
+  var wrap = document.getElementById("performer-input-wrap");
+  if (wrap) {
+    wrap.innerHTML = "<span style='font-size:12px;color:var(--text3);padding:4px 8px;'>Finding recordings...</span>";
   }
-  rec = newRec;
-  renderRecs();
-  loadAnalysis();
+  var prompt = "List the most famous and important recordings of " + piece.full + " by the pianist " + pianistName + ". For each recording give: the year, the label/album if known, and one sentence on what makes it distinctive. Format each as: YEAR | LABEL | Description. List up to 4 recordings. If this pianist has not recorded this piece, say so clearly and suggest a different piece they are known for.";
+  callAPI([{role:"user",content:prompt}], function(text) {
+    // Show results as selectable options
+    var sel = document.getElementById("recording-selector");
+    if (wrap) wrap.remove();
+    // Parse lines that match YEAR | LABEL | Description
+    var lines = text.split("\n").filter(function(l){ return l.trim(); });
+    var found = [];
+    lines.forEach(function(line) {
+      var match = line.match(/(\d{4})\s*\|\s*([^|]+)\|\s*(.+)/);
+      if (match) {
+        found.push({ year: match[1].trim(), label: match[2].trim(), desc: match[3].trim() });
+      }
+    });
+    if (found.length === 0) {
+      // Show raw response as a message
+      var msg = document.createElement("div");
+      msg.style.cssText = "font-size:12px;color:var(--text2);padding:6px 10px;max-width:400px;";
+      msg.textContent = text.substring(0, 200);
+      sel.appendChild(msg);
+      return;
+    }
+    // Show each recording as a selectable option
+    var picker = document.createElement("div");
+    picker.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:6px 0;width:100%;";
+    found.forEach(function(rec_opt) {
+      var btn = document.createElement("button");
+      var shortName = pianistName.split(" ").pop();
+      btn.style.cssText = "text-align:left;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);";
+      btn.innerHTML = "<strong>" + shortName + " " + rec_opt.year + "</strong> <span style='color:var(--text3);font-size:11px;'>" + rec_opt.label + "</span><br><span style='color:var(--text2);font-size:11px;'>" + rec_opt.desc + "</span>";
+      btn.onclick = (function(opt) { return function() {
+        var id = "custom-" + pianistName.replace(/\s+/g, "-").toLowerCase() + "-" + opt.year;
+        var newRec = { id: id, label: shortName + " " + opt.year, full: pianistName + ", " + opt.year };
+        var customKey = "custom-performers-" + piece.id;
+        var existing = [];
+        try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+        if (!existing.find(function(r){ return r.id === id; })) {
+          existing.push(newRec);
+          localStorage.setItem(customKey, JSON.stringify(existing));
+        }
+        picker.remove();
+        rec = newRec;
+        renderRecs();
+        loadAnalysis();
+      }; })(rec_opt);
+      picker.appendChild(btn);
+    });
+    var cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.style.cssText = "font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:inherit;color:var(--text3);margin-top:2px;";
+    cancel.onclick = function() { picker.remove(); };
+    picker.appendChild(cancel);
+    sel.appendChild(picker);
+  });
 }
 
 function loadAnalysis() {
@@ -1589,6 +1725,40 @@ function triggerLoad() {
   loadPDF(input);
 }
 
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
+
 /* MEASURE NUMBERS */
 var measureMode = false;
 var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
@@ -1730,11 +1900,13 @@ function applyZoom() {
 /* DRAW MODE */
 function toggleDraw() {
   drawMode = !drawMode;
-  // turn off annotate if on
+  eraseMode = false;
   if (drawMode && annotating) toggleAnnotate();
+  if (drawMode && measureMode) toggleMeasureMode();
   var btn = document.getElementById("draw-btn");
   btn.classList.toggle("toggled", drawMode);
-  btn.textContent = drawMode ? "Stop drawing" : "Draw";
+  btn.textContent = drawMode ? "Stop drawing" : "Annotate Score";
+  document.getElementById("draw-toolbar").style.display = drawMode ? "flex" : "none";
   document.querySelectorAll(".draw-canvas").forEach(function(dc) {
     dc.classList.toggle("active", drawMode);
     dc.style.cursor = drawMode ? "crosshair" : "default";
@@ -1765,8 +1937,14 @@ function startDraw(e, dc) {
   var scaleY = dc.height / rect.height;
   currentDrawCtx.beginPath();
   currentDrawCtx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
-  currentDrawCtx.strokeStyle = "#e05050";
-  currentDrawCtx.lineWidth = 2;
+  if (eraseMode) {
+    currentDrawCtx.globalCompositeOperation = "destination-out";
+    currentDrawCtx.lineWidth = drawSize * 6;
+  } else {
+    currentDrawCtx.globalCompositeOperation = "source-over";
+    currentDrawCtx.strokeStyle = drawColor;
+    currentDrawCtx.lineWidth = drawSize;
+  }
   currentDrawCtx.lineCap = "round";
   currentDrawCtx.lineJoin = "round";
 }
@@ -1776,6 +1954,10 @@ function continueDraw(e, dc) {
   var rect = dc.getBoundingClientRect();
   var scaleX = dc.width / rect.width;
   var scaleY = dc.height / rect.height;
+  if (eraseMode) {
+    currentDrawCtx.globalCompositeOperation = "destination-out";
+    currentDrawCtx.lineWidth = drawSize * 6;
+  }
   currentDrawCtx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
   currentDrawCtx.stroke();
 }
