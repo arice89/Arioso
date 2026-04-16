@@ -90,6 +90,14 @@ body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   cursor: crosshair; display: none; z-index: 5;
 }
+#draw-canvas-container { position: absolute; top: 0; left: 0; pointer-events: none; }
+.draw-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+.draw-canvas {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 15;
+}
+.draw-canvas.active { pointer-events: all; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='4' cy='20' r='3' fill='%23e05' /%3E%3Cline x1='4' y1='20' x2='20' y2='4' stroke='%23e05' stroke-width='2'/%3E%3C/svg%3E") 4 20, crosshair; }
+#draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
 .ann-dot {
   position: absolute; width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -259,6 +267,10 @@ body {
       </div>
       <div id="score-header-actions">
         <button class="hdr-btn" id="annotate-btn" onclick="toggleAnnotate()" style="display:none;">Annotate score</button>
+        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Draw</button>
+        <button class="hdr-btn" onclick="zoomOut()">−</button>
+        <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
+        <button class="hdr-btn" onclick="zoomIn()">+</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)">
       </div>
@@ -290,7 +302,7 @@ body {
 
   <div id="analysis-panel">
     <div id="analysis-tabs">
-      <button class="analysis-tab active" onclick="setTab('story')">Story</button>
+      <button class="analysis-tab active" onclick="setTab('story')">Analysis</button>
       <button class="analysis-tab" onclick="setTab('recording')">Recording</button>
       <button class="analysis-tab" onclick="setTab('practice')">Practice</button>
     </div>
@@ -352,11 +364,15 @@ var PIECES = [
     recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"}]}
 ];
 
-var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are conservatory-trained professionals and advanced performers. Never talk down. Engage as a brilliant, opinionated musicologist who also performs — a peer, not a teacher. Use precise theoretical language naturally, never define terms unprompted. Always connect harmonic structure to expressive consequence. Be specific and opinionated. Cite specific recordings and pianists. Tell the user what you actually think. Specialize in solo piano repertoire. Be concise — 2 to 4 sentences unless more is requested. No markdown, no asterisks.";
+var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers — conservatory-trained or equivalent. Talk to them like a brilliant friend who happens to know everything about this music. Be direct, specific, and opinionated. Use musical terms naturally but never write like a textbook or a dissertation. Avoid jargon for its own sake — if a simpler word is just as precise, use it. Always connect what's happening harmonically to what the performer should actually do or feel at the keyboard. Cite specific recordings and pianists by name. Short sentences. No hedging. No passive voice. No markdown, no asterisks. 2-4 sentences max unless asked for more.";
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
 var chatHistory = [], annotations = [], pending = null, annotating = false, pdfDoc = null;
 var clickX = 0, clickY = 0, clickPage = 0;
+var drawMode = false, isDrawing = false, currentDrawCanvas = null, currentDrawCtx = null;
+var zoomLevel = 1.0;
+var drawMode = false, zoomLevel = 1.0;
+var isDrawing = false, lastX = 0, lastY = 0;
 
 function init() {
   var sel = document.getElementById("piece-selector");
@@ -417,10 +433,6 @@ function renderPage(num, container) {
 
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
-  (function(n) {
-    wrapper.style.cursor = "default";
-    wrapper.onclick = function(e){ handleClick(e, n); };
-  })(num);
   pdfDoc.getPage(num).then(function(page) {
     var cw = container.clientWidth - 32;
     var scale = cw / page.getViewport({scale:1}).width;
@@ -428,6 +440,11 @@ function renderPage(num, container) {
     canvas.width = vp.width; canvas.height = vp.height;
     wrapper.style.height = vp.height + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
+    canvas.style.cursor = "default";
+    canvas.style.display = "block";
+    (function(n, c) {
+      c.onclick = function(e){ handleClick(e, n, c); };
+    })(num, canvas);
   });
 }
 
@@ -439,14 +456,15 @@ function toggleAnnotate() {
   btn.classList.toggle("toggled", annotating);
   btn.textContent = annotating ? "Done annotating" : "Annotate score";
   banner.style.display = annotating ? "flex" : "none";
-  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w){
-    w.style.cursor = annotating ? "crosshair" : "default";
+  document.querySelectorAll(".pdf-page-wrapper canvas").forEach(function(c){
+    c.style.cursor = annotating ? "crosshair" : "default";
   });
 }
 
-function handleClick(e, pageNum) {
+function handleClick(e, pageNum, canvas) {
   if(!annotating || !piece) return;
-  var rect = e.currentTarget.getBoundingClientRect();
+  e.stopPropagation();
+  var rect = (canvas || e.currentTarget).getBoundingClientRect();
   var xp = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
   var yp = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
   clickX = e.clientX; clickY = e.clientY; clickPage = pageNum;
@@ -466,7 +484,7 @@ function showLoading(x, y, page) {
 }
 
 function analyzeClick(page, xp, yp) {
-  var prompt = "The performer is looking at page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). They clicked at approximately " + xp + "% across and " + yp + "% down the page. Based on your deep knowledge of this piece, identify what harmony is most likely at this position. Respond ONLY in this exact JSON format with no other text: {\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"2 sentence explanation.\"}. Function must be one of: tonic, dominant, predominant, chromatic.";
+  var prompt = "The performer clicked on page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + ") at roughly " + xp + "% across and " + yp + "% down the page. Based on your knowledge of this piece, what harmony is most likely here? Respond ONLY in this exact JSON format with no other text: {\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"What this harmony is doing here and why it matters — 2 short sentences, plain language.\"}. Function must be one of: tonic, dominant, predominant, chromatic.";
   callAPI([{role:"user",content:prompt}], function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -554,7 +572,7 @@ function loadAnalysisForAnnotation(ann) {
   updateContextBanner(ann);
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var prompt = "The performer annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is: " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " Now go deeper: connect this harmonic moment to the expressive and physical decisions the performer needs to make at the keyboard. What does understanding this harmony actually change about how you play this moment? Be specific and opinionated. 3 to 4 sentences.";
+  var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific — talk to them like a friend who knows this piece cold, not like a theory teacher.";
   callAPI([{role:"user",content:prompt}], function(text){
     content.innerHTML = ""; content.textContent = text;
   });
@@ -592,11 +610,14 @@ function loadAnalysis() {
   if(!piece) return;
   document.getElementById("context-banner").style.display = "none";
   var content = document.getElementById("analysis-content");
+  if(tab==="story") {
+    content.innerHTML = "<div style='padding:20px 0;'><p style='font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;'>Click anywhere on the score to analyze the harmony at that passage — Arioso will identify the Roman numeral, explain the function, and tell you what it means for performance.</p><p style='font-size:12px;color:var(--text3);'>Or ask a question below about the piece.</p></div>";
+    return;
+  }
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
   var prompt = "";
-  if(tab==="story") prompt = "Give a compelling harmonic and expressive analysis of " + piece.full + " by " + piece.composer + ". What makes it harmonically distinctive and what does the performer need to understand? Be opinionated. 4 sentences.";
-  else if(tab==="recording") { var r = rec||piece.recordings[0]; prompt = "Analyze " + r.full + "'s interpretation of " + piece.full + ". What specific choices does this pianist make and how do they connect to the harmonic structure? Be opinionated. 4 sentences."; }
-  else prompt = "Give specific practice intelligence for " + piece.full + " by " + piece.composer + ". Hardest passages and why, grounded in harmonic structure. What should the performer actually focus on? 4 sentences.";
+  if(tab==="recording") { var r = rec||piece.recordings[0]; prompt = "Analyze " + r.full + "'s interpretation of " + piece.full + ". What specific interpretive choices does this pianist make and how do they connect to the harmonic structure? What does this recording reveal that others miss? Be opinionated and specific. 4 sentences."; }
+  else prompt = "Give specific practice intelligence for " + piece.full + " by " + piece.composer + ". What are the hardest passages and why, grounded in the harmonic structure? What should the performer actually focus on? 4 sentences.";
   callAPI([{role:"user",content:prompt}], function(text){ content.innerHTML=""; content.textContent=text; });
 }
 
@@ -613,9 +634,9 @@ function loadStudy() {
   var content = document.getElementById("study-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
   var ps = {
-    history: "Write a substantive historical essay on " + piece.full + " by " + piece.composer + ". Life circumstances, philosophical forces, cultural moment, and how context changes performance. 5-6 sentences, no markdown.",
-    scholarship: "Summarize major musicological scholarship on " + piece.full + ". Name analysts, works, arguments. Where do scholars agree and disagree? 5-6 sentences, no markdown.",
-    interviews: "Compile documented statements about " + piece.full + " from the composer if available and major performers. Name specific pianists, interviews, essays. 5-6 sentences, no markdown."
+    history: "Tell me about the historical context of " + piece.full + " by " + piece.composer + " — what was going on in the composer's life, what was the cultural moment, and how does knowing that actually change how you perform it? Write like you're talking to a serious musician friend, not writing an essay. 4-5 sentences, plain language, no markdown.",
+    scholarship: "What do the major musicologists and analysts say about " + piece.full + " by " + piece.composer + "? Name specific people and what they argue — where do they agree, where do they disagree, and what's actually useful for a performer to know? 4-5 sentences, no markdown.",
+    interviews: "What have the great performers said about " + piece.full + " — in interviews, essays, or documented conversations? Name specific pianists and what they actually said about how they approach this piece. 4-5 sentences, no markdown."
   };
   callAPI([{role:"user",content:ps[studyTab]}], function(text){ content.innerHTML="<p>"+text+"</p>"; });
 }
@@ -657,6 +678,64 @@ function callAPI(messages, callback) {
   }).then(function(r){ return r.json(); }).then(function(data){
     callback((data.content&&data.content[0]&&data.content[0].text)||"Unable to load.");
   }).catch(function(){ callback("Connection error."); });
+}
+
+/* ZOOM */
+function zoomIn() {
+  zoomLevel = Math.min(zoomLevel + 0.25, 3.0);
+  document.getElementById("zoom-label").textContent = Math.round(zoomLevel * 100) + "%";
+  renderAllPages();
+}
+function zoomOut() {
+  zoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+  document.getElementById("zoom-label").textContent = Math.round(zoomLevel * 100) + "%";
+  renderAllPages();
+}
+
+/* DRAW MODE */
+function toggleDraw() {
+  drawMode = !drawMode;
+  // turn off annotate if on
+  if (drawMode && annotating) toggleAnnotate();
+  var btn = document.getElementById("draw-btn");
+  btn.classList.toggle("toggled", drawMode);
+  btn.textContent = drawMode ? "Stop drawing" : "Draw";
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.classList.toggle("active", drawMode);
+  });
+  document.querySelectorAll(".pdf-page-wrapper canvas:not(.draw-canvas)").forEach(function(c) {
+    c.style.cursor = drawMode ? "none" : "default";
+  });
+}
+
+function startDraw(e, dc) {
+  if (!drawMode) return;
+  isDrawing = true;
+  currentDrawCanvas = dc;
+  currentDrawCtx = dc.getContext("2d");
+  var rect = dc.getBoundingClientRect();
+  var scaleX = dc.width / rect.width;
+  var scaleY = dc.height / rect.height;
+  currentDrawCtx.beginPath();
+  currentDrawCtx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  currentDrawCtx.strokeStyle = "#e05050";
+  currentDrawCtx.lineWidth = 2;
+  currentDrawCtx.lineCap = "round";
+  currentDrawCtx.lineJoin = "round";
+}
+
+function continueDraw(e, dc) {
+  if (!isDrawing || !currentDrawCtx || currentDrawCanvas !== dc) return;
+  var rect = dc.getBoundingClientRect();
+  var scaleX = dc.width / rect.width;
+  var scaleY = dc.height / rect.height;
+  currentDrawCtx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  currentDrawCtx.stroke();
+}
+
+function stopDraw() {
+  isDrawing = false;
+  if (currentDrawCtx) currentDrawCtx.beginPath();
 }
 
 /* DRAG RESIZE */
