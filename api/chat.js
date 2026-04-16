@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   try {
-    const body = { ...req.body, model: "claude-sonnet-4-5" };
+    const body = { ...req.body, model: "claude-sonnet-4-5-20251001" };
 
     // Add web search tool if requested
     if (req.body.useSearch) {
