@@ -734,19 +734,35 @@ function handleMeasureClick(e, pageNum) {
   setTimeout(function() { document.getElementById("measure-input").focus(); }, 50);
 }
 
+// Row band size in pixels - snap Y to nearest multiple of this
+var ROW_BAND = 80;
+
+function snapToRow(y) {
+  // Round to nearest row band, offset slightly above the click point
+  return Math.round(y / ROW_BAND) * ROW_BAND - 18;
+}
+
 function placeMeasureLabel() {
   var val = document.getElementById("measure-input").value.trim();
   if (!val) return;
   var wrapper = document.getElementById("pw-" + pendingMeasurePage);
-  var canvas = document.getElementById("pc-" + pendingMeasurePage);
-  if (!wrapper || !canvas) return;
-  var scaleX = canvas.offsetWidth / canvas.width;
-  var scaleY = canvas.offsetHeight / canvas.height;
+  if (!wrapper) return;
+
   var label = document.createElement("div");
   label.className = "measure-label";
   label.textContent = "m." + val;
-  label.style.left = (pendingMeasureX) + "px";
-  label.style.top = (pendingMeasureY) + "px";
+  label.style.left = pendingMeasureX + "px";
+  // Snap Y to nearest row band so labels in same row align
+  var snappedY = snapToRow(pendingMeasureY);
+  label.style.top = snappedY + "px";
+
+  // Click to delete
+  label.title = "Click to delete";
+  label.addEventListener("click", function(e) {
+    e.stopPropagation();
+    if (measureMode) label.remove();
+  });
+
   wrapper.appendChild(label);
   closeMeasurePopup();
 }
@@ -1865,9 +1881,11 @@ function loadChordAnalysis(chord) {
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
   var prompt = "Analyze the chord " + chord.symbol + " (" + chord.fn + " function) at " + chord.note.split(" -- ")[0].trim() + " in " + piece.full + " by " + piece.composer + ". Explain: what this harmony is doing structurally in this passage, how it relates to the surrounding harmonic context, and what it demands from the performer in terms of voicing, timing, or touch. Be precise and analytical, like a musicologist who also performs. 2-3 sentences.";
-  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
-    content.innerHTML = "";
-    content.textContent = text;
+  var snapReqId = analysisReqId;
+  callAPI([{role:"user",content:prompt}], function(text) {
+    if (analysisReqId !== snapReqId) return;
+    var el = document.getElementById("analysis-content");
+    if (el) el.innerHTML = renderSectioned(text);
   });
 }
 
