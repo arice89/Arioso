@@ -650,7 +650,7 @@ function callAPI(messages, callback) {
   fetch("/api/chat", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:SYS,messages:messages})
+    body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:1000,system:SYS,messages:messages})
   }).then(function(r){ return r.json(); }).then(function(data){
     callback((data.content&&data.content[0]&&data.content[0].text)||"Unable to load.");
   }).catch(function(){ callback("Connection error."); });
