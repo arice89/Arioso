@@ -385,8 +385,9 @@ body {
 }
 #context-banner strong { color: var(--text); }
 #analysis-content {
-  flex: 1; overflow-y: auto; padding: 16px 18px;
-  font-size: 13px; line-height: 1.78; color: var(--text2);
+  flex: 1; overflow-y: auto; padding: 20px 22px;
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-overflow-scrolling: touch;
 }
 #chat-section { border-top: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; }
 #chat-messages { max-height: 100px; overflow-y: auto; margin-bottom: 8px; }
@@ -418,8 +419,9 @@ body {
 .study-tab:hover { color: var(--text); }
 .study-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
 #study-content {
-  flex: 1; overflow-y: auto; padding: 26px 30px;
-  font-size: 13px; line-height: 1.85; color: var(--text2);
+  flex: 1; overflow-y: auto; padding: 20px 22px;
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-overflow-scrolling: touch;
 }
 #study-content p { margin-bottom: 14px; }
 .loading-wrap { display: flex; align-items: center; justify-content: center; padding: 40px; }
@@ -1126,24 +1128,45 @@ function renderAllPages() {
 function renderPage(num, container) {
   var wrapper = document.createElement("div");
   wrapper.className = "pdf-page-wrapper"; wrapper.id = "pw-" + num;
+  wrapper.style.position = "relative";
   var canvas = document.createElement("canvas"); canvas.id = "pc-" + num;
 
-
+  // Draw canvas overlay
+  var drawCanvas = document.createElement("canvas");
+  drawCanvas.id = "dc-" + num;
+  drawCanvas.className = "draw-canvas";
+  if (drawMode) drawCanvas.classList.add("active");
 
   wrapper.appendChild(canvas);
+  wrapper.appendChild(drawCanvas);
   container.appendChild(wrapper);
+
   pdfDoc.getPage(num).then(function(page) {
     var cw = container.clientWidth - 32;
     var scale = (cw / page.getViewport({scale:1}).width) * zoomLevel;
     var vp = page.getViewport({scale:scale});
     canvas.width = vp.width; canvas.height = vp.height;
+    drawCanvas.width = vp.width; drawCanvas.height = vp.height;
     wrapper.style.height = vp.height + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
     canvas.style.cursor = "default";
     canvas.style.display = "block";
-    (function(n, c) {
-      c.onclick = function(e){ handleClick(e, n, c); };
-    })(num, canvas);
+
+    // Wire up draw events
+    (function(n, dc, c) {
+      dc.addEventListener("mousedown", function(e) {
+        if (measureMode) { handleMeasureClick(e, n); return; }
+        if (drawMode) { startDraw(e, dc); return; }
+      });
+      dc.addEventListener("mousemove", function(e) { if (drawMode) continueDraw(e, dc); });
+      dc.addEventListener("mouseup", function() { stopDraw(); });
+      dc.addEventListener("mouseleave", function() { stopDraw(); });
+      // Click for annotation mode on main canvas
+      c.onclick = function(e) {
+        if (measureMode) { handleMeasureClick(e, n); return; }
+        if (!drawMode) handleClick(e, n, c);
+      };
+    })(num, drawCanvas, canvas);
   });
 }
 
@@ -1296,14 +1319,81 @@ function renderRecs() {
   sel.innerHTML = "";
   if(tab==="recording" && piece) {
     sel.style.display = "flex";
-    piece.recordings.forEach(function(r){
+    // Load any custom performers saved for this piece
+    var customKey = "custom-performers-" + piece.id;
+    var customPerformers = [];
+    try { customPerformers = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+    var allRecs = piece.recordings.concat(customPerformers);
+    allRecs.forEach(function(r){
       var b = document.createElement("button");
       b.className = "rec-btn" + (rec && r.id===rec.id?" active":"");
       b.textContent = r.label;
       b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
       sel.appendChild(b);
     });
+    // Add "+" button to add custom performer
+    var addBtn = document.createElement("button");
+    addBtn.className = "rec-btn";
+    addBtn.textContent = "+ Add performer";
+    addBtn.style.cssText = "border-style:dashed;color:var(--text3);";
+    addBtn.onclick = function() { showAddPerformerInput(); };
+    sel.appendChild(addBtn);
   } else { sel.style.display = "none"; }
+}
+
+function showAddPerformerInput() {
+  var sel = document.getElementById("recording-selector");
+  // Check if input already showing
+  if (document.getElementById("performer-input-wrap")) return;
+  var wrap = document.createElement("div");
+  wrap.id = "performer-input-wrap";
+  wrap.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 0;";
+  var input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "e.g. Yuja Wang 2019";
+  input.style.cssText = "padding:4px 10px;border-radius:20px;border:1px solid var(--border2);font-size:12px;font-family:inherit;outline:none;width:160px;";
+  var go = document.createElement("button");
+  go.textContent = "Analyze";
+  go.className = "rec-btn active";
+  go.style.fontSize = "11px";
+  go.onclick = function() {
+    var val = input.value.trim();
+    if (!val) return;
+    addCustomPerformer(val);
+  };
+  input.addEventListener("keydown", function(e) { if (e.key === "Enter") go.onclick(); });
+  var cancel = document.createElement("button");
+  cancel.textContent = "x";
+  cancel.className = "rec-btn";
+  cancel.style.cssText = "font-size:11px;padding:3px 8px;";
+  cancel.onclick = function() { wrap.remove(); };
+  wrap.appendChild(input);
+  wrap.appendChild(go);
+  wrap.appendChild(cancel);
+  sel.appendChild(wrap);
+  setTimeout(function(){ input.focus(); }, 50);
+}
+
+function addCustomPerformer(nameYear) {
+  // Parse name and year from input like "Yuja Wang 2019"
+  var parts = nameYear.match(/^(.+?)\s*(\d{4})?$/);
+  var name = parts ? parts[1].trim() : nameYear;
+  var year = parts && parts[2] ? parts[2] : "";
+  var label = year ? name.split(" ").pop() + " " + year : name.split(" ").pop();
+  var id = "custom-" + nameYear.replace(/\s+/g, "-").toLowerCase();
+  var newRec = { id: id, label: label, full: nameYear };
+  // Save to localStorage
+  var customKey = "custom-performers-" + piece.id;
+  var existing = [];
+  try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+  // Avoid duplicates
+  if (!existing.find(function(r){ return r.id === id; })) {
+    existing.push(newRec);
+    localStorage.setItem(customKey, JSON.stringify(existing));
+  }
+  rec = newRec;
+  renderRecs();
+  loadAnalysis();
 }
 
 function loadAnalysis() {
@@ -1342,9 +1432,10 @@ function renderSectioned(text) {
   }
   text = cleaned.join("\n");
 
-  // Split on double newlines into blocks
   var blocks = text.split("\n\n");
   var out = "";
+  var firstBlock = true;
+
   for (var i = 0; i < blocks.length; i++) {
     var block = blocks[i].trim();
     if (!block) continue;
@@ -1352,37 +1443,58 @@ function renderSectioned(text) {
     // Collapse single newlines into spaces
     var flat = block.replace(/\n/g, " ").trim();
 
-    // ## heading
+    // ## heading -> large section header
     if (flat.match(/^#{1,3}\s/)) {
       var headText = flat.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").trim();
-      out += "<div style='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:22px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);'>" + headText + "</div>";
+      out += "<div style='" +
+        "font-size:15px;font-weight:700;color:var(--text);" +
+        "margin-top:" + (firstBlock ? "4px" : "28px") + ";margin-bottom:8px;" +
+        "padding-bottom:6px;border-bottom:2px solid var(--border);" +
+        "letter-spacing:-0.2px;line-height:1.3;" +
+        "'>" + headText + "</div>";
+      firstBlock = false;
       continue;
     }
 
-    // Standalone bold line
+    // Standalone **bold line** -> sub-header
     if (flat.startsWith("**") && flat.endsWith("**") && flat.slice(2,-2).indexOf("**") === -1) {
       var boldText = flat.slice(2, -2).trim();
-      out += "<div style='font-weight:600;color:var(--text);margin-top:14px;margin-bottom:4px;font-size:13px;'>" + boldText + "</div>";
+      out += "<div style='" +
+        "font-size:13px;font-weight:600;color:var(--text);" +
+        "margin-top:16px;margin-bottom:5px;line-height:1.4;" +
+        "'>" + boldText + "</div>";
+      firstBlock = false;
       continue;
     }
 
-    // Process inline markdown: bold, and [text](url) links
+    // Regular paragraph
     var para = flat;
-    // Convert [Listen...](url) to clickable YouTube button
+    // Convert [text](url) links -> YouTube button or regular link
     para = para.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
       if (url.indexOf("youtube") !== -1) {
-        return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;margin:2px 0;'>&#9654; " + linkText + "</a>";
+        return "<a href='" + url + "' target='_blank' style='" +
+          "display:inline-flex;align-items:center;gap:5px;" +
+          "background:#ff0000;color:white;" +
+          "padding:4px 12px;border-radius:4px;" +
+          "font-size:12px;font-weight:600;text-decoration:none;" +
+          "margin:4px 0;vertical-align:middle;" +
+          "'>&#9654; " + linkText + "</a>";
       }
-      return "<a href='" + url + "' target='_blank'>" + linkText + "</a>";
+      return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
     });
-    // Strip loose [ or ] that aren't part of links
+    // Strip loose leading/trailing brackets
     para = para.replace(/^\[\s*|\s*\]$/g, "");
-    // Bold
+    // Inline **bold**
     para = para.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     // Capitalize first letter
     if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
 
-    out += "<p style='margin-bottom:12px;line-height:1.7;font-size:13px;color:var(--text2);'>" + para + "</p>";
+    out += "<p style='" +
+      "margin-bottom:14px;line-height:1.75;" +
+      "font-size:13px;color:var(--text2);" +
+      (firstBlock ? "margin-top:4px;" : "") +
+      "'>" + para + "</p>";
+    firstBlock = false;
   }
   return out || "<p style='font-size:13px;color:var(--text2);'>" + text + "</p>";
 }
@@ -1401,9 +1513,9 @@ function loadStudy() {
   var historySources = (piece.sources && piece.sources.history) ? " Priority scholarly sources: " + piece.sources.history + ". Use academic biographies and peer-reviewed historical scholarship. Program notes from major orchestras (LA Phil, Carnegie Hall, BBC Proms) are acceptable secondary sources. Avoid Wikipedia as primary source." : " Search for academic biographies, peer-reviewed historical scholarship, and major orchestra program notes for this piece. Avoid Wikipedia as primary source.";
   var scholarSources = (piece.sources && piece.sources.scholarship) ? " Priority scholarly sources: " + piece.sources.scholarship + ". Search JSTOR and Google Scholar for additional peer-reviewed work. Cite journal names, years, and authors specifically." : " Search JSTOR, Google Scholar, and Music Index for peer-reviewed musicological scholarship on this piece. Cite journal names, years, and authors specifically.";
   var ps = {
-    history: "Write a structured historical and contextual overview of " + piece.full + " by " + piece.composer + " in the style of serious concert program notes  --  like the LA Phil or Carnegie Hall would publish." + historySources + " Use the following sections with bold headings: Origins: (when composed, circumstances, what prompted it); Composer at the Time: (life circumstances  --  health, relationships, exile, philosophy); Cultural Moment: (broader historical and aesthetic context); Reception and Legacy: (how received, what contemporaries said, why it matters). Each section 2-3 sentences. Cite sources where you find them. Authoritative, accessible, specific. No markdown asterisks.",
-    scholarship: "Write a structured overview of the musicological scholarship on " + piece.full + " by " + piece.composer + "." + scholarSources + " Use the following sections with bold headings: Formal Analysis: (key scholarly debates about structure and form, citing specific analysts and works); Harmonic Language: (what analysts say about harmonic innovation, citing specific publications); Programmatic Content: (debates about narrative or programmatic interpretation); Performance Practice: (what scholarship says about interpretation). Each section 2-3 sentences. Name specific analysts, journals, and published works. No markdown asterisks.",
-    interviews: "Write a structured compilation of documented statements about " + piece.full + ". Search for interviews, essays, and documented master class remarks from major performers of this piece. Use the following sections with bold headings: The Composer's Voice: (letters, diary entries, documented statements  --  if none exist, say so); Contemporary Reactions: (what other composers or critics said); The Great Interpreters: (what major performers have said  --  name specific people and quote or paraphrase specifically, with source where known). Each section 2-3 sentences. No markdown asterisks."
+    history: "Write a structured historical overview of " + piece.full + " by " + piece.composer + " like serious concert program notes. Use ## to mark each section heading. Sections: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. Each 2-3 sentences. Authoritative, direct, no preamble.",
+    scholarship: "Write a structured overview of musicological scholarship on " + piece.full + " by " + piece.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
+    interviews: "Write a structured compilation of documented statements about " + piece.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
   };
   callAPIWithSearch([{role:"user",content:ps[studyTab]}], function(text){ content.innerHTML = renderSectioned(text); });
 }
