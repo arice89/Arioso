@@ -441,7 +441,6 @@ body {
         <button class="hdr-btn" onclick="zoomIn()">+</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
-        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)">
       </div>
     </div>
     <div id="annotate-banner">
@@ -449,6 +448,7 @@ body {
       <button onclick="toggleAnnotate()">Done</button>
     </div>
     <div id="score-display">
+      <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)" style="display:none;">
       <div id="upload-zone" onclick="document.getElementById('file-input').click()">
         <div id="uz-icon">♩</div>
         <div id="uz-title">Upload your score PDF</div>
