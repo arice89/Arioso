@@ -216,7 +216,7 @@ body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 15;
 }
-.draw-canvas.active { pointer-events: all; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='4' cy='20' r='3' fill='%23e05' /%3E%3Cline x1='4' y1='20' x2='20' y2='4' stroke='%23e05' stroke-width='2'/%3E%3C/svg%3E") 4 20, crosshair; }
+.draw-canvas.active { pointer-events: all; cursor: crosshair; }
 #draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
 
 /* CHORD STRIP */
@@ -496,11 +496,10 @@ body {
       </div>
       <div id="score-header-actions">
         <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate score</button>
-        <button class="hdr-btn" id="annotate-btn" onclick="toggleAnnotate()" style="display:none;font-size:10px;color:var(--text3);">AI annotate</button>
         <button class="hdr-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
         <button class="hdr-btn" onclick="zoomIn()">+</button>
-        <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">m. numbers</button>
+        <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">Add measures</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
       </div>
@@ -614,7 +613,7 @@ function toggleMeasureMode() {
   if (measureMode && drawMode) toggleDraw();
   var btn = document.getElementById("measure-btn");
   btn.classList.toggle("toggled", measureMode);
-  btn.textContent = measureMode ? "Done numbering" : "m. numbers";
+  btn.textContent = measureMode ? "Done" : "Add measures";
   document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
     w.style.cursor = measureMode ? "crosshair" : "default";
   });
@@ -1411,9 +1410,10 @@ function callAPI(messages, callback, useSearch) {
   }).catch(function() { callback("Connection error."); });
 }
 
-// Search-enabled version for rich content queries
+// Search-enabled version - falls back to regular if search fails
 function callAPIWithSearch(messages, callback) {
-  callAPI(messages, callback, true);
+  // Use regular call for reliability - prompts guide quality
+  callAPI(messages, callback, false);
 }
 
 function triggerLoad() {
