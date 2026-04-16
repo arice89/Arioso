@@ -412,18 +412,21 @@ function renderPage(num, container) {
   var wrapper = document.createElement("div");
   wrapper.className = "pdf-page-wrapper"; wrapper.id = "pw-" + num;
   var canvas = document.createElement("canvas"); canvas.id = "pc-" + num;
-  var clickLayer = document.createElement("div");
-  clickLayer.className = "page-click-layer"; clickLayer.id = "cl-" + num;
-  var n = num;
-  clickLayer.onclick = function(e){ handleClick(e, n); };
-  wrapper.appendChild(canvas); wrapper.appendChild(clickLayer);
+
+
+
+  wrapper.appendChild(canvas);
   container.appendChild(wrapper);
+  (function(n) {
+    wrapper.style.cursor = "default";
+    wrapper.onclick = function(e){ handleClick(e, n); };
+  })(num);
   pdfDoc.getPage(num).then(function(page) {
     var cw = container.clientWidth - 32;
     var scale = cw / page.getViewport({scale:1}).width;
     var vp = page.getViewport({scale:scale});
     canvas.width = vp.width; canvas.height = vp.height;
-    wrapper.style.height = vp.height + "px"; clickLayer.style.width = "100%"; clickLayer.style.height = vp.height + "px";
+    wrapper.style.height = vp.height + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
   });
 }
@@ -436,8 +439,8 @@ function toggleAnnotate() {
   btn.classList.toggle("toggled", annotating);
   btn.textContent = annotating ? "Done annotating" : "Annotate score";
   banner.style.display = annotating ? "flex" : "none";
-  document.querySelectorAll(".page-click-layer").forEach(function(l){
-    l.style.display = annotating ? "block" : "none";
+  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w){
+    w.style.cursor = annotating ? "crosshair" : "default";
   });
 }
 
