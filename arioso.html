@@ -1149,20 +1149,29 @@ function openDB(callback) {
 }
 
 function savePDFtoDB(arrayBuffer) {
+  savePDFtoDBKey("current-pdf", arrayBuffer);
+}
+
+function savePDFtoDBKey(key, arrayBuffer) {
   openDB(function(db) {
     var tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(arrayBuffer, "current-pdf");
+    tx.objectStore(STORE_NAME).put(arrayBuffer, key);
   });
 }
 
 function loadPDFfromDB(callback) {
+  loadPDFfromDBKey("current-pdf", callback);
+}
+
+function loadPDFfromDBKey(key, callback) {
   openDB(function(db) {
     var tx = db.transaction(STORE_NAME, "readonly");
-    var req = tx.objectStore(STORE_NAME).get("current-pdf");
+    var req = tx.objectStore(STORE_NAME).get(key);
     req.onsuccess = function(e) {
       if (e.target.result) callback(e.target.result);
+      else callback(null);
     };
-    req.onerror = function() { /* no saved PDF */ };
+    req.onerror = function() { callback(null); };
   });
 }
 
