@@ -439,7 +439,7 @@ body {
         <button class="hdr-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
         <button class="hdr-btn" onclick="zoomIn()">+</button>
-        <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
+        <label class="hdr-btn" for="file-input" style="cursor:pointer;display:inline-block;">Upload PDF</label>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
       </div>
     </div>
@@ -448,13 +448,13 @@ body {
       <button onclick="toggleAnnotate()">Done</button>
     </div>
     <div id="score-display">
-      <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)" style="display:none;">
-      <div id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <label id="upload-zone" for="file-input" style="cursor:pointer;">
         <div id="uz-icon">♩</div>
         <div id="uz-title">Upload your score PDF</div>
         <div id="uz-sub">Henle, Peters, IMSLP — any edition works</div>
         <div id="uz-hint">Download from imslp.org then upload here.<br>Try the Chopin Ballade Op. 23 to start.</div>
-      </div>
+        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)" style="display:none;">
+      </label>
       <div id="pdf-pages"></div>
     </div>
     <div id="annotations-bar">
