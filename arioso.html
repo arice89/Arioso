@@ -738,11 +738,12 @@ function handleMeasureClick(e, pageNum) {
 }
 
 // Row band size in pixels - snap Y to nearest multiple of this
-var ROW_BAND = 120;
+var ROW_BAND = 150;
 
 function snapToRow(y) {
-  // Round to nearest row band, offset slightly above the click point
-  return Math.round(y / ROW_BAND) * ROW_BAND - 18;
+  // Floor so click anywhere in a band goes to TOP of that band
+  var band = Math.floor(y / ROW_BAND);
+  return band * ROW_BAND + 6;
 }
 
 function placeMeasureLabel() {
@@ -1264,8 +1265,13 @@ function renderPage(num, container) {
     var scale = (cw / page.getViewport({scale:1}).width) * zoomLevel;
     var vp = page.getViewport({scale:scale});
     canvas.width = vp.width; canvas.height = vp.height;
+    canvas.style.width = vp.width + "px";
+    canvas.style.height = vp.height + "px";
     drawCanvas.width = vp.width; drawCanvas.height = vp.height;
+    drawCanvas.style.width = vp.width + "px";
+    drawCanvas.style.height = vp.height + "px";
     wrapper.style.height = vp.height + "px";
+    wrapper.style.width = vp.width + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
     canvas.style.cursor = "default";
     canvas.style.display = "block";
@@ -2039,16 +2045,25 @@ function toggleDraw() {
   });
 }
 
+function getCanvasPos(e, dc) {
+  var rect = dc.getBoundingClientRect();
+  // Scale from display pixels to canvas pixels
+  var scaleX = dc.width / rect.width;
+  var scaleY = dc.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
 function startDraw(e, dc) {
   if (!drawMode) return;
   isDrawing = true;
   currentDrawCanvas = dc;
   currentDrawCtx = dc.getContext("2d");
-  var rect = dc.getBoundingClientRect();
-  var scaleX = dc.width / rect.width;
-  var scaleY = dc.height / rect.height;
+  var pos = getCanvasPos(e, dc);
   currentDrawCtx.beginPath();
-  currentDrawCtx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  currentDrawCtx.moveTo(pos.x, pos.y);
   if (eraseMode) {
     currentDrawCtx.globalCompositeOperation = "destination-out";
     currentDrawCtx.lineWidth = drawSize * 6;
@@ -2063,14 +2078,12 @@ function startDraw(e, dc) {
 
 function continueDraw(e, dc) {
   if (!isDrawing || !currentDrawCtx || currentDrawCanvas !== dc) return;
-  var rect = dc.getBoundingClientRect();
-  var scaleX = dc.width / rect.width;
-  var scaleY = dc.height / rect.height;
+  var pos = getCanvasPos(e, dc);
   if (eraseMode) {
     currentDrawCtx.globalCompositeOperation = "destination-out";
     currentDrawCtx.lineWidth = drawSize * 6;
   }
-  currentDrawCtx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  currentDrawCtx.lineTo(pos.x, pos.y);
   currentDrawCtx.stroke();
 }
 
