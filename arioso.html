@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arioso — AI Score Companion</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f7f5;
+    --bg3: #f0f0ec;
+    --text: #1a1a1a;
+    --text2: #6b6b6b;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.2);
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg3); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-size: 14px; }
+
+  /* TOP BAR */
+  #top-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px; background: var(--bg);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #logo { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; flex-shrink: 0; white-space: nowrap; }
+  #logo span { color: var(--text2); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  #piece-selector { display: flex; gap: 5px; overflow-x: auto; flex: 1; }
+  #piece-selector::-webkit-scrollbar { display: none; }
+  .piece-btn {
+    padding: 5px 11px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text2); font-size: 12px; cursor: pointer;
+    white-space: nowrap; transition: all 0.15s; font-family: inherit;
+  }
+  .piece-btn:hover { background: var(--bg2); color: var(--text); }
+  .piece-btn.active { border-color: var(--text); color: var(--text); font-weight: 500; background: var(--bg); }
+  #mode-toggle { display: flex; gap: 3px; flex-shrink: 0; }
+  .mode-btn {
+    padding: 5px 13px; border-radius: var(--radius); font-size: 12px;
+    border: 1px solid var(--border); cursor: pointer; font-family: inherit;
+    background: var(--bg); color: var(--text2); transition: all 0.15s;
+  }
+  .mode-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* MAIN LAYOUT */
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  /* SCORE PANEL */
+  #score-panel {
+    flex: 0 0 62%; display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid var(--border); background: var(--bg);
+  }
+  #score-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #score-title { font-size: 15px; font-weight: 600; }
+  #score-subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  #upload-zone {
+    margin: 20px; border: 1.5px dashed var(--border2);
+    border-radius: var(--radius-lg); padding: 32px 20px; text-align: center;
+    cursor: pointer; transition: all 0.15s; background: var(--bg2);
+  }
+  #upload-zone:hover { border-color: var(--text); background: var(--bg3); }
+  #upload-zone .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  #upload-zone .upload-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  #upload-zone .upload-sub { font-size: 12px; color: var(--text2); }
+  #upload-zone .upload-hint { font-size: 11px; color: var(--text2); margin-top: 8px; opacity: 0.7; }
+  #file-input { display: none; }
+
+  #pdf-viewer { flex: 1; overflow-y: auto; display: none; background: var(--bg3); }
+  #pdf-canvas { display: block; width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+
+  /* CHORD STRIP */
+  #chord-strip-container { flex-shrink: 0; border-top: 1px solid var(--border); display: none; }
+  #chord-strip-header {
+    display: flex; gap: 12px; align-items: center;
+    padding: 8px 16px 4px; flex-wrap: wrap;
+  }
+  .strip-label { font-size: 10px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+  #section-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--border); }
+  #section-tabs::-webkit-scrollbar { display: none; }
+  .section-tab {
+    padding: 6px 13px; font-size: 11px; cursor: pointer; white-space: nowrap;
+    color: var(--text2); border-right: 1px solid var(--border);
+    border-bottom: 2px solid transparent; transition: all 0.12s;
+    background: transparent; border-top: none; border-left: none; font-family: inherit;
+  }
+  .section-tab:hover { color: var(--text); background: var(--bg2); }
+  .section-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+  #chord-row { display: flex; gap: 6px; padding: 8px 16px 12px; flex-wrap: wrap; }
+  .chord-chip {
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s; border: 1px solid transparent; position: relative;
+  }
+  .chord-chip:hover { transform: translateY(-1px); }
+  .chord-chip.tonic     { background: #deeefa; color: #0a3d6b; border-color: #aad1f0; }
+  .chord-chip.dominant  { background: #fde8e8; color: #6b1414; border-color: #f5b8b8; }
+  .chord-chip.predominant { background: #fef3de; color: #5c3100; border-color: #f7c97a; }
+  .chord-chip.chromatic { background: #eeeafd; color: #30237a; border-color: #ccc5f5; }
+
+  /* CHORD TOOLTIP */
+  #chord-tooltip {
+    position: fixed; background: var(--bg); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 12px 14px; font-size: 12px;
+    max-width: 260px; z-index: 1000; display: none; pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  #tt-name { font-size: 16px; font-weight: 600; display: block; margin-bottom: 4px; }
+  #tt-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 7px;
+  }
+  #tt-note { color: var(--text2); line-height: 1.55; }
+
+  /* ANALYSIS PANEL */
+  #analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  #analysis-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .analysis-tab {
+    padding: 11px 18px; font-size: 13px; cursor: pointer; color: var(--text2);
+    border-bottom: 2px solid transparent; transition: all 0.12s;
+    background: transparent; border-top: none; border-left: none; border-right: none;
+    font-family: inherit;
+  }
+  .analysis-tab:hover { color: var(--text); }
+  .analysis-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+
+  #recording-selector {
+    padding: 9px 16px; border-bottom: 1px solid var(--border);
+    display: none; flex-wrap: wrap; gap: 6px; flex-shrink: 0;
+  }
+  .rec-btn {
+    padding: 4px 11px; border-radius: 20px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); transition: all 0.12s; font-family: inherit;
+  }
+  .rec-btn:hover { border-color: var(--text2); color: var(--text); }
+  .rec-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  #analysis-content {
+    flex: 1; overflow-y: auto; padding: 18px 20px;
+    font-size: 13px; line-height: 1.75; color: var(--text2);
+  }
+
+  /* LOADING */
+  .loading-wrap { display: flex; align-items: center; justify-content: center; height: 80px; }
+  .loading-dots { display: flex; gap: 5px; }
+  .loading-dots span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--text2);
+    animation: bounce 1.2s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* CHAT */
+  #chat-section { border-top: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; }
+  #chat-messages { max-height: 110px; overflow-y: auto; margin-bottom: 8px; }
+  .chat-msg { font-size: 12px; line-height: 1.55; margin-bottom: 6px; }
+  .chat-msg.user { color: var(--text); font-weight: 500; }
+  .chat-msg.assistant { color: var(--text2); }
+  .chat-msg.assistant::before { content: "Arioso — "; font-weight: 600; color: var(--text); }
+  #chat-input-row { display: flex; gap: 7px; }
+  #chat-input {
+    flex: 1; padding: 8px 12px; border-radius: var(--radius); font-size: 13px;
+    border: 1px solid var(--border); background: var(--bg2); color: var(--text);
+    outline: none; font-family: inherit;
+  }
+  #chat-input:focus { border-color: var(--text2); }
+  #chat-input::placeholder { color: var(--text2); opacity: 0.6; }
+  #send-btn {
+    padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 500;
+    border: none; cursor: pointer; background: var(--text); color: var(--bg);
+    transition: opacity 0.15s; font-family: inherit;
+  }
+  #send-btn:hover { opacity: 0.85; }
+  #send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* STUDY PANEL */
+  #study-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; background: var(--bg); }
+  #study-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .study-tab {
+    padding: 11px 18px; font-size: 13px; cursor: pointer; color: var(--text2);
+    border-bottom: 2px solid transparent; transition: all 0.12s;
+    background: transparent; border-top: none; border-left: none; border-right: none;
+    font-family: inherit;
+  }
+  .study-tab:hover { color: var(--text); }
+  .study-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+  #study-content {
+    flex: 1; overflow-y: auto; padding: 28px 32px;
+    font-size: 14px; line-height: 1.85; color: var(--text2);
+  }
+  #study-content p { margin-bottom: 16px; }
+
+  .empty-state { color: var(--text2); font-size: 13px; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div id="logo">Arioso <span>AI Score Companion</span></div>
+  <div id="piece-selector"></div>
+  <div id="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('score')">Score</button>
+    <button class="mode-btn" onclick="setMode('study')">Study</button>
+  </div>
+</div>
+
+<div id="main">
+  <!-- SCORE PANEL -->
+  <div id="score-panel">
+    <div id="score-header">
+      <div id="score-title" class="empty-state">Select a piece to begin</div>
+      <div id="score-subtitle"></div>
+    </div>
+
+    <div id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">♩</div>
+      <div class="upload-title">Upload your score PDF</div>
+      <div class="upload-sub">Henle, Peters, IMSLP — any edition works</div>
+      <div class="upload-hint">Download from imslp.org, then upload here</div>
+    </div>
+    <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)">
+    <div id="pdf-viewer"><canvas id="pdf-canvas"></canvas></div>
+
+    <div id="chord-strip-container">
+      <div id="chord-strip-header">
+        <span class="strip-label">Harmonic analysis</span>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a9fd4;"></div>Tonic</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d45a5a;"></div>Dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d4993a;"></div>Pre-dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a6fd4;"></div>Chromatic</div>
+      </div>
+      <div id="section-tabs"></div>
+      <div id="chord-row"></div>
+    </div>
+  </div>
+
+  <!-- ANALYSIS PANEL -->
+  <div id="analysis-panel">
+    <div id="analysis-tabs">
+      <button class="analysis-tab active" onclick="setAnalysisTab('story')">Story</button>
+      <button class="analysis-tab" onclick="setAnalysisTab('recording')">Recording</button>
+      <button class="analysis-tab" onclick="setAnalysisTab('practice')">Practice</button>
+    </div>
+    <div id="recording-selector"></div>
+    <div id="analysis-content"><span class="empty-state">Select a piece to begin.</span></div>
+    <div id="chat-section">
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Ask about this passage...">
+        <button id="send-btn" onclick="sendChat()">Ask</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDY PANEL -->
+  <div id="study-panel">
+    <div id="study-tabs">
+      <button class="study-tab active" onclick="setStudyTab('history')">History &amp; context</button>
+      <button class="study-tab" onclick="setStudyTab('scholarship')">Scholarship</button>
+      <button class="study-tab" onclick="setStudyTab('interviews')">Composer &amp; performers</button>
+    </div>
+    <div id="study-content"><span class="empty-state">Select a piece to begin.</span></div>
+  </div>
+</div>
+
+<div id="chord-tooltip">
+  <span id="tt-name"></span>
+  <span id="tt-badge"></span>
+  <p id="tt-note"></p>
+</div>
+
+<script>
+var PIECES = [
+  {
+    id: "chopin-ballade-1",
+    composer: "Chopin",
+    title: "Ballade No. 1",
+    full: "Ballade No. 1 in G minor, Op. 23",
+    year: "1835",
+    key: "G minor",
+    recordings: [
+      { id: "argerich-75", label: "Argerich 1975", full: "Martha Argerich, 1975" },
+      { id: "pollini-75", label: "Pollini 1975", full: "Maurizio Pollini, 1975" },
+      { id: "zimerman-87", label: "Zimerman 1987", full: "Krystian Zimerman, 1987" },
+      { id: "kissin-93", label: "Kissin 1993", full: "Evgeny Kissin, 1993" }
+    ],
+    sections: [
+      {
+        label: "Introduction", measures: "mm. 1-7",
+        chords: [
+          { symbol: "i", fn: "tonic", note: "The unison A opens in ambiguity — not yet anchored in G minor. Chopin withholds the tonic until the ear is uncertain." },
+          { symbol: "V7", fn: "dominant", note: "D dominant seventh — the first harmonic declaration. The tension is immediate and unresolved." },
+          { symbol: "i", fn: "tonic", note: "Return without full resolution. The narrative tension is established before the theme has even begun." },
+          { symbol: "iv", fn: "predominant", note: "C minor introduces modal darkening — a shadow falling across the opening G minor." },
+          { symbol: "V", fn: "dominant", note: "Dominant without the seventh — more austere, more inevitable. This is not decoration; it is fate." },
+          { symbol: "i", fn: "tonic", note: "Arrival — but the stability is provisional. The story is set in motion." }
+        ]
+      },
+      {
+        label: "First theme", measures: "mm. 8-36",
+        chords: [
+          { symbol: "III", fn: "tonic", note: "Bb major — the relative major. Unexpected warmth after the dark introduction. The theme breathes here." },
+          { symbol: "VII", fn: "dominant", note: "F major functions as dominant of III — an indirect, gentle approach to the tonal center." },
+          { symbol: "ii°", fn: "predominant", note: "Diminished ii — tension begins to accumulate beneath the lyrical surface." },
+          { symbol: "N6", fn: "chromatic", note: "The Neapolitan sixth — one of Chopin's signature moves. Arrives just before the cadence, maximum harmonic pressure." },
+          { symbol: "V7", fn: "dominant", note: "Dominant seventh — the accumulated tension finally finds its direction. Chopin has been building to this." },
+          { symbol: "i", fn: "tonic", note: "Return to G minor. The theme has deepened. The innocence of the opening is gone." }
+        ]
+      },
+      {
+        label: "Second theme", measures: "mm. 37-67",
+        chords: [
+          { symbol: "Eb I", fn: "tonic", note: "Eb major — one of the most radiant moments in all of Chopin. The tonal shift is a revelation after the G minor struggle." },
+          { symbol: "V7/IV", fn: "chromatic", note: "Secondary dominant — Chopin enriches the harmony. The paradise has internal complexity." },
+          { symbol: "IV", fn: "predominant", note: "Ab major — the subdominant of Eb, expanding the tonal world outward." },
+          { symbol: "ii", fn: "predominant", note: "F minor — the shadows return at the edge of this paradise. Something is threatening." },
+          { symbol: "V7", fn: "dominant", note: "The dominant of Eb — but resolution feels fragile. We are already leaving." },
+          { symbol: "I", fn: "tonic", note: "Eb major confirmed — but something has irreversibly shifted. The ending is already foreshadowed in this beauty." }
+        ]
+      }
+    ]
+  },
+  {
+    id: "beethoven-op109",
+    composer: "Beethoven",
+    title: "Sonata Op. 109",
+    full: "Piano Sonata in E major, Op. 109",
+    year: "1820",
+    key: "E major",
+    recordings: [
+      { id: "kempff-64", label: "Kempff 1964", full: "Wilhelm Kempff, 1964" },
+      { id: "brendel-95", label: "Brendel 1995", full: "Alfred Brendel, 1995" },
+      { id: "schiff-04", label: "Schiff 2004", full: "Andras Schiff, 2004" }
+    ],
+    sections: [
+      {
+        label: "Opening", measures: "mm. 1-8",
+        chords: [
+          { symbol: "I", fn: "tonic", note: "E major — but the Vivace marking makes this arrival fleeting. Beethoven refuses to let the tonic settle." },
+          { symbol: "V7", fn: "dominant", note: "The dominant enters almost immediately — there is no time to inhabit the tonic before it is questioned." },
+          { symbol: "I", fn: "tonic", note: "Return, but the inner voices complicate it. Late Beethoven never lets a tonic rest comfortably." },
+          { symbol: "IV", fn: "predominant", note: "A major — a brief pastoral opening. The last moment of simplicity before the harmonic world expands." },
+          { symbol: "V", fn: "dominant", note: "Pure dominant — preparing the first real cadence. The architecture is in place." },
+          { symbol: "I", fn: "tonic", note: "Cadence — but the phrase ends mid-thought. Beethoven has already moved on in his mind." }
+        ]
+      },
+      {
+        label: "Transition", measures: "mm. 9-15",
+        chords: [
+          { symbol: "vi", fn: "tonic", note: "C# minor — the tonic's shadow. Late-style ambiguity begins. The harmonic world is no longer stable." },
+          { symbol: "ii", fn: "predominant", note: "F# minor — circling toward a new tonal center with characteristic Beethoven indirection." },
+          { symbol: "V7/V", fn: "chromatic", note: "Secondary dominant of the dominant — a characteristic Beethoven intensification technique. The screw tightens." },
+          { symbol: "V", fn: "dominant", note: "B major — the secondary key area's dominant. We are leaving E major and Beethoven is in full flight." },
+          { symbol: "I", fn: "tonic", note: "Resolution — but to a new tonic. The late sonatas live in this kind of tonal drift and reorientation." }
+        ]
+      }
+    ]
+  },
+  {
+    id: "schubert-d960",
+    composer: "Schubert",
+    title: "Sonata D. 960",
+    full: "Piano Sonata in Bb major, D. 960",
+    year: "1828",
+    key: "Bb major",
+    recordings: [
+      { id: "schnabel-37", label: "Schnabel 1937", full: "Artur Schnabel, 1937" },
+      { id: "brendel-88", label: "Brendel 1988", full: "Alfred Brendel, 1988" },
+      { id: "perahia-03", label: "Perahia 2003", full: "Murray Perahia, 2003" }
+    ],
+    sections: [
+      {
+        label: "Opening theme", measures: "mm. 1-18",
+        chords: [
+          { symbol: "I", fn: "tonic", note: "Bb major — but the register and spacing already suggest distance, valediction. This is Schubert in his final year." },
+          { symbol: "I", fn: "tonic", note: "The theme repeats — Schubert's sense of time is nothing like Beethoven's. He dwells, circles, inhabits." },
+          { symbol: "V", fn: "dominant", note: "The dominant arrives — conventional, but in Schubert's hands laden with the weight of anticipation." },
+          { symbol: "V7", fn: "dominant", note: "The seventh added — tension increases but Schubert withholds resolution with extraordinary patience." },
+          { symbol: "I", fn: "tonic", note: "Resolution — but the low Gb tremolo in the bass disrupts everything. The tonal world is not safe." },
+          { symbol: "bVII", fn: "chromatic", note: "Ab major — Schubert's characteristic flat-VII. The harmonic world tilts toward the subdominant, away from home." }
+        ]
+      }
+    ]
+  },
+  {
+    id: "ravel-gaspard",
+    composer: "Ravel",
+    title: "Gaspard de la Nuit",
+    full: "Gaspard de la Nuit",
+    year: "1908",
+    key: "C# (Ondine)",
+    recordings: [
+      { id: "argerich-78", label: "Argerich 1978", full: "Martha Argerich, 1978" },
+      { id: "pogorelich-81", label: "Pogorelich 1981", full: "Ivo Pogorelich, 1981" },
+      { id: "thibaudet-98", label: "Thibaudet 1998", full: "Jean-Yves Thibaudet, 1998" }
+    ],
+    sections: [
+      {
+        label: "Ondine — opening", measures: "mm. 1-10",
+        chords: [
+          { symbol: "I", fn: "tonic", note: "C# major — but the repeating ostinato immediately creates harmonic shimmer rather than stability. Ravel's water is in motion." },
+          { symbol: "bII", fn: "chromatic", note: "The Neapolitan — Ravel's signature suspension of tonal gravity. The harmony floats rather than resolves." },
+          { symbol: "I", fn: "tonic", note: "Return — but the Neapolitan has left a residue. Ravel never fully resolves; he replaces one shimmer with another." },
+          { symbol: "vi", fn: "tonic", note: "A# minor — tonic function in the darkened mode. The water becomes deeper, less welcoming." },
+          { symbol: "bVII", fn: "chromatic", note: "B major — a Romantic chromatic inflection. The harmonic language actively resists classical resolution." },
+          { symbol: "V", fn: "dominant", note: "G# dominant — but Ravel delays its resolution with aesthetic cruelty. The tension is color, not drama." }
+        ]
+      }
+    ]
+  },
+  {
+    id: "scriabin-op53",
+    composer: "Scriabin",
+    title: "Sonata No. 5",
+    full: "Piano Sonata No. 5, Op. 53",
+    year: "1907",
+    key: "F# — mystic chord",
+    recordings: [
+      { id: "horowitz-76", label: "Horowitz 1976", full: "Vladimir Horowitz, 1976" },
+      { id: "sofronitsky-60", label: "Sofronitsky 1960", full: "Vladimir Sofronitsky, 1960" },
+      { id: "hamelin-00", label: "Hamelin 2000", full: "Marc-Andre Hamelin, 2000" }
+    ],
+    sections: [
+      {
+        label: "Opening gesture", measures: "mm. 1-8",
+        chords: [
+          { symbol: "MC", fn: "chromatic", note: "The mystic chord — F#, B, E, A#, D#, G#. Not functional harmony but a tonal atmosphere. Scriabin's harmonic world begins here." },
+          { symbol: "Fr6", fn: "chromatic", note: "French augmented sixth — a residue of functional harmony dissolving into Scriabin's new language." },
+          { symbol: "MC", fn: "chromatic", note: "Return of the mystic chord — the entire sonata breathes from this sonority. It is home, however disorienting." },
+          { symbol: "V9", fn: "dominant", note: "Dominant ninth — the last echo of tonal thinking before Scriabin abandons the system entirely." },
+          { symbol: "MC", fn: "chromatic", note: "The mystic chord again — by now the ear has accepted it as tonic. Tonality has been fundamentally redefined." }
+        ]
+      }
+    ]
+  }
+];
+
+var currentPiece = null;
+var currentSection = 0;
+var currentAnalysisTab = "story";
+var currentStudyTab = "history";
+var currentRecording = null;
+var mode = "score";
+var chatHistory = [];
+var pdfDoc = null;
+
+var SYSTEM_PROMPT = "You are Arioso, an AI score companion for serious pianists. Your users are conservatory-trained professionals and advanced performers who play at a high level. Never talk down. Engage as a brilliant, opinionated musicologist who also performs — a peer, not a teacher. Use precise theoretical language naturally, but never define terms unprompted. When a user asks for a definition or explanation of a concept, welcome it warmly, explain with genuine depth, and connect it immediately to the passage being discussed — theory only lives in context. Always connect harmonic structure to expressive consequence. Be specific and opinionated. Cite specific recordings and pianists by name. Tell the user what you actually think, not what is safe to say. You specialize in solo piano repertoire. Be concise — 2 to 4 sentences unless more depth is requested. Do not use markdown formatting or asterisks.";
+
+function init() {
+  var sel = document.getElementById("piece-selector");
+  PIECES.forEach(function(p, i) {
+    var btn = document.createElement("button");
+    btn.className = "piece-btn";
+    btn.textContent = p.composer + " — " + p.title;
+    btn.onclick = (function(idx) { return function() { selectPiece(idx); }; })(i);
+    sel.appendChild(btn);
+  });
+  document.getElementById("chat-input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") sendChat();
+  });
+}
+
+function selectPiece(idx) {
+  currentPiece = PIECES[idx];
+  currentSection = 0;
+  currentRecording = currentPiece.recordings[0];
+  chatHistory = [];
+  document.querySelectorAll(".piece-btn").forEach(function(b, i) { b.classList.toggle("active", i === idx); });
+  document.getElementById("score-title").textContent = currentPiece.full;
+  document.getElementById("score-title").classList.remove("empty-state");
+  document.getElementById("score-subtitle").textContent = currentPiece.composer + "  ·  " + currentPiece.year + "  ·  " + currentPiece.key;
+  document.getElementById("chord-strip-container").style.display = "block";
+  document.getElementById("chat-messages").innerHTML = "";
+  renderSectionTabs();
+  renderChords();
+  renderRecordings();
+  loadAnalysis();
+  if (mode === "study") loadStudy();
+}
+
+function renderSectionTabs() {
+  var tabs = document.getElementById("section-tabs");
+  tabs.innerHTML = "";
+  currentPiece.sections.forEach(function(s, i) {
+    var tab = document.createElement("button");
+    tab.className = "section-tab" + (i === currentSection ? " active" : "");
+    tab.textContent = s.label + "  ·  " + s.measures;
+    tab.onclick = (function(idx) {
+      return function() { currentSection = idx; renderSectionTabs(); renderChords(); loadAnalysis(); };
+    })(i);
+    tabs.appendChild(tab);
+  });
+}
+
+function renderChords() {
+  var row = document.getElementById("chord-row");
+  row.innerHTML = "";
+  var section = currentPiece.sections[currentSection];
+  section.chords.forEach(function(c) {
+    var chip = document.createElement("div");
+    chip.className = "chord-chip " + c.fn;
+    chip.textContent = c.symbol;
+    chip.addEventListener("mouseenter", function(e) { showTooltip(e, c); });
+    chip.addEventListener("mouseleave", hideTooltip);
+    row.appendChild(chip);
+  });
+}
+
+function showTooltip(e, chord) {
+  var tt = document.getElementById("chord-tooltip");
+  document.getElementById("tt-name").textContent = chord.symbol;
+  var badge = document.getElementById("tt-badge");
+  badge.textContent = chord.fn;
+  var colors = {
+    tonic: "background:#deeefa;color:#0a3d6b;",
+    dominant: "background:#fde8e8;color:#6b1414;",
+    predominant: "background:#fef3de;color:#5c3100;",
+    chromatic: "background:#eeeafd;color:#30237a;"
+  };
+  badge.style.cssText = colors[chord.fn] || "";
+  document.getElementById("tt-note").textContent = chord.note;
+  tt.style.display = "block";
+  var x = Math.min(e.clientX + 14, window.innerWidth - 280);
+  var y = Math.min(e.clientY - 10, window.innerHeight - 160);
+  tt.style.left = x + "px";
+  tt.style.top = y + "px";
+}
+
+function hideTooltip() {
+  document.getElementById("chord-tooltip").style.display = "none";
+}
+
+function renderRecordings() {
+  var sel = document.getElementById("recording-selector");
+  sel.innerHTML = "";
+  if (currentAnalysisTab === "recording" && currentPiece) {
+    sel.style.display = "flex";
+    currentPiece.recordings.forEach(function(r) {
+      var btn = document.createElement("button");
+      btn.className = "rec-btn" + (currentRecording && r.id === currentRecording.id ? " active" : "");
+      btn.textContent = r.label;
+      btn.onclick = (function(rec) {
+        return function() { currentRecording = rec; renderRecordings(); loadAnalysis(); };
+      })(r);
+      sel.appendChild(btn);
+    });
+  } else {
+    sel.style.display = "none";
+  }
+}
+
+function setAnalysisTab(tab) {
+  currentAnalysisTab = tab;
+  var tabs = ["story", "recording", "practice"];
+  document.querySelectorAll(".analysis-tab").forEach(function(b, i) {
+    b.classList.toggle("active", tabs[i] === tab);
+  });
+  renderRecordings();
+  loadAnalysis();
+}
+
+function loadAnalysis() {
+  if (!currentPiece) return;
+  var section = currentPiece.sections[currentSection];
+  var content = document.getElementById("analysis-content");
+  content.innerHTML = "<div class='loading-wrap'><div class='loading-dots'><span></span><span></span><span></span></div></div>";
+  var prompt = "";
+  if (currentAnalysisTab === "story") {
+    prompt = "Analyze the " + section.label + " (" + section.measures + ") of " + currentPiece.full + " by " + currentPiece.composer + ". Describe the harmonic narrative and what it means expressively for the performer. Be specific and opinionated. 3 to 4 sentences.";
+  } else if (currentAnalysisTab === "recording") {
+    var rec = currentRecording || currentPiece.recordings[0];
+    prompt = "Analyze how " + rec.full + " approaches the " + section.label + " (" + section.measures + ") of " + currentPiece.full + ". Focus on specific interpretive choices this pianist makes and connect them to the harmonic structure. What does this recording reveal that others miss? 3 to 4 sentences.";
+  } else {
+    prompt = "For the " + section.label + " (" + section.measures + ") of " + currentPiece.full + ", give specific practice intelligence grounded in the harmonic structure. What are the hardest moments and why? What should the performer actually focus on? 3 to 4 sentences.";
+  }
+  callAPI([{ role: "user", content: prompt }], function(text) {
+    content.innerHTML = "";
+    content.textContent = text;
+  });
+}
+
+function setStudyTab(tab) {
+  currentStudyTab = tab;
+  var tabs = ["history", "scholarship", "interviews"];
+  document.querySelectorAll(".study-tab").forEach(function(b, i) {
+    b.classList.toggle("active", tabs[i] === tab);
+  });
+  loadStudy();
+}
+
+function loadStudy() {
+  if (!currentPiece) return;
+  var content = document.getElementById("study-content");
+  content.innerHTML = "<div class='loading-wrap'><div class='loading-dots'><span></span><span></span><span></span></div></div>";
+  var prompts = {
+    history: "Write a substantive historical and biographical essay on " + currentPiece.full + " by " + currentPiece.composer + ". Cover the composer's life circumstances when this was written, the philosophical and personal forces behind it, the cultural moment, and how this context should change how a performer hears and plays the piece. 5 to 6 sentences, no markdown, no asterisks.",
+    scholarship: "Summarize the major musicological scholarship on " + currentPiece.full + " by " + currentPiece.composer + ". Name specific analysts, published works, and what they argue. Where do scholars agree and disagree? What are the key analytical debates? 5 to 6 sentences, no markdown, no asterisks.",
+    interviews: "Compile documented statements about " + currentPiece.full + " — from the composer if available, and from the great performers who have recorded it. What have pianists said about their interpretive approach to this specific piece? Name specific pianists, interviews, and essays. 5 to 6 sentences, no markdown, no asterisks."
+  };
+  callAPI([{ role: "user", content: prompts[currentStudyTab] }], function(text) {
+    content.innerHTML = "<p>" + text + "</p>";
+  });
+}
+
+function sendChat() {
+  var input = document.getElementById("chat-input");
+  var msg = input.value.trim();
+  if (!msg || !currentPiece) return;
+  input.value = "";
+  var messages = document.getElementById("chat-messages");
+  var userDiv = document.createElement("div");
+  userDiv.className = "chat-msg user";
+  userDiv.textContent = msg;
+  messages.appendChild(userDiv);
+  var section = currentPiece.sections[currentSection];
+  var context = "The user is currently studying the " + section.label + " (" + section.measures + ") of " + currentPiece.full + " by " + currentPiece.composer + ". ";
+  chatHistory.push({ role: "user", content: context + msg });
+  var sendBtn = document.getElementById("send-btn");
+  sendBtn.disabled = true;
+  callAPI(chatHistory, function(reply) {
+    chatHistory.push({ role: "assistant", content: reply });
+    var aDiv = document.createElement("div");
+    aDiv.className = "chat-msg assistant";
+    aDiv.textContent = reply;
+    messages.appendChild(aDiv);
+    messages.scrollTop = messages.scrollHeight;
+    sendBtn.disabled = false;
+  });
+}
+
+function callAPI(messages, callback) {
+  fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages: messages
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : "Unable to load analysis.";
+    callback(text);
+  })
+  .catch(function() {
+    callback("Connection error. Please check your network.");
+  });
+}
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll(".mode-btn").forEach(function(b) {
+    b.classList.toggle("active", b.textContent.toLowerCase() === m);
+  });
+  var scorePanel = document.getElementById("score-panel");
+  var analysisPanel = document.getElementById("analysis-panel");
+  var studyPanel = document.getElementById("study-panel");
+  if (m === "score") {
+    scorePanel.style.display = "flex";
+    analysisPanel.style.display = "flex";
+    studyPanel.style.display = "none";
+  } else {
+    scorePanel.style.display = "none";
+    analysisPanel.style.display = "none";
+    studyPanel.style.display = "flex";
+    if (currentPiece) loadStudy();
+  }
+}
+
+function loadPDF(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var typedarray = new Uint8Array(e.target.result);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById("upload-zone").style.display = "none";
+      document.getElementById("pdf-viewer").style.display = "block";
+      renderPage(1);
+    }).catch(function() {
+      alert("Could not load PDF. Please try a different file.");
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPage(pageNum) {
+  pdfDoc.getPage(pageNum).then(function(page) {
+    var canvas = document.getElementById("pdf-canvas");
+    var containerWidth = canvas.parentElement.clientWidth;
+    var scale = containerWidth / page.getViewport({ scale: 1 }).width;
+    var viewport = page.getViewport({ scale: scale });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    page.render({ canvasContext: canvas.getContext("2d"), viewport: viewport });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
