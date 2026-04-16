@@ -218,6 +218,71 @@ body {
 }
 .draw-canvas.active { pointer-events: all; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='4' cy='20' r='3' fill='%23e05' /%3E%3Cline x1='4' y1='20' x2='20' y2='4' stroke='%23e05' stroke-width='2'/%3E%3C/svg%3E") 4 20, crosshair; }
 #draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
+/* MEASURE NUMBERS */
+var measureMode = false;
+var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
+
+function toggleMeasureMode() {
+  measureMode = !measureMode;
+  if (measureMode && annotating) toggleAnnotate();
+  if (measureMode && drawMode) toggleDraw();
+  var btn = document.getElementById("measure-btn");
+  btn.classList.toggle("toggled", measureMode);
+  btn.textContent = measureMode ? "Done numbering" : "m. numbers";
+  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
+    w.style.cursor = measureMode ? "crosshair" : "default";
+  });
+  document.querySelectorAll(".pdf-page-wrapper canvas").forEach(function(c) {
+    c.style.cursor = measureMode ? "crosshair" : "default";
+  });
+}
+
+function handleMeasureClick(e, pageNum) {
+  if (!measureMode) return;
+  var rect = e.currentTarget.getBoundingClientRect();
+  pendingMeasureX = e.clientX - rect.left;
+  pendingMeasureY = e.clientY - rect.top;
+  pendingMeasurePage = pageNum;
+  var popup = document.getElementById("measure-popup");
+  document.getElementById("measure-input").value = "";
+  popup.style.display = "block";
+  popup.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + "px";
+  popup.style.top = Math.min(e.clientY - 80, window.innerHeight - 120) + "px";
+  setTimeout(function() { document.getElementById("measure-input").focus(); }, 50);
+}
+
+function placeMeasureLabel() {
+  var val = document.getElementById("measure-input").value.trim();
+  if (!val) return;
+  var wrapper = document.getElementById("pw-" + pendingMeasurePage);
+  var canvas = document.getElementById("pc-" + pendingMeasurePage);
+  if (!wrapper || !canvas) return;
+  var scaleX = canvas.offsetWidth / canvas.width;
+  var scaleY = canvas.offsetHeight / canvas.height;
+  var label = document.createElement("div");
+  label.className = "measure-label";
+  label.textContent = "m." + val;
+  label.style.left = (pendingMeasureX) + "px";
+  label.style.top = (pendingMeasureY) + "px";
+  wrapper.appendChild(label);
+  closeMeasurePopup();
+}
+
+function closeMeasurePopup() {
+  document.getElementById("measure-popup").style.display = "none";
+  document.getElementById("measure-input").value = "";
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && document.getElementById("measure-popup").style.display === "block") {
+    placeMeasureLabel();
+  }
+  if (e.key === "Escape") {
+    closeMeasurePopup();
+    document.getElementById("ann-popup").style.display = "none";
+  }
+});
+
 /* CHORD STRIP */
 #chord-strip-container {
   flex-shrink: 0; border-top: 1px solid var(--border);
@@ -251,6 +316,30 @@ body {
 .chord-chip.dominant  { background: #fde8e8; color: #6b1414; border-color: #f5b8b8; }
 .chord-chip.predominant { background: #fef3de; color: #5c3100; border-color: #f7c97a; }
 .chord-chip.chromatic { background: #eeeafd; color: #30237a; border-color: #ccc5f5; }
+
+/* MEASURE NUMBERS */
+.measure-label {
+  position: absolute; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 4px; font-size: 10px; font-weight: 600; color: var(--text2);
+  padding: 1px 5px; pointer-events: none; z-index: 12;
+  transform: translate(-50%, -100%); margin-top: -4px;
+  font-family: -apple-system, sans-serif;
+}
+#measure-popup {
+  position: fixed; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 12px 14px; z-index: 600;
+  display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.12); width: 180px;
+}
+#measure-popup label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 6px; }
+#measure-input {
+  width: 100%; padding: 6px 10px; border-radius: var(--radius); font-size: 14px;
+  border: 1px solid var(--border2); outline: none; font-family: inherit; margin-bottom: 8px;
+  text-align: center; font-weight: 600;
+}
+#measure-input:focus { border-color: var(--text); }
+#measure-popup-btns { display: flex; gap: 6px; }
+.meas-btn { flex:1; padding:5px; border-radius:var(--radius); font-size:11px; border:1px solid var(--border); cursor:pointer; font-family:inherit; background:var(--bg2); color:var(--text2); }
+.meas-btn.primary { background:var(--text); color:var(--bg); border-color:var(--text); }
 
 .ann-dot {
   position: absolute; width: 30px; height: 30px; border-radius: 50%;
@@ -470,17 +559,18 @@ body {
         <p id="score-subtitle"></p>
       </div>
       <div id="score-header-actions">
-        <button class="hdr-btn" id="annotate-btn" onclick="toggleAnnotate()" style="display:none;">Annotate score</button>
-        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Draw</button>
+        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate score</button>
+        <button class="hdr-btn" id="annotate-btn" onclick="toggleAnnotate()" style="display:none;font-size:10px;color:var(--text3);">AI annotate</button>
         <button class="hdr-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
         <button class="hdr-btn" onclick="zoomIn()">+</button>
+        <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">m. numbers</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
       </div>
     </div>
     <div id="annotate-banner">
-      <span>Click anywhere on the score — Arioso will identify the harmony at that point and explain why it matters.</span>
+      <span>Draw and annotate directly on the score. Use the chord strip below for harmonic analysis.</span>
       <button onclick="toggleAnnotate()">Done</button>
     </div>
     <div id="score-display">
@@ -504,6 +594,7 @@ body {
       </div>
       <div id="section-tabs"></div>
       <div id="chord-row"></div>
+      <div style="padding:3px 16px 7px;font-size:10px;color:var(--text3);">AI-generated analysis — click any chord to see reasoning. Override if incorrect.</div>
     </div>
 
     <div id="annotations-bar">
@@ -521,7 +612,7 @@ body {
   <div id="analysis-panel">
     <div id="analysis-tabs">
       <button class="analysis-tab active" onclick="setTab('story')">Analysis</button>
-      <button class="analysis-tab" onclick="setTab('recording')">Recording</button>
+      <button class="analysis-tab" onclick="setTab('recording')">Interpretations</button>
       <button class="analysis-tab" onclick="setTab('practice')">Practice</button>
     </div>
     <div id="recording-selector"></div>
@@ -543,6 +634,16 @@ body {
       <button class="study-tab" onclick="setStudyTab('interviews')">Composer &amp; performers</button>
     </div>
     <div id="study-content"><span class="empty">Select a piece to begin.</span></div>
+  </div>
+</div>
+
+<!-- MEASURE NUMBER POPUP -->
+<div id="measure-popup">
+  <label>Measure number</label>
+  <input id="measure-input" type="number" min="1" placeholder="e.g. 36">
+  <div id="measure-popup-btns">
+    <div class="meas-btn" onclick="closeMeasurePopup()">Cancel</div>
+    <div class="meas-btn primary" onclick="placeMeasureLabel()">Place</div>
   </div>
 </div>
 
@@ -627,6 +728,7 @@ function clearSavedPDF() {
     document.getElementById("upload-zone").style.display = "block";
     document.getElementById("annotate-btn").style.display = "none";
     document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
     annotations = [];
     document.getElementById("annotations-bar").style.display = "none";
@@ -772,6 +874,7 @@ function openPiece(libIdx) {
       if (piece) {
         document.getElementById("annotate-btn").style.display = "block";
         document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("measure-btn").style.display = "block";
       }
       renderAllPages();
     });
@@ -850,43 +953,71 @@ function saveCustomPiece() {
 var PIECES = [
   { id:"chopin-ballade-1", composer:"Chopin", title:"Ballade No. 1", full:"Ballade No. 1 in G minor, Op. 23", year:"1835", key:"G minor",
     recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"}],
+    sources: {
+      analysis: "Priority scholarly sources: Karol Berger The form of Chopin Ballade Op 23 Nineteenth Century Music 1996; William Rothstein Ambiguity in Chopin First Ballade Integral 1994; John Rink Chopin ballades dialectic Music Analysis 1994; Jim Samson Music of Chopin; Charles Rosen The Romantic Generation chapter on Chopin. Secondary: search JSTOR or Google Scholar for peer-reviewed analyses of Chopin Ballade Op 23 harmonic form. Avoid blogs and amateur analyses.",
+      history: "Priority sources: Jim Samson Music of Chopin biography chapters; Jeffrey Kallberg Chopin at the Boundaries; LA Phil or Carnegie Hall program notes for Chopin Ballade Op 23. Search for documented Chopin correspondence about this piece. Avoid Wikipedia as primary source.",
+      scholarship: "Priority sources: Berger 1996 Nineteenth Century Music; Rothstein 1994 Integral; Rink 1994 Music Analysis; Samson 1985 Music of Chopin; Reisa and Santoso 2022 harmonic innovation Chopin Ballade Jurnal Seni Musik. Search JSTOR Google Scholar for peer-reviewed scholarship only."
+    },
     sections:[
-      {label:"Introduction",measures:"mm. 1-7",chords:[
-        {symbol:"i",fn:"tonic",note:"The unison A opens in ambiguity — not yet anchored in G minor."},
-        {symbol:"V7",fn:"dominant",note:"D dominant seventh — the first harmonic declaration of intent."},
-        {symbol:"i",fn:"tonic",note:"Return without full resolution — the narrative tension begins here."},
-        {symbol:"iv",fn:"predominant",note:"C minor introduces modal darkening, a shadow over the opening."},
-        {symbol:"V",fn:"dominant",note:"Dominant without the seventh — more austere, more inevitable."},
-        {symbol:"i",fn:"tonic",note:"Arrival — but unstable. The story is set in motion."}
+      {label:"Introduction",measures:"mm. 1-7",page:"p. 1",chords:[
+        {symbol:"—",fn:"tonic",note:"m.1 — A unison in octaves. No harmony declared yet. Chopin withholds the key — the listener is disoriented before a single chord is heard."},
+        {symbol:"V7",fn:"dominant",note:"m.2 — D dominant seventh, the first harmonic statement. Tense, unresolved. The story opens in medias res."},
+        {symbol:"i",fn:"tonic",note:"m.3 — G minor arrives, but without the bass confirmation that would give it weight. Unstable tonic."},
+        {symbol:"iv",fn:"predominant",note:"m.4 — C minor. Modal darkening — the flat side of the harmonic world. The atmosphere thickens."},
+        {symbol:"V7",fn:"dominant",note:"m.5 — Dominant seventh again, more insistent. The introduction is cycling toward a proper cadence."},
+        {symbol:"i",fn:"tonic",note:"m.6 — G minor with more weight now. The key is established, the introduction closes."},
+        {symbol:"V",fn:"dominant",note:"m.7 — A bare dominant, no seventh. Austere, expectant. The first theme is about to speak."}
       ]},
-      {label:"First theme",measures:"mm. 8-36",chords:[
-        {symbol:"III",fn:"tonic",note:"Bb major — the relative major, unexpected warmth after the dark opening."},
-        {symbol:"VII",fn:"dominant",note:"F major as dominant of III — an indirect, gentle approach."},
-        {symbol:"ii°",fn:"predominant",note:"Diminished ii — tension begins to accumulate."},
-        {symbol:"N6",fn:"chromatic",note:"The Neapolitan sixth — Chopin's signature move. Maximum tension before the cadence."},
-        {symbol:"V7",fn:"dominant",note:"Dominant seventh — the accumulated tension finally finds direction."},
-        {symbol:"i",fn:"tonic",note:"Return to G minor, but the theme has deepened."}
+      {label:"First theme",measures:"mm. 8-36",page:"pp. 1-3",chords:[
+        {symbol:"III",fn:"tonic",note:"m.8 — Bb major, the relative major. After the brooding introduction, this arrival is a sudden warmth — let it breathe."},
+        {symbol:"V/III",fn:"dominant",note:"m.10 — F major as dominant of Bb. The melody is still searching, not yet settled."},
+        {symbol:"III",fn:"tonic",note:"m.12 — Bb major returns. The theme begins to feel more confident, but Chopin is already planning his departure."},
+        {symbol:"i",fn:"tonic",note:"m.16 — Brief touch of G minor. A shadow passes across the melody before the theme continues."},
+        {symbol:"V7/III",fn:"chromatic",note:"m.18 — Secondary dominant pushing back toward Bb. Chopin keeps circling, delaying the inevitable return."},
+        {symbol:"III",fn:"tonic",note:"m.20 — Bb major again, but the phrase structure is tightening. The cadences are coming faster."},
+        {symbol:"iv",fn:"predominant",note:"m.24 — C minor. The modal darkening intensifies — the theme is losing its warmth."},
+        {symbol:"ii°",fn:"predominant",note:"m.26 — Diminished ii. Tension is accumulating now in earnest. The lyrical episode is ending."},
+        {symbol:"N6",fn:"chromatic",note:"m.28 — The Neapolitan sixth. Ab major in first inversion — Chopin's most characteristic harmonic fingerprint. Maximum harmonic pressure before the cadence. Give this chord full weight."},
+        {symbol:"V7",fn:"dominant",note:"m.30 — Dominant seventh on D. The accumulated tension finally finds its direction. Everything has been leading here."},
+        {symbol:"i",fn:"tonic",note:"m.32 — G minor confirmed. But notice: the return is darker than the departure. The theme has been transformed by its journey."},
+        {symbol:"V7",fn:"dominant",note:"m.34 — Dominant again, extending the cadential phrase. Chopin is prolonging the resolution, savoring the tension."},
+        {symbol:"i",fn:"tonic",note:"m.36 — Final cadence of the first theme. G minor, but the second theme in Eb is already audible in the harmony's undertow."}
       ]},
-      {label:"Second theme",measures:"mm. 37-67",chords:[
-        {symbol:"Eb I",fn:"tonic",note:"Eb major — one of the most radiant moments in all of Chopin."},
-        {symbol:"V7/IV",fn:"chromatic",note:"Secondary dominant — Chopin enriches the harmony before settling."},
-        {symbol:"IV",fn:"predominant",note:"Ab major — the subdominant of Eb, expanding the tonal world."},
-        {symbol:"ii",fn:"predominant",note:"F minor — the shadows return at the edge of this paradise."},
-        {symbol:"V7",fn:"dominant",note:"The dominant of Eb — but resolution feels fragile now."},
-        {symbol:"I",fn:"tonic",note:"Eb major confirmed — but something has irreversibly shifted."}
+      {label:"Second theme",measures:"mm. 37-67",page:"pp. 3-5",chords:[
+        {symbol:"Eb I",fn:"tonic",note:"m.37 — Eb major arrives like sunlight. One of the most radiant moments in all of Chopin. The shift from G minor is a harmonic miracle — play it as one."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.41 — Secondary dominant of Ab. Chopin immediately enriches the new key with color. The paradise is not simple."},
+        {symbol:"IV",fn:"predominant",note:"m.43 — Ab major, subdominant of Eb. The harmony expands outward, warm and unhurried."},
+        {symbol:"I",fn:"tonic",note:"m.45 — Eb major, confirmed and singing. Let the melody float above a deep, resonant bass."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.50 — Secondary dominant of the dominant. A brief intensification before settling back."},
+        {symbol:"V7",fn:"dominant",note:"m.52 — Dominant of Eb. The first hint of restlessness in this paradise. Resolution comes, but feels earned."},
+        {symbol:"I",fn:"tonic",note:"m.54 — Eb major returns. But listen: the inner voices have chromatic motion now. Something is darkening."},
+        {symbol:"ii",fn:"predominant",note:"m.58 — F minor. The shadows have arrived at the edge of the garden. The tone changes perceptibly."},
+        {symbol:"V7",fn:"dominant",note:"m.60 — Dominant of Eb, but the resolution no longer feels certain. The harmonic ground is shifting."},
+        {symbol:"I",fn:"tonic",note:"m.62 — Eb major, but fragile now. Chopin is already preparing the listener for the destruction to come."},
+        {symbol:"V7/i",fn:"chromatic",note:"m.65 — Dominant seventh pulling back toward G minor. The second theme is being reclaimed by darkness."},
+        {symbol:"i",fn:"tonic",note:"m.67 — G minor returns. The second theme is over. The development will not be gentle."}
       ]},
-      {label:"Development",measures:"mm. 68-166",chords:[
-        {symbol:"i",fn:"tonic",note:"Back to G minor — but the second theme's warmth is already a memory."},
-        {symbol:"V7/III",fn:"chromatic",note:"Secondary dominant pushing toward Bb — Chopin is still reaching for light."},
-        {symbol:"iv",fn:"predominant",note:"C minor — the modal darkness intensifies."},
-        {symbol:"V",fn:"dominant",note:"The dominant grows more insistent, more inevitable."},
-        {symbol:"A I",fn:"chromatic",note:"A major — the shocking recapitulation key. Wrong, beautiful, doomed."}
+      {label:"Development",measures:"mm. 68-166",page:"pp. 5-9",chords:[
+        {symbol:"i",fn:"tonic",note:"m.68 — G minor, transformed. The development begins with the first theme compressed and darkened."},
+        {symbol:"V7/III",fn:"chromatic",note:"m.74 — Secondary dominant reaching for Bb. One last grasp at the relative major's warmth."},
+        {symbol:"III",fn:"tonic",note:"m.76 — Bb major briefly. But it cannot hold — the development pulls it apart immediately."},
+        {symbol:"iv",fn:"predominant",note:"m.84 — C minor. The subdominant darkness takes over. The harmonic world is narrowing."},
+        {symbol:"V7",fn:"dominant",note:"m.94 — Dominant, insistent. Chopin hammers the dominant pedal — this is the engine of the development."},
+        {symbol:"N",fn:"chromatic",note:"m.106 — Neapolitan harmony. The darkness is now extreme — harmonically as far from G minor as possible."},
+        {symbol:"V7",fn:"dominant",note:"m.116 — Dominant again, relentless. The famous climactic passage — the cataclysm is approaching."},
+        {symbol:"i",fn:"tonic",note:"m.124 — G minor. A false recapitulation — it will not last."},
+        {symbol:"V7",fn:"dominant",note:"m.138 — Dominant once more, building to unbearable tension over the next 20 measures."},
+        {symbol:"A I",fn:"chromatic",note:"m.166 — A major. The shocking recapitulation. The first theme in the wrong key — beautiful, disoriented, doomed. Play it as something that knows it cannot survive."}
       ]},
-      {label:"Coda",measures:"mm. 194-264",chords:[
-        {symbol:"i",fn:"tonic",note:"G minor — the tonal ground gives way entirely in the Presto con fuoco."},
-        {symbol:"N",fn:"chromatic",note:"The Neapolitan returns — now not as tension but as catastrophe."},
-        {symbol:"V7",fn:"dominant",note:"Dominant — relentless, merciless, no room for resolution."},
-        {symbol:"i",fn:"tonic",note:"Final G minor — not peace but annihilation. The only possible ending."}
+      {label:"Coda",measures:"mm. 194-264",page:"pp. 9-11",chords:[
+        {symbol:"i",fn:"tonic",note:"m.194 — Presto con fuoco. G minor at full speed. This is not a normal coda — it is annihilation."},
+        {symbol:"V7",fn:"dominant",note:"m.200 — Dominant seventh, relentless. Harmonic rhythm accelerates — chords that took measures before now last only beats."},
+        {symbol:"i",fn:"tonic",note:"m.208 — G minor, texture fragmenting. The two-hand unison passages are Chopin at his most primitive and violent."},
+        {symbol:"N",fn:"chromatic",note:"m.216 — The Neapolitan returns. In the introduction it was a question; here it is a verdict."},
+        {symbol:"V7",fn:"dominant",note:"m.224 — Dominant, merciless. No room for the lyrical. The Ballade has become a different kind of music."},
+        {symbol:"i",fn:"tonic",note:"m.234 — G minor in octaves. The second theme's melody appears briefly — a ghost of Eb paradise — before being destroyed."},
+        {symbol:"V7",fn:"dominant",note:"m.248 — Final dominant preparation. Everything Chopin built over 247 measures is being demolished in these last bars."},
+        {symbol:"i",fn:"tonic",note:"m.264 — Final G minor. Not resolution — annihilation. The only possible ending to a piece that began by questioning whether it could exist."}
       ]}
     ]},
   { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
@@ -899,7 +1030,7 @@ var PIECES = [
     recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"}]}
 ];
 
-var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers — conservatory-trained or equivalent. Talk to them like a brilliant friend who happens to know everything about this music. Be direct, specific, and opinionated. Use musical terms naturally but never write like a textbook or a dissertation. Avoid jargon for its own sake — if a simpler word is just as precise, use it. Always connect what's happening harmonically to what the performer should actually do or feel at the keyboard. Cite specific recordings and pianists by name. Short sentences. No hedging. No passive voice. No markdown, no asterisks. 2-4 sentences max unless asked for more.";
+var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers — conservatory-trained or equivalent. Your writing adapts strictly to context. For ANALYSIS requests: write like a rigorous musicologist. Identify formal structures precisely (modified sonata, rondo, etc.), Roman numeral analysis, key relationships, and harmonic language. For Chopin specifically, the central analytical lens is the equilibrium of chromaticism and diatonicism — how Chopin suspends tonality through tonal ambiguity, delayed resolution, floating tonality, double tonic complex, and the Neapolitan as structural pillar rather than ornament. Cite specific scholars where relevant: Berger on form, Rothstein on thematic ambiguity, Samson on tonal expansion, Rink on the dialectic of analysis and history. Connect every analytical observation to what the performer must understand and do. For INTERPRETATIONS requests: discuss specific named recordings — pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link for each pianist formatted as: [Listen: Name Year](https://www.youtube.com/results?search_query=Name+Piece+Year). Be opinionated about which recordings are essential. For HISTORY and CONTEXT requests: write like serious program notes — LA Phil register. For Chopin, include: the ballade form's origins from medieval French Ars Nova through German Romantic poets to Mickiewicz; Chopin as a bridge figure whose chromaticism anticipates Wagner and ultimately Schoenberg; Schumann's reaction; the biographical context. For ALL contexts: direct, specific, opinionated. No hedging, no passive voice, no markdown asterisks. 3-5 sentences unless more depth is requested. You have web search available. Source hierarchy is strict: (1) Peer-reviewed journal articles (Nineteenth Century Music, Music Analysis, Journal of the American Musicological Society, Music Theory Spectrum, Intégral) — highest authority; (2) University press books (Oxford, Cambridge, Harvard, Norton) — high authority; (3) Established music encyclopedias (Grove Music Online, MGG) — acceptable; (4) Major orchestra program notes (LA Phil, Carnegie Hall, BBC Proms, Vienna Philharmonic) — acceptable for historical context; (5) Everything else — do not cite as a source. Never cite blogs, personal websites, or amateur analyses, even if they appear in search results. Always search before generating analysis, especially for pieces beyond the core canon.";
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
 var currentSection = 0;
@@ -1171,15 +1302,31 @@ function loadAnalysis() {
   if(!piece) return;
   document.getElementById("context-banner").style.display = "none";
   var content = document.getElementById("analysis-content");
-  if(tab==="story") {
-    content.innerHTML = "<div style='padding:20px 0;'><p style='font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;'>Click anywhere on the score to analyze the harmony at that passage — Arioso will identify the Roman numeral, explain the function, and tell you what it means for performance.</p><p style='font-size:12px;color:var(--text3);'>Or ask a question below about the piece.</p></div>";
-    return;
-  }
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
   var prompt = "";
-  if(tab==="recording") { var r = rec||piece.recordings[0]; prompt = "Analyze " + r.full + "'s interpretation of " + piece.full + ". What specific interpretive choices does this pianist make and how do they connect to the harmonic structure? What does this recording reveal that others miss? Be opinionated and specific. 4 sentences."; }
-  else prompt = "Give specific practice intelligence for " + piece.full + " by " + piece.composer + ". What are the hardest passages and why, grounded in the harmonic structure? What should the performer actually focus on? 4 sentences.";
-  callAPI([{role:"user",content:prompt}], function(text){ content.innerHTML=""; content.textContent=text; });
+  if(tab==="story") {
+    var sources = (piece.sources && piece.sources.analysis) ? " IMPORTANT — source priority: First search for peer-reviewed academic sources, journal articles, and university press scholarship. Use these specific sources: " + piece.sources.analysis + ". Only use non-academic sources (program notes, established music encyclopedias) as secondary support. Never cite blogs, amateur analyses, or unattributed web content as sources. Where multiple scholarly sources agree on a harmonic interpretation, state it with confidence and cite them. Where sources differ or where your analysis departs from existing analyses, flag this explicitly (e.g. 'Berger labels this V7/III, though Rothstein argues...')." : " Search for peer-reviewed scholarship and academic analyses of this piece. Prioritize JSTOR, Google Scholar, university press publications, and established music journals. Avoid blogs and amateur analyses.";
+    prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + " in the following format. Start with a section labeled Overview: (2-3 sentences on formal structure, key architecture, and the composer's harmonic language — the big picture a performer needs before sitting down). Then write one short paragraph per major section of the piece, each labeled with the section name and measure range, e.g. Introduction (mm. 1-7): covering the key harmonic events, what is structurally significant, and what it demands from the performer. Be precise and analytical — use Roman numeral terminology, name specific chords and functions, cite scholarly perspectives where relevant. Cross-reference your analysis against existing published analyses and flag where interpretations differ. No markdown asterisks. Connect every observation to performance." + sources;
+  } else if(tab==="recording") {
+    prompt = "Write a structured guide to the major recordings of " + piece.full + ". Start with a section labeled Overview: (1-2 sentences on what defines the interpretive tradition of this piece and what separates great recordings from the rest). Then write one paragraph per major recording, each labeled with the pianist name and year as a heading, e.g. Martha Argerich (1975): — covering their specific interpretive choices at key passages, how those choices connect to the harmonic structure, and what this recording uniquely reveals. Be opinionated. For each recording, include a YouTube search link formatted as: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(piece.composer + " " + piece.title) + "+pianist+year). Cover at least 3 recordings. No markdown asterisks.";
+  } else {
+    prompt = "Write a structured practice guide for " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview: (1-2 sentences on the core technical and musical challenges of this piece). Then write one paragraph per major practice priority, each labeled with a descriptive heading and measure range, e.g. The Neapolitan passages (mm. 28-30): — naming the specific challenge and giving actionable instruction grounded in the harmonic structure. Cover 3-4 priorities. No generic advice. No markdown asterisks.";
+  }
+  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+    content.innerHTML = renderSectioned(text);
+  });
+}
+
+function renderSectioned(text) {
+  var html = text
+    .replace(/\*\*([^*]+)\*\*/g, "<strong style='color:var(--text);'>$1</strong>")
+    .replace(/^([A-Z][A-Za-z &]+(?:\([^)]+\))?)\s*:/gm, "<strong style='color:var(--text);display:block;margin-top:16px;margin-bottom:5px;font-size:13px;'>$1</strong>")
+    .replace(/
+
+/g, "</p><p style='margin-bottom:10px;'>")
+    .replace(/
+/g, " ");
+  return "<p style='margin-bottom:10px;'>" + html + "</p>";
 }
 
 /* STUDY */
@@ -1194,12 +1341,14 @@ function loadStudy() {
   if(!piece) return;
   var content = document.getElementById("study-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+  var historySources = (piece.sources && piece.sources.history) ? " Priority scholarly sources: " + piece.sources.history + ". Use academic biographies and peer-reviewed historical scholarship. Program notes from major orchestras (LA Phil, Carnegie Hall, BBC Proms) are acceptable secondary sources. Avoid Wikipedia as primary source." : " Search for academic biographies, peer-reviewed historical scholarship, and major orchestra program notes for this piece. Avoid Wikipedia as primary source.";
+  var scholarSources = (piece.sources && piece.sources.scholarship) ? " Priority scholarly sources: " + piece.sources.scholarship + ". Search JSTOR and Google Scholar for additional peer-reviewed work. Cite journal names, years, and authors specifically." : " Search JSTOR, Google Scholar, and Music Index for peer-reviewed musicological scholarship on this piece. Cite journal names, years, and authors specifically.";
   var ps = {
-    history: "Tell me about the historical context of " + piece.full + " by " + piece.composer + " — what was going on in the composer's life, what was the cultural moment, and how does knowing that actually change how you perform it? Write like you're talking to a serious musician friend, not writing an essay. 4-5 sentences, plain language, no markdown.",
-    scholarship: "What do the major musicologists and analysts say about " + piece.full + " by " + piece.composer + "? Name specific people and what they argue — where do they agree, where do they disagree, and what's actually useful for a performer to know? 4-5 sentences, no markdown.",
-    interviews: "What have the great performers said about " + piece.full + " — in interviews, essays, or documented conversations? Name specific pianists and what they actually said about how they approach this piece. 4-5 sentences, no markdown."
+    history: "Write a structured historical and contextual overview of " + piece.full + " by " + piece.composer + " in the style of serious concert program notes — like the LA Phil or Carnegie Hall would publish." + historySources + " Use the following sections with bold headings: Origins: (when composed, circumstances, what prompted it); Composer at the Time: (life circumstances — health, relationships, exile, philosophy); Cultural Moment: (broader historical and aesthetic context); Reception and Legacy: (how received, what contemporaries said, why it matters). Each section 2-3 sentences. Cite sources where you find them. Authoritative, accessible, specific. No markdown asterisks.",
+    scholarship: "Write a structured overview of the musicological scholarship on " + piece.full + " by " + piece.composer + "." + scholarSources + " Use the following sections with bold headings: Formal Analysis: (key scholarly debates about structure and form, citing specific analysts and works); Harmonic Language: (what analysts say about harmonic innovation, citing specific publications); Programmatic Content: (debates about narrative or programmatic interpretation); Performance Practice: (what scholarship says about interpretation). Each section 2-3 sentences. Name specific analysts, journals, and published works. No markdown asterisks.",
+    interviews: "Write a structured compilation of documented statements about " + piece.full + ". Search for interviews, essays, and documented master class remarks from major performers of this piece. Use the following sections with bold headings: The Composer's Voice: (letters, diary entries, documented statements — if none exist, say so); Contemporary Reactions: (what other composers or critics said); The Great Interpreters: (what major performers have said — name specific people and quote or paraphrase specifically, with source where known). Each section 2-3 sentences. No markdown asterisks."
   };
-  callAPI([{role:"user",content:ps[studyTab]}], function(text){ content.innerHTML="<p>"+text+"</p>"; });
+  callAPIWithSearch([{role:"user",content:ps[studyTab]}], function(text){ content.innerHTML = renderSectioned(text); });
 }
 
 /* CHAT */
@@ -1231,14 +1380,34 @@ function setMode(m) {
 }
 
 /* API */
-function callAPI(messages, callback) {
+function callAPI(messages, callback, useSearch) {
+  var body = {
+    model: "claude-sonnet-4-5",
+    max_tokens: 2000,
+    system: SYS,
+    messages: messages
+  };
+  if (useSearch) body.useSearch = true;
+
   fetch("/api/chat", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:1000,system:SYS,messages:messages})
-  }).then(function(r){ return r.json(); }).then(function(data){
-    callback((data.content&&data.content[0]&&data.content[0].text)||"Unable to load.");
-  }).catch(function(){ callback("Connection error."); });
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    // Extract text from all content blocks (handles tool_use + text responses)
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    callback(text || "Unable to load.");
+  }).catch(function() { callback("Connection error."); });
+}
+
+// Search-enabled version for rich content queries
+function callAPIWithSearch(messages, callback) {
+  callAPI(messages, callback, true);
 }
 
 function triggerLoad() {
@@ -1249,6 +1418,28 @@ function triggerLoad() {
   }
   loadPDF(input);
 }
+
+/* MEASURE NUMBERS */
+var measureMode = false;
+var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
+
+
+
+
+function closeMeasurePopup() {
+  document.getElementById("measure-popup").style.display = "none";
+  document.getElementById("measure-input").value = "";
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && document.getElementById("measure-popup").style.display === "block") {
+    placeMeasureLabel();
+  }
+  if (e.key === "Escape") {
+    closeMeasurePopup();
+    document.getElementById("ann-popup").style.display = "none";
+  }
+});
 
 /* CHORD STRIP */
 
@@ -1268,7 +1459,7 @@ function renderSectionTabs() {
   piece.sections.forEach(function(s, i) {
     var tab = document.createElement("button");
     tab.className = "section-tab" + (i === currentSection ? " active" : "");
-    tab.textContent = s.label + "  ·  " + s.measures;
+    tab.textContent = s.label + "  ·  " + s.measures + (s.page ? "  ·  " + s.page : "");
     tab.onclick = (function(idx) { return function() {
       currentSection = idx;
       renderSectionTabs();
@@ -1324,8 +1515,8 @@ function loadChordAnalysis(chord) {
   banner.style.display = "block";
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var prompt = "The performer is looking at the chord " + chord.symbol + " (" + chord.fn + " function) in the " + section.label + " (" + section.measures + ") of " + piece.full + " by " + piece.composer + ". " + chord.note + " Tell them what this harmony means for how they actually play this moment — physical decisions, voicing, timing, touch. Be direct and specific. 2-3 sentences.";
-  callAPI([{role:"user",content:prompt}], function(text) {
+  var prompt = "Analyze the chord " + chord.symbol + " (" + chord.fn + " function) at " + chord.note.split("—")[0].trim() + " in " + piece.full + " by " + piece.composer + ". Explain: what this harmony is doing structurally in this passage, how it relates to the surrounding harmonic context, and what it demands from the performer in terms of voicing, timing, or touch. Be precise and analytical, like a musicologist who also performs. 2-3 sentences.";
+  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
     content.innerHTML = "";
     content.textContent = text;
   });
@@ -1416,18 +1607,6 @@ function stopDraw() {
 
 
 
-function openDB(callback) {
-  if (db) { callback(db); return; }
-  var req = indexedDB.open(DB_NAME, DB_VERSION);
-  req.onupgradeneeded = function(e) {
-    e.target.result.createObjectStore(STORE_NAME);
-  };
-  req.onsuccess = function(e) {
-    db = e.target.result;
-    callback(db);
-  };
-  req.onerror = function() { console.log("IndexedDB error"); };
-}
 
 function savePDFtoDB(arrayBuffer) {
   openDB(function(db) {
@@ -1457,27 +1636,13 @@ function clearSavedPDF() {
     document.getElementById("upload-zone").style.display = "block";
     document.getElementById("annotate-btn").style.display = "none";
     document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
     annotations = [];
     document.getElementById("annotations-bar").style.display = "none";
   });
 }
 
-function initPDF() {
-  loadPDFfromDB(function(arrayBuffer) {
-    pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise.then(function(pdf) {
-      pdfDoc = pdf;
-      document.getElementById("upload-zone").style.display = "none";
-      document.getElementById("pdf-pages").style.display = "block";
-      document.getElementById("clear-pdf-btn").style.display = "block";
-      if (piece) {
-        document.getElementById("annotate-btn").style.display = "block";
-        document.getElementById("draw-btn").style.display = "block";
-      }
-      renderAllPages();
-    });
-  });
-}
 
 function goToLibrary() {
   // Reset score state
