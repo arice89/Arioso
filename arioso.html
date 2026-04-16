@@ -177,7 +177,6 @@ body {
 }
 .hdr-btn:hover { border-color: var(--text); color: var(--text); }
 .hdr-btn.toggled { background: #fffbeb; border-color: #f7c97a; color: #7a5000; }
-#file-input { display: none; }
 #annotate-banner {
   padding: 7px 18px; background: #fffbeb; border-bottom: 1px solid #f7c97a;
   font-size: 11px; color: #7a5000; display: none; align-items: center; gap: 8px; flex-shrink: 0;
@@ -453,8 +452,7 @@ body {
         <div id="uz-title">Upload your score PDF</div>
         <div id="uz-sub">Henle, Peters, IMSLP — any edition works</div>
         <div id="uz-hint">Download from imslp.org then upload here.</div>
-        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)"
-          style="margin-top:16px;font-size:13px;font-family:inherit;color:var(--text2);">
+        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)" style="margin-top:16px;">
       </div>
       <div id="pdf-pages"></div>
     </div>
