@@ -439,7 +439,7 @@ body {
         <button class="hdr-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
         <button class="hdr-btn" onclick="zoomIn()">+</button>
-        <label class="hdr-btn" style="cursor:pointer;display:inline-block;position:relative;">Upload PDF<input type="file" accept=".pdf" onchange="loadPDF(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;"></label>
+        <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
       </div>
     </div>
@@ -448,13 +448,13 @@ body {
       <button onclick="toggleAnnotate()">Done</button>
     </div>
     <div id="score-display">
-      <div id="upload-zone" style="position:relative;">
+      <div id="upload-zone">
         <div id="uz-icon">♩</div>
         <div id="uz-title">Upload your score PDF</div>
         <div id="uz-sub">Henle, Peters, IMSLP — any edition works</div>
         <div id="uz-hint">Download from imslp.org then upload here.<br>Try the Chopin Ballade Op. 23 to start.</div>
-        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)"
-          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;">
+        <input type="file" id="file-input" accept=".pdf" style="margin-top:12px;">
+        <button onclick="triggerLoad()" style="margin-top:8px;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;border:none;background:var(--text);color:var(--bg);cursor:pointer;font-family:inherit;">Load score</button>
       </div>
       <div id="pdf-pages"></div>
     </div>
@@ -1060,6 +1060,15 @@ function callAPI(messages, callback) {
   }).then(function(r){ return r.json(); }).then(function(data){
     callback((data.content&&data.content[0]&&data.content[0].text)||"Unable to load.");
   }).catch(function(){ callback("Connection error."); });
+}
+
+function triggerLoad() {
+  var input = document.getElementById("file-input");
+  if (!input.files || !input.files[0]) {
+    alert("Please select a PDF file first.");
+    return;
+  }
+  loadPDF(input);
 }
 
 /* ZOOM */
