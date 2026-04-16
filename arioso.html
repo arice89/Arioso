@@ -423,7 +423,7 @@ function renderPage(num, container) {
     var scale = cw / page.getViewport({scale:1}).width;
     var vp = page.getViewport({scale:scale});
     canvas.width = vp.width; canvas.height = vp.height;
-    wrapper.style.minHeight = vp.height + "px";
+    wrapper.style.height = vp.height + "px"; clickLayer.style.width = "100%"; clickLayer.style.height = vp.height + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
   });
 }
