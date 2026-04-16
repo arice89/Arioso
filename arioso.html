@@ -727,7 +727,7 @@ function clearSavedPDF() {
     document.getElementById("pdf-pages").innerHTML = "";
     document.getElementById("pdf-pages").style.display = "none";
     document.getElementById("upload-zone").style.display = "block";
-    document.getElementById("annotate-btn").style.display = "none";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
     document.getElementById("draw-btn").style.display = "none";
     document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
@@ -743,7 +743,7 @@ function initPDF() {
       document.getElementById("upload-zone").style.display = "none";
       document.getElementById("pdf-pages").style.display = "block";
       if(piece) {
-        document.getElementById("annotate-btn").style.display = "block";
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
         document.getElementById("draw-btn").style.display = "block";
       }
       renderAllPages();
@@ -866,7 +866,7 @@ function openPiece(libIdx) {
       // No PDF saved yet  --  show upload zone
       document.getElementById("upload-zone").style.display = "block";
       document.getElementById("pdf-pages").style.display = "none";
-      document.getElementById("annotate-btn").style.display = "none";
+      (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
       document.getElementById("draw-btn").style.display = "none";
       document.getElementById("clear-pdf-btn").style.display = "none";
       return;
@@ -877,7 +877,7 @@ function openPiece(libIdx) {
       document.getElementById("pdf-pages").style.display = "block";
       document.getElementById("clear-pdf-btn").style.display = "block";
       if (piece) {
-        document.getElementById("annotate-btn").style.display = "block";
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
         document.getElementById("draw-btn").style.display = "block";
         document.getElementById("measure-btn").style.display = "block";
       }
@@ -1081,7 +1081,7 @@ function selectPiece(i) {
   var t = document.getElementById("score-title");
   t.textContent = piece.full; t.classList.remove("empty");
   document.getElementById("score-subtitle").textContent = piece.composer + "   .   " + piece.year + "   .   " + piece.key;
-  if(pdfDoc) document.getElementById("annotate-btn").style.display = "block";
+  if(pdfDoc) (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
   document.getElementById("chat-messages").innerHTML = "";
   renderRecs(); loadAnalysis();
   renderChordStrip();
@@ -1107,7 +1107,7 @@ function loadPDF(input) {
       document.getElementById("pdf-pages").style.display = "block";
       document.getElementById("clear-pdf-btn").style.display = "block";
       if(piece) {
-        document.getElementById("annotate-btn").style.display = "block";
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
         document.getElementById("draw-btn").style.display = "block";
       }
       renderAllPages();
@@ -1150,7 +1150,7 @@ function renderPage(num, container) {
 /* ANNOTATION */
 function toggleAnnotate() {
   annotating = !annotating;
-  var btn = document.getElementById("annotate-btn");
+  var btn = document.getElementById("annotate-btn"); if (!btn) return;
   var banner = document.getElementById("annotate-banner");
   btn.classList.toggle("toggled", annotating);
   btn.textContent = annotating ? "Done annotating" : "Annotate score";
@@ -1387,7 +1387,7 @@ function setMode(m) {
 /* API */
 function callAPI(messages, callback, useSearch) {
   var body = {
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-5-20251001",
     max_tokens: 2000,
     system: SYS,
     messages: messages
@@ -1640,7 +1640,7 @@ function clearSavedPDF() {
     document.getElementById("pdf-pages").innerHTML = "";
     document.getElementById("pdf-pages").style.display = "none";
     document.getElementById("upload-zone").style.display = "block";
-    document.getElementById("annotate-btn").style.display = "none";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
     document.getElementById("draw-btn").style.display = "none";
     document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
@@ -1657,7 +1657,7 @@ function goToLibrary() {
   document.getElementById("pdf-pages").innerHTML = "";
   document.getElementById("pdf-pages").style.display = "none";
   document.getElementById("upload-zone").style.display = "block";
-  document.getElementById("annotate-btn").style.display = "none";
+  (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
   document.getElementById("draw-btn").style.display = "none";
   document.getElementById("clear-pdf-btn").style.display = "none";
   document.getElementById("annotations-bar").style.display = "none";
