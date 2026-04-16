@@ -216,7 +216,7 @@ body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 15;
 }
-.draw-canvas.active { pointer-events: all; cursor: crosshair; }
+.draw-canvas.active { pointer-events: all !important; cursor: crosshair !important; position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 #draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
 
 /* CHORD STRIP */
@@ -960,7 +960,7 @@ function saveCustomPiece() {
 
 var PIECES = [
   { id:"chopin-ballade-1", composer:"Chopin", title:"Ballade No. 1", full:"Ballade No. 1 in G minor, Op. 23", year:"1835", key:"G minor",
-    recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"}],
+    recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"},{id:"t16",label:"Trifonov 2016",full:"Daniil Trifonov, 2016"}],
     sources: {
       analysis: "Priority scholarly sources: Karol Berger The form of Chopin Ballade Op 23 Nineteenth Century Music 1996; William Rothstein Ambiguity in Chopin First Ballade Integral 1994; John Rink Chopin ballades dialectic Music Analysis 1994; Jim Samson Music of Chopin; Charles Rosen The Romantic Generation chapter on Chopin. Secondary: search JSTOR or Google Scholar for peer-reviewed analyses of Chopin Ballade Op 23 harmonic form. Avoid blogs and amateur analyses.",
       history: "Priority sources: Jim Samson Music of Chopin biography chapters; Jeffrey Kallberg Chopin at the Boundaries; LA Phil or Carnegie Hall program notes for Chopin Ballade Op 23. Search for documented Chopin correspondence about this piece. Avoid Wikipedia as primary source.",
@@ -1038,7 +1038,7 @@ var PIECES = [
     recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"}]}
 ];
 
-var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers  --  conservatory-trained or equivalent. Your writing adapts strictly to context. For ANALYSIS requests: write like a rigorous musicologist. Identify formal structures precisely (modified sonata, rondo, etc.), Roman numeral analysis, key relationships, and harmonic language. For Chopin specifically, the central analytical lens is the equilibrium of chromaticism and diatonicism  --  how Chopin suspends tonality through tonal ambiguity, delayed resolution, floating tonality, double tonic complex, and the Neapolitan as structural pillar rather than ornament. Cite specific scholars where relevant: Berger on form, Rothstein on thematic ambiguity, Samson on tonal expansion, Rink on the dialectic of analysis and history. Connect every analytical observation to what the performer must understand and do. For INTERPRETATIONS requests: discuss specific named recordings  --  pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link for each pianist formatted as: [Listen: Name Year](https://www.youtube.com/results?search_query=Name+Piece+Year). Be opinionated about which recordings are essential. For HISTORY and CONTEXT requests: write like serious program notes  --  LA Phil register. For Chopin, include: the ballade form's origins from medieval French Ars Nova through German Romantic poets to Mickiewicz; Chopin as a bridge figure whose chromaticism anticipates Wagner and ultimately Schoenberg; Schumann's reaction; the biographical context. For ALL contexts: direct, specific, opinionated. No hedging, no passive voice, no markdown asterisks. 3-5 sentences unless more depth is requested. You have web search available. Source hierarchy is strict: (1) Peer-reviewed journal articles (Nineteenth Century Music, Music Analysis, Journal of the American Musicological Society, Music Theory Spectrum, Integral)  --  highest authority; (2) University press books (Oxford, Cambridge, Harvard, Norton)  --  high authority; (3) Established music encyclopedias (Grove Music Online, MGG)  --  acceptable; (4) Major orchestra program notes (LA Phil, Carnegie Hall, BBC Proms, Vienna Philharmonic)  --  acceptable for historical context; (5) Everything else  --  do not cite as a source. Never cite blogs, personal websites, or amateur analyses, even if they appear in search results. Always search before generating analysis, especially for pieces beyond the core canon. CRITICAL: Never mention your sources, limitations, or methodology to the user. Never ask the user which option they prefer. Just deliver the analysis directly and confidently. The user is a pianist, not a researcher.";
+var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers  --  conservatory-trained or equivalent. Your writing adapts strictly to context. For ANALYSIS requests: write like a rigorous musicologist. Identify formal structures precisely (modified sonata, rondo, etc.), Roman numeral analysis, key relationships, and harmonic language. For Chopin specifically, the central analytical lens is the equilibrium of chromaticism and diatonicism  --  how Chopin suspends tonality through tonal ambiguity, delayed resolution, floating tonality, double tonic complex, and the Neapolitan as structural pillar rather than ornament. Cite specific scholars where relevant: Berger on form, Rothstein on thematic ambiguity, Samson on tonal expansion, Rink on the dialectic of analysis and history. Connect every analytical observation to what the performer must understand and do. For INTERPRETATIONS requests: discuss specific named recordings  --  pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link for each pianist formatted as: [Listen: Name Year](https://www.youtube.com/results?search_query=Name+Piece+Year). Be opinionated about which recordings are essential. For HISTORY and CONTEXT requests: write like serious program notes  --  LA Phil register. For Chopin, include: the ballade form's origins from medieval French Ars Nova through German Romantic poets to Mickiewicz; Chopin as a bridge figure whose chromaticism anticipates Wagner and ultimately Schoenberg; Schumann's reaction; the biographical context. For ALL contexts: direct, specific, opinionated. No hedging, no passive voice, no markdown asterisks. 3-5 sentences unless more depth is requested. You have web search available. Source hierarchy is strict: (1) Peer-reviewed journal articles (Nineteenth Century Music, Music Analysis, Journal of the American Musicological Society, Music Theory Spectrum, Integral)  --  highest authority; (2) University press books (Oxford, Cambridge, Harvard, Norton)  --  high authority; (3) Established music encyclopedias (Grove Music Online, MGG)  --  acceptable; (4) Major orchestra program notes (LA Phil, Carnegie Hall, BBC Proms, Vienna Philharmonic)  --  acceptable for historical context; (5) Everything else  --  do not cite as a source. Never cite blogs, personal websites, or amateur analyses, even if they appear in search results. Always search before generating analysis, especially for pieces beyond the core canon. CRITICAL: Never mention your sources, limitations, or methodology to the user. Never ask the user which option they prefer. Just deliver the analysis directly and confidently. The user is a pianist, not a researcher. For INTERPRETATIONS, always include at least one 21st century pianist -- e.g. Daniil Trifonov, Yuja Wang, Daniil Trifonov, Behzod Abduraimov, Seong-Jin Cho, Lucas Debargue, or another major contemporary figure relevant to the repertoire.";
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
 var currentSection = 0;
@@ -1316,7 +1316,7 @@ function loadAnalysis() {
     prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, e.g. Introduction (mm. 1-7) -- covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble, no caveats, no methodology discussion.";
   } else if(tab==="recording") {
     var recName = (rec && rec.full) ? rec.full : (piece.recordings[0] ? piece.recordings[0].full : piece.composer);
-    prompt = "Discuss " + recName + "'s recording of " + piece.full + ". What specific interpretive choices does this pianist make and why -- tempo, voicing, phrasing at key passages? How do those choices connect to the harmonic structure? What does this recording reveal that others miss? Be opinionated and specific. 3-4 sentences. No preamble.";
+    prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Jump straight into the analysis with no preamble. Cover their specific interpretive choices at key passages, how those choices connect to the harmonic structure, and what this recording uniquely reveals. Be opinionated and specific. End with a YouTube search link formatted exactly as: [Listen on YouTube](https://www.youtube.com/results?search_query=" + recName.replace(/ /g, "+") + "+" + piece.title.replace(/ /g, "+") + "). 3-4 sentences then the link.";
   } else {
     prompt = "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
   }
@@ -1326,15 +1326,67 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
-  var html = text
-    .replace(/\*\*([^*]+)\*\*/g, "<strong style='color:var(--text);'>$1</strong>")
-    .replace(/\n\n/g, "</p><p style='margin-bottom:10px;'>")
-    .replace(/\n/g, " ");
-  html = html.replace(/([A-Z][A-Za-z0-9 &().,]+):/g, "<strong style='color:var(--text);display:block;margin-top:16px;margin-bottom:5px;font-size:13px;'>$1</strong>");
-  return "<p style='margin-bottom:10px;'>" + html + "</p>";
+  // Strip preamble lines
+  var lines = text.split("\n");
+  var cleaned = [];
+  var started = false;
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i].trim();
+    if (!started) {
+      if (l.match(/^(I will|I am|I need|I should|Let me|Before|\[Search|Based on|Searching|Note:|Please note)/i)) continue;
+      if (l === "---" || l === "") continue;
+      started = true;
+    }
+    if (l === "---") continue;
+    cleaned.push(lines[i]);
+  }
+  text = cleaned.join("\n");
+
+  // Split on double newlines into blocks
+  var blocks = text.split("\n\n");
+  var out = "";
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i].trim();
+    if (!block) continue;
+
+    // Collapse single newlines into spaces
+    var flat = block.replace(/\n/g, " ").trim();
+
+    // ## heading
+    if (flat.match(/^#{1,3}\s/)) {
+      var headText = flat.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").trim();
+      out += "<div style='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:22px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);'>" + headText + "</div>";
+      continue;
+    }
+
+    // Standalone bold line
+    if (flat.startsWith("**") && flat.endsWith("**") && flat.slice(2,-2).indexOf("**") === -1) {
+      var boldText = flat.slice(2, -2).trim();
+      out += "<div style='font-weight:600;color:var(--text);margin-top:14px;margin-bottom:4px;font-size:13px;'>" + boldText + "</div>";
+      continue;
+    }
+
+    // Process inline markdown: bold, and [text](url) links
+    var para = flat;
+    // Convert [Listen...](url) to clickable YouTube button
+    para = para.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
+      if (url.indexOf("youtube") !== -1) {
+        return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;margin:2px 0;'>&#9654; " + linkText + "</a>";
+      }
+      return "<a href='" + url + "' target='_blank'>" + linkText + "</a>";
+    });
+    // Strip loose [ or ] that aren't part of links
+    para = para.replace(/^\[\s*|\s*\]$/g, "");
+    // Bold
+    para = para.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    // Capitalize first letter
+    if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
+
+    out += "<p style='margin-bottom:12px;line-height:1.7;font-size:13px;color:var(--text2);'>" + para + "</p>";
+  }
+  return out || "<p style='font-size:13px;color:var(--text2);'>" + text + "</p>";
 }
 
-/* STUDY */
 function setStudyTab(t) {
   studyTab = t;
   var ts = ["history","scholarship","interviews"];
@@ -1573,9 +1625,21 @@ function toggleDraw() {
   btn.textContent = drawMode ? "Stop drawing" : "Draw";
   document.querySelectorAll(".draw-canvas").forEach(function(dc) {
     dc.classList.toggle("active", drawMode);
+    dc.style.cursor = drawMode ? "crosshair" : "default";
+    if (drawMode) {
+      // Make sure draw canvas matches parent size
+      var wrapper = dc.parentElement;
+      if (wrapper) {
+        dc.style.width = "100%";
+        dc.style.height = "100%";
+      }
+    }
   });
   document.querySelectorAll(".pdf-page-wrapper canvas:not(.draw-canvas)").forEach(function(c) {
-    c.style.cursor = drawMode ? "none" : "default";
+    c.style.cursor = drawMode ? "crosshair" : "default";
+  });
+  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
+    w.style.cursor = drawMode ? "crosshair" : "default";
   });
 }
 
