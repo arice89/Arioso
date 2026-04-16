@@ -225,7 +225,7 @@ body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 15;
 }
-.draw-canvas.active { pointer-events: all !important; cursor: crosshair !important; position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+.draw-canvas.active { pointer-events: all !important; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z' fill='%23333'/%3E%3C/svg%3E") 0 24, crosshair !important; position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 #draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
 
 /* CHORD STRIP */
@@ -1139,6 +1139,7 @@ var PIECES = [
 var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers  --  conservatory-trained or equivalent. Your writing adapts strictly to context. For ANALYSIS requests: write like a rigorous musicologist. Identify formal structures precisely (modified sonata, rondo, etc.), Roman numeral analysis, key relationships, and harmonic language. For Chopin specifically, the central analytical lens is the equilibrium of chromaticism and diatonicism  --  how Chopin suspends tonality through tonal ambiguity, delayed resolution, floating tonality, double tonic complex, and the Neapolitan as structural pillar rather than ornament. Cite specific scholars where relevant: Berger on form, Rothstein on thematic ambiguity, Samson on tonal expansion, Rink on the dialectic of analysis and history. Connect every analytical observation to what the performer must understand and do. For INTERPRETATIONS requests: discuss specific named recordings  --  pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link for each pianist formatted as: [Listen: Name Year](https://www.youtube.com/results?search_query=Name+Piece+Year). Be opinionated about which recordings are essential. For HISTORY and CONTEXT requests: write like serious program notes  --  LA Phil register. For Chopin, include: the ballade form's origins from medieval French Ars Nova through German Romantic poets to Mickiewicz; Chopin as a bridge figure whose chromaticism anticipates Wagner and ultimately Schoenberg; Schumann's reaction; the biographical context. For ALL contexts: direct, specific, opinionated. No hedging, no passive voice, no markdown asterisks. 3-5 sentences unless more depth is requested. You have web search available. Source hierarchy is strict: (1) Peer-reviewed journal articles (Nineteenth Century Music, Music Analysis, Journal of the American Musicological Society, Music Theory Spectrum, Integral)  --  highest authority; (2) University press books (Oxford, Cambridge, Harvard, Norton)  --  high authority; (3) Established music encyclopedias (Grove Music Online, MGG)  --  acceptable; (4) Major orchestra program notes (LA Phil, Carnegie Hall, BBC Proms, Vienna Philharmonic)  --  acceptable for historical context; (5) Everything else  --  do not cite as a source. Never cite blogs, personal websites, or amateur analyses, even if they appear in search results. Always search before generating analysis, especially for pieces beyond the core canon. CRITICAL: Never mention your sources, limitations, or methodology to the user. Never ask the user which option they prefer. Just deliver the analysis directly and confidently. The user is a pianist, not a researcher. For INTERPRETATIONS, always include at least one 21st century pianist -- e.g. Daniil Trifonov, Yuja Wang, Daniil Trifonov, Behzod Abduraimov, Seong-Jin Cho, Lucas Debargue, or another major contemporary figure relevant to the repertoire.";
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
+var analysisReqId = 0; // increments on each new request to cancel stale ones
 var currentSection = 0;
 var chatHistory = [], annotations = [], pending = null, annotating = false, pdfDoc = null;
 var clickX = 0, clickY = 0, clickPage = 0;
@@ -1207,6 +1208,7 @@ function loadPDF(input) {
       if(piece) {
         (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
         document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("measure-btn").style.display = "block";
       }
       renderAllPages();
     }).catch(function(){ alert("Could not load PDF."); });
@@ -1538,6 +1540,9 @@ function loadAnalysis() {
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
   var prompt = "";
+  var currentTab = tab;
+  var reqId = ++analysisReqId; // snapshot current request ID
+
   if(tab==="story") {
     prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, e.g. Introduction (mm. 1-7) -- covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble, no caveats, no methodology discussion.";
   } else if(tab==="recording") {
@@ -1547,7 +1552,11 @@ function loadAnalysis() {
     prompt = "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
   }
   callAPI([{role:"user",content:prompt}], function(text) {
-    content.innerHTML = renderSectioned(text);
+    // Only render if this is still the latest request AND same tab
+    if (reqId !== analysisReqId) return;
+    if (tab !== currentTab) return;
+    var el = document.getElementById("analysis-content");
+    if (el) el.innerHTML = renderSectioned(text);
   });
 }
 
