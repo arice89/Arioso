@@ -712,6 +712,9 @@ function toggleMeasureMode() {
   var btn = document.getElementById("measure-btn");
   btn.classList.toggle("toggled", measureMode);
   btn.textContent = measureMode ? "Done" : "Add measures";
+  // Toggle class on score panel for CSS targeting
+  var panel = document.getElementById("score-panel");
+  if (panel) panel.classList.toggle("measure-mode", measureMode);
   document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
     w.style.cursor = measureMode ? "crosshair" : "default";
   });
@@ -735,7 +738,7 @@ function handleMeasureClick(e, pageNum) {
 }
 
 // Row band size in pixels - snap Y to nearest multiple of this
-var ROW_BAND = 80;
+var ROW_BAND = 120;
 
 function snapToRow(y) {
   // Round to nearest row band, offset slightly above the click point
@@ -764,6 +767,7 @@ function placeMeasureLabel() {
   });
 
   wrapper.appendChild(label);
+  saveMeasureLabels(pendingMeasurePage);
   closeMeasurePopup();
 }
 
@@ -1275,11 +1279,13 @@ function renderPage(num, container) {
       dc.addEventListener("mousemove", function(e) { if (drawMode) continueDraw(e, dc); });
       dc.addEventListener("mouseup", function() { stopDraw(); });
       dc.addEventListener("mouseleave", function() { stopDraw(); });
-      // Click for annotation mode on main canvas
       c.onclick = function(e) {
         if (measureMode) { handleMeasureClick(e, n); return; }
         if (!drawMode) handleClick(e, n, c);
       };
+      // Restore saved drawings and measure labels
+      restoreDrawing(n);
+      restoreMeasureLabels(n);
     })(num, drawCanvas, canvas);
   });
 }
@@ -1889,6 +1895,85 @@ function loadChordAnalysis(chord) {
   });
 }
 
+/* SAVE/RESTORE ANNOTATIONS */
+function annotationKey(pageNum) {
+  var pid = piece ? piece.id : "default";
+  return "arioso-annot-" + pid + "-p" + pageNum;
+}
+
+function measureKey(pageNum) {
+  var pid = piece ? piece.id : "default";
+  return "arioso-meas-" + pid + "-p" + pageNum;
+}
+
+function saveDrawing(pageNum) {
+  var dc = document.getElementById("dc-" + pageNum);
+  if (!dc) return;
+  try {
+    localStorage.setItem(annotationKey(pageNum), dc.toDataURL());
+  } catch(e) {}
+}
+
+function restoreDrawing(pageNum) {
+  var dc = document.getElementById("dc-" + pageNum);
+  if (!dc) return;
+  var saved = localStorage.getItem(annotationKey(pageNum));
+  if (!saved) return;
+  var img = new Image();
+  img.onload = function() {
+    dc.getContext("2d").drawImage(img, 0, 0);
+  };
+  img.src = saved;
+}
+
+function saveMeasureLabels(pageNum) {
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var labels = wrapper.querySelectorAll(".measure-label");
+  var data = [];
+  labels.forEach(function(l) {
+    data.push({ left: l.style.left, top: l.style.top, text: l.textContent });
+  });
+  try {
+    localStorage.setItem(measureKey(pageNum), JSON.stringify(data));
+  } catch(e) {}
+}
+
+function restoreMeasureLabels(pageNum) {
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var saved = localStorage.getItem(measureKey(pageNum));
+  if (!saved) return;
+  var data = [];
+  try { data = JSON.parse(saved); } catch(e) { return; }
+  data.forEach(function(d) {
+    var label = document.createElement("div");
+    label.className = "measure-label";
+    label.textContent = d.text;
+    label.style.left = d.left;
+    label.style.top = d.top;
+    label.title = "Click to delete";
+    label.addEventListener("click", function(e) {
+      e.stopPropagation();
+      if (measureMode) { label.remove(); saveMeasureLabels(pageNum); }
+    });
+    wrapper.appendChild(label);
+  });
+}
+
+function clearAnnotationsForPiece() {
+  if (!piece) return;
+  var pid = piece.id;
+  var keys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && (k.startsWith("arioso-annot-" + pid) || k.startsWith("arioso-meas-" + pid))) {
+      keys.push(k);
+    }
+  }
+  keys.forEach(function(k) { localStorage.removeItem(k); });
+}
+
 /* ZOOM */
 function zoomIn() {
   zoomLevel = Math.min(zoomLevel + 0.25, 3.0);
@@ -1992,6 +2077,12 @@ function continueDraw(e, dc) {
 function stopDraw() {
   isDrawing = false;
   if (currentDrawCtx) currentDrawCtx.beginPath();
+  if (currentDrawCanvas) {
+    // Find page number from canvas id (dc-N)
+    var id = currentDrawCanvas.id;
+    var pageNum = parseInt(id.replace("dc-", ""));
+    if (!isNaN(pageNum)) saveDrawing(pageNum);
+  }
 }
 
 
