@@ -637,7 +637,7 @@ function clearDrawings() {
 </div>
 
 <!-- MEASURE NUMBER POPUP -->
-<div id="measure-popup">
+<div id="measure-popup" onmousedown="event.stopPropagation()">
   <label>Measure number</label>
   <input id="measure-input" type="number" min="1" placeholder="e.g. 36">
   <div id="measure-popup-btns">
@@ -1264,14 +1264,19 @@ function renderPage(num, container) {
     var cw = container.clientWidth - 32;
     var scale = (cw / page.getViewport({scale:1}).width) * zoomLevel;
     var vp = page.getViewport({scale:scale});
+    // PDF canvas: internal pixels = vp dimensions
     canvas.width = vp.width; canvas.height = vp.height;
-    canvas.style.width = vp.width + "px";
-    canvas.style.height = vp.height + "px";
-    drawCanvas.width = vp.width; drawCanvas.height = vp.height;
-    drawCanvas.style.width = vp.width + "px";
-    drawCanvas.style.height = vp.height + "px";
-    wrapper.style.height = vp.height + "px";
-    wrapper.style.width = vp.width + "px";
+    // Display size in CSS pixels = cw wide, proportional height
+    var displayW = cw;
+    var displayH = Math.round(vp.height * (cw / vp.width));
+    canvas.style.width = displayW + "px";
+    canvas.style.height = displayH + "px";
+    // Draw canvas: internal pixels = display pixels (1:1 mapping, no scale needed)
+    drawCanvas.width = displayW; drawCanvas.height = displayH;
+    drawCanvas.style.width = displayW + "px";
+    drawCanvas.style.height = displayH + "px";
+    wrapper.style.width = displayW + "px";
+    wrapper.style.height = displayH + "px";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
     canvas.style.cursor = "default";
     canvas.style.display = "block";
