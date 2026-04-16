@@ -215,6 +215,40 @@ body {
 }
 .draw-canvas.active { pointer-events: all; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='4' cy='20' r='3' fill='%23e05' /%3E%3Cline x1='4' y1='20' x2='20' y2='4' stroke='%23e05' stroke-width='2'/%3E%3C/svg%3E") 4 20, crosshair; }
 #draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
+/* CHORD STRIP */
+#chord-strip-container {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  background: var(--bg); display: none;
+}
+#chord-strip-header {
+  display: flex; gap: 10px; align-items: center;
+  padding: 7px 16px 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border);
+}
+.strip-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-right: 4px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+#section-tabs { display: flex; overflow-x: auto; }
+#section-tabs::-webkit-scrollbar { display: none; }
+.section-tab {
+  padding: 5px 12px; font-size: 11px; cursor: pointer; white-space: nowrap;
+  color: var(--text2); border-bottom: 2px solid transparent; border-right: 1px solid var(--border);
+  transition: all 0.12s; background: transparent;
+  border-top: none; border-left: none; font-family: inherit;
+}
+.section-tab:hover { color: var(--text); background: var(--bg2); }
+.section-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
+#chord-row { display: flex; gap: 6px; padding: 8px 16px 10px; flex-wrap: wrap; }
+.chord-chip {
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s; border: 1px solid transparent;
+  font-family: "Georgia", serif;
+}
+.chord-chip:hover { transform: translateY(-1px); }
+.chord-chip.tonic     { background: #deeefa; color: #0a3d6b; border-color: #aad1f0; }
+.chord-chip.dominant  { background: #fde8e8; color: #6b1414; border-color: #f5b8b8; }
+.chord-chip.predominant { background: #fef3de; color: #5c3100; border-color: #f7c97a; }
+.chord-chip.chromatic { background: #eeeafd; color: #30237a; border-color: #ccc5f5; }
+
 .ann-dot {
   position: absolute; width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -456,6 +490,19 @@ body {
       </div>
       <div id="pdf-pages"></div>
     </div>
+    <!-- CHORD STRIP for curated pieces -->
+    <div id="chord-strip-container">
+      <div id="chord-strip-header">
+        <span class="strip-label">Harmonic analysis</span>
+        <div class="legend-item"><div class="legend-dot" style="background:#378add;"></div>Tonic</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d45a5a;"></div>Dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d4993a;"></div>Pre-dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a6fd4;"></div>Chromatic</div>
+      </div>
+      <div id="section-tabs"></div>
+      <div id="chord-row"></div>
+    </div>
+
     <div id="annotations-bar">
       <div id="annotations-bar-header">
         <span>Annotations</span>
@@ -799,7 +846,46 @@ function saveCustomPiece() {
 
 var PIECES = [
   { id:"chopin-ballade-1", composer:"Chopin", title:"Ballade No. 1", full:"Ballade No. 1 in G minor, Op. 23", year:"1835", key:"G minor",
-    recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"}]},
+    recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"}],
+    sections:[
+      {label:"Introduction",measures:"mm. 1-7",chords:[
+        {symbol:"i",fn:"tonic",note:"The unison A opens in ambiguity — not yet anchored in G minor."},
+        {symbol:"V7",fn:"dominant",note:"D dominant seventh — the first harmonic declaration of intent."},
+        {symbol:"i",fn:"tonic",note:"Return without full resolution — the narrative tension begins here."},
+        {symbol:"iv",fn:"predominant",note:"C minor introduces modal darkening, a shadow over the opening."},
+        {symbol:"V",fn:"dominant",note:"Dominant without the seventh — more austere, more inevitable."},
+        {symbol:"i",fn:"tonic",note:"Arrival — but unstable. The story is set in motion."}
+      ]},
+      {label:"First theme",measures:"mm. 8-36",chords:[
+        {symbol:"III",fn:"tonic",note:"Bb major — the relative major, unexpected warmth after the dark opening."},
+        {symbol:"VII",fn:"dominant",note:"F major as dominant of III — an indirect, gentle approach."},
+        {symbol:"ii°",fn:"predominant",note:"Diminished ii — tension begins to accumulate."},
+        {symbol:"N6",fn:"chromatic",note:"The Neapolitan sixth — Chopin's signature move. Maximum tension before the cadence."},
+        {symbol:"V7",fn:"dominant",note:"Dominant seventh — the accumulated tension finally finds direction."},
+        {symbol:"i",fn:"tonic",note:"Return to G minor, but the theme has deepened."}
+      ]},
+      {label:"Second theme",measures:"mm. 37-67",chords:[
+        {symbol:"Eb I",fn:"tonic",note:"Eb major — one of the most radiant moments in all of Chopin."},
+        {symbol:"V7/IV",fn:"chromatic",note:"Secondary dominant — Chopin enriches the harmony before settling."},
+        {symbol:"IV",fn:"predominant",note:"Ab major — the subdominant of Eb, expanding the tonal world."},
+        {symbol:"ii",fn:"predominant",note:"F minor — the shadows return at the edge of this paradise."},
+        {symbol:"V7",fn:"dominant",note:"The dominant of Eb — but resolution feels fragile now."},
+        {symbol:"I",fn:"tonic",note:"Eb major confirmed — but something has irreversibly shifted."}
+      ]},
+      {label:"Development",measures:"mm. 68-166",chords:[
+        {symbol:"i",fn:"tonic",note:"Back to G minor — but the second theme's warmth is already a memory."},
+        {symbol:"V7/III",fn:"chromatic",note:"Secondary dominant pushing toward Bb — Chopin is still reaching for light."},
+        {symbol:"iv",fn:"predominant",note:"C minor — the modal darkness intensifies."},
+        {symbol:"V",fn:"dominant",note:"The dominant grows more insistent, more inevitable."},
+        {symbol:"A I",fn:"chromatic",note:"A major — the shocking recapitulation key. Wrong, beautiful, doomed."}
+      ]},
+      {label:"Coda",measures:"mm. 194-264",chords:[
+        {symbol:"i",fn:"tonic",note:"G minor — the tonal ground gives way entirely in the Presto con fuoco."},
+        {symbol:"N",fn:"chromatic",note:"The Neapolitan returns — now not as tension but as catastrophe."},
+        {symbol:"V7",fn:"dominant",note:"Dominant — relentless, merciless, no room for resolution."},
+        {symbol:"i",fn:"tonic",note:"Final G minor — not peace but annihilation. The only possible ending."}
+      ]}
+    ]},
   { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
     recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"}]},
   { id:"schubert-d960", composer:"Schubert", title:"Sonata D. 960", full:"Piano Sonata in Bb major, D. 960", year:"1828", key:"Bb major",
@@ -813,6 +899,7 @@ var PIECES = [
 var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers — conservatory-trained or equivalent. Talk to them like a brilliant friend who happens to know everything about this music. Be direct, specific, and opinionated. Use musical terms naturally but never write like a textbook or a dissertation. Avoid jargon for its own sake — if a simpler word is just as precise, use it. Always connect what's happening harmonically to what the performer should actually do or feel at the keyboard. Cite specific recordings and pianists by name. Short sentences. No hedging. No passive voice. No markdown, no asterisks. 2-4 sentences max unless asked for more.";
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
+var currentSection = 0;
 var chatHistory = [], annotations = [], pending = null, annotating = false, pdfDoc = null;
 var clickX = 0, clickY = 0, clickPage = 0;
 var drawMode = false, isDrawing = false, currentDrawCanvas = null, currentDrawCtx = null;
@@ -847,6 +934,7 @@ function init() {
 
 function selectPiece(i) {
   piece = PIECES[i]; rec = piece.recordings[0]; chatHistory = [];
+  currentSection = 0;
   document.querySelectorAll(".piece-btn").forEach(function(b,j){ b.classList.toggle("active",j===i); });
   var t = document.getElementById("score-title");
   t.textContent = piece.full; t.classList.remove("empty");
@@ -854,6 +942,7 @@ function selectPiece(i) {
   if(pdfDoc) document.getElementById("annotate-btn").style.display = "block";
   document.getElementById("chat-messages").innerHTML = "";
   renderRecs(); loadAnalysis();
+  renderChordStrip();
   if(mode==="study") loadStudy();
 }
 
@@ -972,6 +1061,7 @@ function showResult(roman, fn, explanation) {
   var r = document.getElementById("ann-popup-roman");
   r.textContent = roman; r.className = fn;
   document.getElementById("ann-popup-explanation").textContent = explanation;
+  document.getElementById("ann-popup-footer").style.display = "flex";
 }
 
 function applyOverride() {
@@ -1155,6 +1245,87 @@ function triggerLoad() {
     return;
   }
   loadPDF(input);
+}
+
+/* CHORD STRIP */
+
+function renderChordStrip() {
+  if (!piece || !piece.sections || !piece.sections.length) {
+    document.getElementById("chord-strip-container").style.display = "none";
+    return;
+  }
+  document.getElementById("chord-strip-container").style.display = "block";
+  renderSectionTabs();
+  renderChords();
+}
+
+function renderSectionTabs() {
+  var tabs = document.getElementById("section-tabs");
+  tabs.innerHTML = "";
+  piece.sections.forEach(function(s, i) {
+    var tab = document.createElement("button");
+    tab.className = "section-tab" + (i === currentSection ? " active" : "");
+    tab.textContent = s.label + "  ·  " + s.measures;
+    tab.onclick = (function(idx) { return function() {
+      currentSection = idx;
+      renderSectionTabs();
+      renderChords();
+    }; })(i);
+    tabs.appendChild(tab);
+  });
+}
+
+function renderChords() {
+  var row = document.getElementById("chord-row");
+  row.innerHTML = "";
+  var section = piece.sections[currentSection];
+  section.chords.forEach(function(c) {
+    var chip = document.createElement("div");
+    chip.className = "chord-chip " + c.fn;
+    chip.textContent = c.symbol;
+    chip.onclick = (function(chord) { return function(e) {
+      showChordPopup(e, chord);
+    }; })(c);
+    row.appendChild(chip);
+  });
+}
+
+function showChordPopup(e, chord) {
+  // Reuse the annotation popup for chord chip clicks
+  var popup = document.getElementById("ann-popup");
+  document.getElementById("ann-popup-title").textContent = chord.symbol + "  —  " + chord.fn;
+  document.getElementById("ann-popup-loading").style.display = "none";
+  var result = document.getElementById("ann-popup-result");
+  result.style.display = "block";
+  var romanEl = document.getElementById("ann-popup-roman");
+  romanEl.textContent = chord.symbol;
+  romanEl.className = chord.fn;
+  document.getElementById("ann-popup-explanation").textContent = chord.note;
+  document.getElementById("ann-edit-input").value = "";
+  // Hide add/dismiss buttons for chord strip clicks
+  document.getElementById("ann-popup-footer").style.display = "none";
+  popup.style.display = "block";
+  var x = Math.min(e.clientX + 14, window.innerWidth - 320);
+  var y = Math.min(e.clientY - 10, window.innerHeight - 200);
+  popup.style.left = x + "px";
+  popup.style.top = y + "px";
+  // Load deeper analysis in right panel
+  loadChordAnalysis(chord);
+}
+
+function loadChordAnalysis(chord) {
+  if (!piece) return;
+  var section = piece.sections[currentSection];
+  var banner = document.getElementById("context-banner");
+  banner.innerHTML = "Analyzing <strong>" + chord.symbol + "</strong> in " + section.label + " of " + piece.full;
+  banner.style.display = "block";
+  var content = document.getElementById("analysis-content");
+  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+  var prompt = "The performer is looking at the chord " + chord.symbol + " (" + chord.fn + " function) in the " + section.label + " (" + section.measures + ") of " + piece.full + " by " + piece.composer + ". " + chord.note + " Tell them what this harmony means for how they actually play this moment — physical decisions, voicing, timing, touch. Be direct and specific. 2-3 sentences.";
+  callAPI([{role:"user",content:prompt}], function(text) {
+    content.innerHTML = "";
+    content.textContent = text;
+  });
 }
 
 /* ZOOM */
