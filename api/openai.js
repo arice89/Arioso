@@ -26,7 +26,7 @@ export default async function handler(req, res) {
         model: "gpt-4o-mini",
         max_tokens: 800,
         messages: [
-          { role: "system", content: system + " CRITICAL FORMATTING RULES: Use ## for section headings. Never use **bold** for section headers. Keep each section to 2-3 sentences maximum. No walls of text." },
+          { role: "system", content: system + "\n\nFORMATTING RULES — FOLLOW EXACTLY:\n1. Use ## before every section heading. Example: ## Overview\n2. Never use ** for anything. No bold text whatsoever.\n3. After each ## heading, write the content as a plain paragraph on the next line.\n4. Keep each section to 2-3 sentences maximum.\n5. Do not combine the heading and content on the same line." },
           ...messages
         ]
       })
