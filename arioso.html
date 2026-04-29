@@ -1910,7 +1910,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"story")];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Analytical overview of " + piece.full + " by " + piece.composer + ". ## Overview covering formal structure, key architecture, harmonic language. Then one short paragraph per major section: name, measure range, key harmonic events, performance demands. Roman numerals. Direct, no preamble.";
+    var prompt = "Write an analytical overview of " + piece.full + " by " + piece.composer + ". Use ## for each section heading. Start with ## Overview (3 sentences on formal structure and harmonic language). Then ## for each major section by name and measure range. Under each heading: 2 sentences max on harmonic events and what they demand from the performer. Roman numerals. No bold text. No preamble.";
     callOpenAI([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
@@ -1939,7 +1939,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"practice")];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "3 practice priorities for " + piece.full + " by " + piece.composer + ". Each: ## Passage Name (mm. X-Y), then 2 sentences: the specific technical challenge, and exactly what to do — including rhythmic practice strategies for difficult passages. No harmonic theory lectures. Actionable only.";
+    var prompt = "3 practice priorities for " + piece.full + " by " + piece.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). Then 2 sentences: the specific technical challenge, and exactly what to do — including rhythmic practice strategies for fast passages. No harmonic theory. Short and actionable.";
     callOpenAI([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
