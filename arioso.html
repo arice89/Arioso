@@ -2641,12 +2641,48 @@ function sendChat() {
   // Build context prefix
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
+
+  // Detect if query references a specific measure or section
+  var detected = detectMeasureQuery(msg);
+  var targetPages = null;
+  if (detected.measureNum) {
+    targetPages = findPagesForMeasure(detected.measureNum);
+    if (targetPages) console.log("[vision] measure " + detected.measureNum + " -> pages", targetPages);
+  }
+
   var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
 
-  // Always use vision path -- callAPIWithVision handles the async capture internally
-  // and falls back to text-only if no score is available
   chatHistory.push({role:"user", content: msg});
-  callAPIWithVision(fullPrompt, onReply);
+
+  if (targetPages) {
+    // Render the specific pages containing the requested measure
+    var statusEl = document.getElementById("vision-status");
+    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Loading m." + detected.measureNum + " (p." + targetPages.join("-") + ")"; }
+    captureSpecificPages(targetPages).then(function(imageBase64) {
+      if (!imageBase64) { callAPIWithVision(fullPrompt, onReply); return; }
+      var messages = [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: "image/png", data: imageBase64 } },
+          { type: "text", text: fullPrompt }
+        ]
+      }];
+      fetch("/api/vision", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ messages: messages, system: SYS_SCORE })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          var text = "";
+          if (data.content) data.content.forEach(function(b) { if (b.type==="text") text += b.text; });
+          onReply(text || "Unable to analyze score.");
+        })
+        .catch(function() { callAPIWithVision(fullPrompt, onReply); });
+    });
+  } else {
+    // Use viewport capture (default)
+    callAPIWithVision(fullPrompt, onReply);
+  }
 }
 
 /* ===== CHAT REPLY FORMATTER ===== */
@@ -2711,7 +2747,103 @@ function setMode(m) {
 }
 
 /* API */
-/* ===== SCORE VISION ===== */
+/**
+ * Detects measure numbers or section names in a query string.
+ * Returns { measureNum, sectionName } — both may be null.
+ */
+function detectMeasureQuery(query) {
+  var q = query.toLowerCase();
+  // Match "measure 200", "m. 200", "m.200", "mm. 45", "bar 12"
+  var mMatch = q.match(/(?:measure|bar|m\.?\s*)(\d+)/);
+  var measureNum = mMatch ? parseInt(mMatch[1]) : null;
+
+  // Match section names
+  var SECTIONS = ["introduction","first theme","second theme","exposition","development","recapitulation","coda","transition","codetta"];
+  var sectionName = null;
+  SECTIONS.forEach(function(s) { if (q.indexOf(s) !== -1) sectionName = s; });
+
+  return { measureNum: measureNum, sectionName: sectionName };
+}
+
+/**
+ * Given a measure number, find which page(s) of the PDF contain it.
+ * Uses piece.sections[].measures and piece.sections[].page as a rough map.
+ * Returns array of 1-based page numbers, or null if can't determine.
+ */
+function findPagesForMeasure(measureNum) {
+  if (!piece || !piece.sections) return null;
+
+  // Find which section contains this measure
+  var targetSection = null;
+  piece.sections.forEach(function(s) {
+    var mRange = s.measures && s.measures.match(/(\d+)[^\d]+(\d+)/);
+    if (mRange) {
+      var start = parseInt(mRange[1]), end = parseInt(mRange[2]);
+      if (measureNum >= start && measureNum <= end) targetSection = s;
+    }
+  });
+
+  if (!targetSection) {
+    // Outside known range — use last section or full score
+    targetSection = piece.sections[piece.sections.length - 1];
+  }
+
+  if (!targetSection || !targetSection.page) return null;
+
+  // Parse page field: "p. 3", "pp. 3-5", "p.3", "3"
+  var pageText = targetSection.page.replace(/pp?\.\s*/i, "");
+  var pageRange = pageText.match(/(\d+)(?:[^\d]+(\d+))?/);
+  if (!pageRange) return null;
+
+  var pages = [];
+  var p1 = parseInt(pageRange[1]);
+  var p2 = pageRange[2] ? parseInt(pageRange[2]) : p1;
+  for (var p = p1; p <= Math.min(p2, p1 + 1); p++) pages.push(p); // max 2 pages
+  return pages.length ? pages : null;
+}
+
+/**
+ * Renders specific PDF pages at 2x and returns base64 PNG.
+ * Used when the query references a measure not in the current viewport.
+ */
+function captureSpecificPages(pageNums) {
+  if (!pdfDoc) return Promise.resolve(null);
+  var SCALE = 2.0;
+
+  var promises = pageNums.map(function(pageNum) {
+    if (pageNum < 1 || pageNum > pdfDoc.numPages) return Promise.resolve(null);
+    return pdfDoc.getPage(pageNum).then(function(page) {
+      var vp = page.getViewport({ scale: SCALE });
+      var c = document.createElement("canvas");
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      return page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise
+        .then(function() { return c; });
+    });
+  });
+
+  return Promise.all(promises).then(function(canvases) {
+    canvases = canvases.filter(Boolean);
+    if (!canvases.length) return null;
+
+    var W = canvases[0].width;
+    var totalH = canvases.reduce(function(h, c) { return h + c.height; }, 0);
+    var composite = document.createElement("canvas");
+    composite.width = W;
+    composite.height = totalH;
+    var ctx = composite.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, totalH);
+    var y = 0;
+    canvases.forEach(function(c) { ctx.drawImage(c, 0, y); y += c.height; });
+
+    try {
+      var b64 = composite.toDataURL("image/png").split(",")[1];
+      console.log("[vision] specific pages " + pageNums + " captured: " + W + "x" + totalH);
+      return b64;
+    } catch(e) { return null; }
+  });
+}
 
 /**
  * Captures a high-resolution crop of the currently visible score.
