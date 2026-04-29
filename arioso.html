@@ -835,8 +835,8 @@ function clearDrawings() {
       <p>Click to upload a score PDF</p>
     </div>
     <input type="file" id="modal-file-input" accept=".pdf" onchange="handleModalPDF(this)">
-    <input id="pdf-composer-input" type="text" placeholder="Composer (e.g. Brahms)" style="display:none;">
-    <input id="pdf-name-input" type="text" placeholder="Piece name (e.g. Intermezzo Op. 118 No. 2)" style="display:none;">
+    <input id="pdf-composer-input" type="text" placeholder="Composer (e.g. Chopin)" style="display:none;">
+    <input id="pdf-name-input" type="text" placeholder="Full piece name (e.g. Etude Op. 10 No. 1)" style="display:none;">
     <div id="modal-footer">
       <button class="modal-btn" onclick="closeAddModal()">Cancel</button>
       <button class="modal-btn primary" id="modal-save-btn" onclick="saveCustomPiece()" style="display:none;">Add to library</button>
@@ -1595,24 +1595,31 @@ function openPiece(libIdx) {
     var pIdx = PIECES.findIndex(function(p) { return p.id === libPiece.id; });
     if (pIdx >= 0) selectPiece(pIdx);
   } else {
-    // Custom piece  --  set up minimal piece object
+    // Custom piece — set up full piece object for analysis
+    contentCache = {}; // clear cache for new piece
     piece = {
       id: libPiece.id,
-      composer: libPiece.composer,
-      title: libPiece.title,
-      full: libPiece.composer + (libPiece.opus ? ", " + libPiece.opus : ""),
-      year: "",
-      key: "",
-      recordings: []
+      composer: libPiece.composer || "Unknown composer",
+      title: libPiece.title || "Unknown piece",
+      full: libPiece.full || libPiece.title || "Unknown piece",
+      year: libPiece.year || "",
+      key: libPiece.key || "",
+      recordings: [],
+      sections: []
     };
     rec = null;
     chatHistory = [];
-    document.getElementById("score-title").textContent = libPiece.composer + "  --  " + libPiece.title;
+    var titleDisplay = (libPiece.title || "Unknown piece") + (libPiece.opus ? ", " + libPiece.opus : "");
+    document.getElementById("score-title").textContent = titleDisplay;
     document.getElementById("score-title").classList.remove("empty");
-    document.getElementById("score-subtitle").textContent = libPiece.composer + (libPiece.opus ? "   .   " + libPiece.opus : "");
+    document.getElementById("score-subtitle").textContent = libPiece.composer + (libPiece.year ? "   .   " + libPiece.year : "");
     document.querySelectorAll(".piece-btn").forEach(function(b) { b.classList.remove("active"); });
     document.getElementById("chat-messages").innerHTML = "";
+    // Hide chord strip — no curated sections for custom pieces
+    var cs = document.getElementById("chord-strip");
+    if (cs) cs.style.display = "none";
     renderRecs();
+    prefetchAll(piece); // generate analysis for custom piece
     loadAnalysis();
   }
 
@@ -1717,10 +1724,24 @@ function handleModalPDF(input) {
 function saveCustomPiece() {
   var name = document.getElementById("pdf-name-input").value.trim();
   var composer = document.getElementById("pdf-composer-input").value.trim();
-  if (!name || !pendingModalPDFBuffer) return;
+  if (!name || !composer || !pendingModalPDFBuffer) {
+    if (!name) document.getElementById("pdf-name-input").style.borderColor = "var(--accent)";
+    if (!composer) document.getElementById("pdf-composer-input").style.borderColor = "var(--accent)";
+    return;
+  }
   var id = "custom-" + Date.now();
   savePDFtoDBKey(id, pendingModalPDFBuffer);
-  libraryPieces.push({ id: id, composer: composer || "Unknown", title: name, opus: "", curated: false, pdfKey: id });
+  // title stores full piece name e.g. "Etude Op. 10 No. 1"
+  // full is constructed as "Composer - Title" for display
+  libraryPieces.push({
+    id: id,
+    composer: composer,
+    title: name,
+    full: name,
+    opus: "",
+    curated: false,
+    pdfKey: id
+  });
   saveLibrary();
   renderLibrary();
   closeAddModal();
@@ -2412,19 +2433,15 @@ function prefetchAll(p, force) {
       if (contentCache[cKey]) return;
       callAPI([{role:"user",content:prompts[key]}], function(text) {
         if (!text || text.length < 50) {
-          // Rate limit or error — retry once after a longer delay
           if (retryDelay < 30000) {
             console.warn("[prefetch]", key, "failed, retrying in", retryDelay/1000 + "s");
             setTimeout(function() { attemptFetch(retryDelay * 2); }, retryDelay);
-          } else {
-            console.warn("[prefetch]", key, "gave up after retries");
           }
           return;
         }
         contentCache[cKey] = renderSectioned(text);
         if (!piece || piece.id !== pid) return;
         var el = document.getElementById("full-analysis");
-        // For story/practice: silently replace if currently displayed AND content lacks measure numbers
         if (key === "story" && tab === "story" && el) {
           var hasMeasures = el.innerHTML.indexOf("mm.") !== -1 || el.innerHTML.indexOf("m. ") !== -1;
           if (!hasMeasures || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = scrubLegacy(contentCache[cKey]);
@@ -2437,7 +2454,10 @@ function prefetchAll(p, force) {
       });
     }
 
-    setTimeout(function() { attemptFetch(10000); }, idx * 400);
+    // story fires instantly, practice after 500ms, study tabs at 1.5s intervals
+    var delays = { story: 0, practice: 500, history: 1500, scholarship: 2500, interviews: 3500 };
+    var delay = delays[key] !== undefined ? delays[key] : idx * 1000;
+    setTimeout(function() { attemptFetch(10000); }, delay);
   });
 
   // Recordings fetch in parallel
@@ -2771,7 +2791,7 @@ function loadAnalysis() {
       if (content.innerHTML.indexOf("ldots") === -1) {
         content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       }
-      setTimeout(tryFromCache, 350);
+      setTimeout(tryFromCache, 200);
 
     } else if (tab === "practice") {
       var cached = contentCache[cacheKey(pid,"practice")];
@@ -2792,7 +2812,7 @@ function loadAnalysis() {
       if (content.innerHTML.indexOf("ldots") === -1) {
         content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       }
-      setTimeout(tryFromCache, 350);
+      setTimeout(tryFromCache, 200);
 
     } else if (tab === "recording") {
       var liveRecs = getLiveRecordings(piece);
@@ -3680,7 +3700,7 @@ function callAPIWithVision(textPrompt, callback, skipTitlePageCheck) {
 function callAPI(messages, callback, sysOverride) {
   var body = {
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 3000,
+    max_tokens: 1500,
     system: sysOverride || SYS_KNOWLEDGE,
     messages: messages
   };
