@@ -2522,8 +2522,10 @@ function initPerformerSearch() {
 
 function searchYouTubePerformers(query) {
   if (!piece) return;
+  // Use quoted performer name + piece to force exact artist match
+  var searchQuery = '"' + query + '" ' + piece.composer + ' ' + piece.title;
   var pieceHint = piece.composer + " " + piece.title;
-  var url = "/api/youtube?q=" + encodeURIComponent(query) + "&pieceHint=" + encodeURIComponent(pieceHint);
+  var url = "/api/youtube?q=" + encodeURIComponent(searchQuery) + "&pieceHint=" + encodeURIComponent(pieceHint);
 
   fetch(url)
     .then(function(r) {
@@ -2532,21 +2534,30 @@ function searchYouTubePerformers(query) {
     })
     .then(function(data) {
       if (data.results && data.results.length) {
-        renderDropdownResults(data.results);
+        // Filter: only show results where the performer name actually appears in title or channel
+        var filtered = data.results.filter(function(r) {
+          var q = query.toLowerCase();
+          var title = (r.videoTitle || "").toLowerCase();
+          var channel = (r.performerName || "").toLowerCase();
+          return title.indexOf(q) !== -1 || channel.indexOf(q) !== -1;
+        });
+        if (filtered.length) {
+          renderDropdownResults(filtered);
+        } else {
+          renderDropdownResults(data.results); // show all if filter removes everything
+        }
       } else {
-        // YouTube returned nothing -- fall back to Claude search
         searchPerformerWithClaude(query);
       }
     })
     .catch(function() {
-      // YouTube API not deployed yet -- use Claude+search fallback
       searchPerformerWithClaude(query);
     });
 }
 
 function searchPerformerWithClaude(query) {
   if (!piece) return;
-  var prompt = "Find YouTube recordings of the pianist \"" + query + "\" performing " + piece.full + " by " + piece.composer + ". Search YouTube and return real results. Respond ONLY as JSON array, no other text: [{\"performerName\":\"Full Name\",\"videoTitle\":\"exact video title\",\"videoId\":\"youtube_video_id_if_known\",\"thumbnail\":\"\"}]. If you cannot find a specific videoId, leave it as empty string but still include the performer if they have performed this work. Max 4 results.";
+  var prompt = "Find YouTube recordings where the pianist \"" + query + "\" is the actual performer of " + piece.full + " by " + piece.composer + ". Only include recordings where " + query + " is the soloist. Search YouTube. Respond ONLY as JSON array: [{\"performerName\":\"" + query + "\",\"videoTitle\":\"exact video title\",\"videoId\":\"youtube_video_id\",\"thumbnail\":\"\"}]. Max 4 results. If no confirmed recordings exist, return empty array [].";
   callAPIWithSearch([{role:"user",content:prompt}], function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -2772,6 +2783,14 @@ function renderSectioned(text) {
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
   text = text.replace(/\*([^*\n]+)\*/g, "$1");
 
+  // Process markdown links early — before block detection — so they always render
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
+    if (url.indexOf("youtube") !== -1) {
+      return "\n\nYTLINK:" + url + "::" + linkText + "\n\n";
+    }
+    return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
+  });
+
   // Strip ALL ## occurrences — inline or standalone — and treat what follows as a label
   // Convert "text ## Label" -> "text\n\nLabel"
   text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
@@ -2848,6 +2867,15 @@ function renderSectioned(text) {
 
     var flat = block.replace(/\n/g, " ").trim();
 
+    // YouTube link placeholder
+    if (flat.match(/^YTLINK:/)) {
+      var parts = flat.replace("YTLINK:", "").split("::");
+      var ytUrl = parts[0], ytText = parts[1] || "Listen on YouTube";
+      out += "<div style='margin:12px 0;'><a href='" + ytUrl + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytText + "</a></div>";
+      firstBlock = false;
+      continue;
+    }
+
     // "Measures: X-Y" line — render as small measure badge
     if (flat.match(/^Measures?:\s*[\d–\-]+/i)) {
       out += "<div style='font-size:10px;color:var(--text3);letter-spacing:0.5px;margin-bottom:8px;margin-top:-4px;'>" + flat + "</div>";
@@ -2901,12 +2929,6 @@ function renderSectioned(text) {
 
     // Regular paragraph
     var para = flat;
-    para = para.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
-      if (url.indexOf("youtube") !== -1) {
-        return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;margin:4px 0;vertical-align:middle;'>&#9654; " + linkText + "</a>";
-      }
-      return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
-    });
     para = para.replace(/^\[\s*|\s*\]$/g, "");
     if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
     para = highlightMusicalTerms(para);
@@ -3039,6 +3061,13 @@ function sendChat() {
   if (detected.measureNum) {
     targetPages = findPagesForMeasure(detected.measureNum);
     if (targetPages) console.log("[vision] measure " + detected.measureNum + " -> pages", targetPages);
+    // Show scroll hint if measure isn't currently visible
+    if (!isMeasureVisible(detected.measureNum)) {
+      showScrollHint("Scroll to m." + detected.measureNum + " for the most accurate analysis");
+    }
+  } else if (detected.sectionName) {
+    // Qualitative section reference — hint to scroll to that part
+    showScrollHint("Scroll to the " + detected.sectionName + " for the most accurate analysis");
   }
 
   var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
@@ -3148,12 +3177,66 @@ function detectMeasureQuery(query) {
   var mMatch = q.match(/(?:measure|bar|m\.?\s*)(\d+)/);
   var measureNum = mMatch ? parseInt(mMatch[1]) : null;
 
-  // Match section names
-  var SECTIONS = ["introduction","first theme","second theme","exposition","development","recapitulation","coda","transition","codetta"];
+  // Match structural/qualitative section references
+  var SECTIONS = [
+    "introduction","first theme","second theme","third theme",
+    "exposition","development","recapitulation","coda","codetta","transition",
+    "first movement","second movement","third movement","fourth movement",
+    "first section","second section","opening section","closing section",
+    "lyrical section","climax","presto","allegro","andante","adagio","largo","moderato",
+    "ballad theme","main theme","opening","ending","finale","variation"
+  ];
   var sectionName = null;
   SECTIONS.forEach(function(s) { if (q.indexOf(s) !== -1) sectionName = s; });
 
   return { measureNum: measureNum, sectionName: sectionName };
+}
+
+/**
+ * Shows a non-blocking scroll hint toast above the chat input.
+ * Auto-dismisses after 5 seconds.
+ */
+function showScrollHint(msg) {
+  var existing = document.getElementById("scroll-hint-toast");
+  if (existing) existing.remove();
+
+  var toast = document.createElement("div");
+  toast.id = "scroll-hint-toast";
+  toast.innerHTML =
+    "<span style='flex:1;'>&#9432; " + msg + "</span>" +
+    "<button onclick='this.parentElement.remove()' style='background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 0 0 8px;line-height:1;'>&#x2715;</button>";
+  toast.style.cssText = "display:flex;align-items:center;gap:6px;padding:8px 14px;" +
+    "background:var(--bg2);border:1px solid var(--border2);border-radius:6px;" +
+    "font-size:11px;color:var(--text2);margin-bottom:6px;animation:fadeIn 0.2s ease;";
+
+  var chatSection = document.getElementById("chat-section");
+  if (chatSection) chatSection.insertBefore(toast, chatSection.firstChild);
+
+  // Auto-dismiss after 6 seconds
+  setTimeout(function() { if (toast.parentElement) toast.remove(); }, 6000);
+}
+
+/**
+ * Checks if a measure number is currently visible in the score viewport.
+ */
+function isMeasureVisible(measureNum) {
+  if (!pdfDoc) return false;
+  var scoreDisplay = document.getElementById("score-display");
+  if (!scoreDisplay) return false;
+  var containerRect = scoreDisplay.getBoundingClientRect();
+
+  for (var i = 1; i <= pdfDoc.numPages; i++) {
+    var wrapper = document.getElementById("pw-" + i);
+    if (!wrapper) continue;
+    var r = wrapper.getBoundingClientRect();
+    if (r.bottom <= containerRect.top || r.top >= containerRect.bottom) continue;
+    // This page is visible — does it have a label for this measure?
+    var labels = wrapper.querySelectorAll(".measure-label");
+    for (var k = 0; k < labels.length; k++) {
+      if (parseInt(labels[k].dataset.measureNum) === measureNum) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -3262,6 +3345,23 @@ function captureScoreImage() {
     }
   }
   if (!visiblePageNums.length) visiblePageNums = [1];
+
+  // If only seeing page 1 (likely title page), check if there are measure labels
+  // on later pages and include those instead for better context
+  if (visiblePageNums.length === 1 && visiblePageNums[0] === 1) {
+    var pagesWithLabels = [];
+    for (var j = 1; j <= Math.min(pdfDoc.numPages, 5); j++) {
+      var pw = document.getElementById("pw-" + j);
+      if (pw && pw.querySelectorAll(".measure-label").length > 0) {
+        pagesWithLabels.push(j);
+      }
+    }
+    // If music starts on page 2+ (has labels there), prefer those pages
+    if (pagesWithLabels.length && pagesWithLabels[0] > 1) {
+      visiblePageNums = pagesWithLabels.slice(0, 2);
+      console.log("[vision] title page detected, using pages with music:", visiblePageNums);
+    }
+  }
 
   // Limit to 2 pages -- enough context, keeps payload focused
   visiblePageNums = visiblePageNums.slice(0, 2);
