@@ -94,7 +94,7 @@ body {
 /* Greeting section */
 #library-header-top {
   padding: 24px 56px 0;
-  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px;
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;
 }
 #library-greeting {
   font-family: 'Cormorant Garamond', serif;
@@ -103,7 +103,7 @@ body {
 #library-greeting span { color: var(--accent); font-style: italic; }
 #library-subtitle {
   font-size: 11px; color: var(--text3); letter-spacing: 1.5px;
-  text-transform: uppercase; margin-top: 8px; font-weight: 400;
+  text-transform: uppercase; margin-top: 7px; font-weight: 400;
 }
 #add-piece-btn {
   padding: 9px 20px; border-radius: 3px; font-size: 10px;
@@ -115,7 +115,7 @@ body {
 #add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
 #library-tabs { display: flex; padding: 0 56px; }
 .lib-tab {
-  padding: 14px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
+  padding: 12px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
   border-bottom: 1.5px solid transparent; transition: all 0.2s; font-family: inherit;
   background: transparent; border-top: none; border-left: none; border-right: none;
   letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
@@ -123,14 +123,14 @@ body {
 .lib-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* Library body + section label */
-#library-body { flex: 1; overflow-y: auto; padding: 36px 56px; }
+#library-body { flex: 1; overflow-y: auto; padding: 28px 56px; }
 #library-section-label {
   font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase;
-  color: var(--text3); font-weight: 500; margin-bottom: 16px;
+  color: var(--text3); font-weight: 500; margin-bottom: 14px;
 }
 #library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
 
@@ -152,17 +152,18 @@ body {
 /* Piece cards — resume-focused */
 .piece-card {
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 8px; padding: 22px 22px 18px; cursor: pointer;
+  border-radius: 8px; padding: 24px 22px 20px; cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; min-height: 180px;
+  display: flex; flex-direction: column; justify-content: space-between;
 }
 .piece-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: linear-gradient(180deg, var(--accent), var(--accent2));
-  opacity: 0.18; transition: opacity 0.3s;
+  opacity: 1; border-radius: 8px 0 0 8px;
 }
 .piece-card:hover {
-  border-color: rgba(139,94,60,0.2); transform: translateY(-2px);
+  border-color: rgba(139,94,60,0.25); transform: translateY(-2px);
   box-shadow: 0 10px 36px rgba(28,25,23,0.08), 0 2px 6px rgba(28,25,23,0.04);
 }
 .piece-card:hover::before { opacity: 1; }
@@ -173,7 +174,7 @@ body {
 }
 .piece-card-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 19px; font-weight: 400; line-height: 1.2;
+  font-size: 18px; font-weight: 400; line-height: 1.25;
   margin-bottom: 3px; color: var(--text);
 }
 .piece-card-opus { font-size: 11px; color: var(--text3); font-weight: 300; }
