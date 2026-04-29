@@ -2285,14 +2285,6 @@ function toggleDraw() {
   document.querySelectorAll(".draw-canvas").forEach(function(dc) {
     dc.classList.toggle("active", drawMode);
     dc.style.cursor = drawMode ? "crosshair" : "default";
-    if (drawMode) {
-      // Make sure draw canvas matches parent size
-      var wrapper = dc.parentElement;
-      if (wrapper) {
-        dc.style.width = "100%";
-        dc.style.height = "100%";
-      }
-    }
   });
   document.querySelectorAll(".pdf-page-wrapper canvas:not(.draw-canvas)").forEach(function(c) {
     c.style.cursor = drawMode ? "crosshair" : "default";
