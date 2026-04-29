@@ -1198,9 +1198,14 @@ function saveMeasureLabels(pageNum) {
   });
   try { localStorage.setItem(measureKey(pageNum), JSON.stringify(data)); } catch(e) {}
   // Invalidate analysis/practice cache so next tab visit regenerates with current measure context
+  // But only if the cached content doesn't already have measure numbers
   if (piece) {
-    ["story","practice","history","scholarship","composers","recording"].forEach(function(t) {
-      delete contentCache[piece.id + ":" + t];
+    ["story","practice","scholarship"].forEach(function(t) {
+      var key = piece.id + ":" + t;
+      var existing = contentCache[key];
+      if (!existing) return; // nothing to invalidate
+      var hasMeasures = existing.indexOf("mm.") !== -1 || existing.indexOf("m. ") !== -1;
+      if (!hasMeasures) delete contentCache[key];
     });
   }
 }
@@ -2669,6 +2674,7 @@ function loadAnalysis() {
   var currentTab = tab;
   var reqId = ++analysisReqId;
   var tryCount = 0;
+  var didInvalidate = false; // only invalidate cache once per loadAnalysis call
 
   function tryFromCache() {
     if (!piece || piece.id !== pid || tab !== currentTab || reqId !== analysisReqId) return;
@@ -2676,10 +2682,11 @@ function loadAnalysis() {
 
     if (tab === "story") {
       var cached = contentCache[cacheKey(pid,"story")];
-      // If cached but has no measure numbers and we now have labels, invalidate
-      if (cached && getMeasureContext()) {
+      // If cached but has no measure numbers and we now have labels, invalidate once
+      if (cached && !didInvalidate && getMeasureContext()) {
         var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
         if (!hasMeasures) {
+          didInvalidate = true;
           delete contentCache[cacheKey(pid,"story")];
           cached = null;
           prefetchAll(piece);
@@ -2697,9 +2704,10 @@ function loadAnalysis() {
 
     } else if (tab === "practice") {
       var cached = contentCache[cacheKey(pid,"practice")];
-      if (cached && getMeasureContext()) {
+      if (cached && !didInvalidate && getMeasureContext()) {
         var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
         if (!hasMeasures) {
+          didInvalidate = true;
           delete contentCache[cacheKey(pid,"practice")];
           cached = null;
           prefetchAll(piece);
