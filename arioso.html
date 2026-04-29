@@ -1494,6 +1494,8 @@ function renderPage(num, container) {
     drawCanvas.style.height = displayH + "px";
     wrapper.style.width = displayW + "px";
     wrapper.style.height = displayH + "px";
+    wrapper.style.marginLeft = "auto";
+    wrapper.style.marginRight = "auto";
     page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
     canvas.style.cursor = "default";
     canvas.style.display = "block";
@@ -2262,6 +2264,8 @@ function applyZoom() {
         }
         wrapper.style.width = displayW + "px";
         wrapper.style.height = displayH + "px";
+        wrapper.style.marginLeft = "auto";
+        wrapper.style.marginRight = "auto";
         page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
       });
     })(i);
