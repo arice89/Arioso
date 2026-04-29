@@ -1,47 +1,3491 @@
-// api/vision.js — Claude Sonnet with vision support
-// Place at api/vision.js in your GitHub repo
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arioso  --  AI Score Companion</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #faf8f4;
+  --bg2:      #f3f0ea;
+  --bg3:      #ebe7de;
+  --bg4:      #e2ddd3;
+  --panel:    #f7f4ef;
+  --text:     #18120e;   /* deep warm black */
+  --text2:    #3a3530;   /* dark warm brown -- was #6b6560, now much darker */
+  --text3:    #7a746e;   /* mid warm grey -- was #a8a29d, now clearly readable */
+  --accent:   #8b5e3c;
+  --accent2:  #c4a882;
+  --border:   rgba(28,25,23,0.08);
+  --border2:  rgba(28,25,23,0.14);
+  --border3:  rgba(28,25,23,0.22);
+  --radius:   6px; --radius-lg: 10px;
+  --tonic-bg:#dce8f0;--tonic-text:#1a3d54;--tonic-border:#a8c8e0;
+  --dom-bg:#f0e0d8;--dom-text:#5c2418;--dom-border:#d4a898;
+  --pre-bg:#f0ebd8;--pre-text:#4a3810;--pre-border:#d4c488;
+  --chr-bg:#e8e4f0;--chr-text:#2c2460;--chr-border:#b8b0d8;
+}
+body {
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  background: var(--bg3); color: var(--text);
+  height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+/* WELCOME SCREEN */
+#welcome-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background-image: radial-gradient(ellipse at 30% 70%, rgba(139,94,60,0.05) 0%, transparent 60%);
+}
+#welcome-inner { width: 380px; padding: 56px 44px; text-align: center; }
+#welcome-inner h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px; font-weight: 300; letter-spacing: -1px;
+  margin-bottom: 6px; color: var(--text); line-height: 1;
+}
+#welcome-inner p {
+  font-size: 11px; color: var(--text3); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 44px; font-weight: 400;
+}
+#welcome-input {
+  width: 100%; padding: 12px 16px; border-radius: var(--radius); font-size: 14px;
+  border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+  outline: none; font-family: inherit; margin-bottom: 10px; text-align: center;
+  transition: border-color 0.15s; font-weight: 300;
+}
+#welcome-input:focus { border-color: var(--accent); }
+#welcome-input::placeholder { color: var(--text3); }
+#welcome-btn {
+  width: 100%; padding: 12px; border-radius: var(--radius); font-size: 11px;
+  font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase;
+  border: none; background: var(--text); color: var(--bg); cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s;
+}
+#welcome-btn:hover { opacity: 0.8; }
 
-module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+/* LIBRARY SCREEN */
+#library-screen {
+  display: none; flex-direction: column; height: 100vh; background: var(--bg3);
+}
+#library-header { background: var(--bg); flex-shrink: 0; }
 
-  const { messages, system } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: "messages required" });
+/* Branding nav bar */
+#library-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 56px; height: 52px;
+  border-bottom: 1px solid var(--border); background: var(--bg);
+}
+#library-nav-brand { display: flex; align-items: baseline; gap: 10px; }
+#library-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 400; color: var(--text); letter-spacing: 0.3px;
+}
+#library-logo-sub {
+  font-size: 10px; color: var(--text3); letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 400; font-family: 'DM Sans', sans-serif;
+}
+
+/* Greeting section */
+#library-header-top {
+  padding: 24px 56px 0;
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;
+}
+#library-greeting {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px; font-weight: 300; letter-spacing: -0.3px; color: var(--text2); line-height: 1;
+}
+#library-greeting span { color: var(--accent); font-style: italic; }
+#library-subtitle {
+  font-size: 11px; color: var(--text3); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-top: 7px; font-weight: 400;
+}
+#add-piece-btn {
+  padding: 9px 20px; border-radius: 3px; font-size: 10px;
+  font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; font-family: inherit; transition: all 0.2s;
+  margin-top: 4px; flex-shrink: 0;
+}
+#add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
+#library-tabs { display: flex; padding: 0 56px; }
+.lib-tab {
+  padding: 12px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
+  border-bottom: 1.5px solid transparent; transition: all 0.2s; font-family: inherit;
+  background: transparent; border-top: none; border-left: none; border-right: none;
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
+}
+.lib-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Library body + section label */
+#library-body { flex: 1; overflow-y: auto; padding: 28px 56px; }
+#library-section-label {
+  font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase;
+  color: var(--text3); font-weight: 500; margin-bottom: 14px;
+}
+#library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* Decorative score preview lines */
+.score-preview {
+  width: 100%; height: 44px; position: relative; margin: 14px 0 16px; overflow: hidden;
+}
+.score-line {
+  position: absolute; left: 0; right: 0; height: 1px; background: var(--border2);
+}
+.score-note {
+  position: absolute; width: 6px; height: 4px; border-radius: 50%;
+  background: var(--text3); transform: rotate(-10deg);
+}
+.score-stem {
+  position: absolute; width: 1px; background: var(--text3);
+}
+
+/* Piece cards -- resume-focused */
+.piece-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2);
+  border-radius: 8px; padding: 24px 22px 20px; cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+  position: relative; min-height: 180px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.piece-card::before { display: none; }
+.piece-card:hover {
+  border-left-color: var(--accent);
+  border-color: rgba(139,94,60,0.25);
+  border-left-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 36px rgba(28,25,23,0.08), 0 2px 6px rgba(28,25,23,0.04);
+}
+.piece-card:hover::before { display: none; }
+.piece-card:hover .resume-cta { opacity: 1; transform: translateY(0); }
+.piece-card-composer {
+  font-size: 9px; color: var(--accent); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 7px; font-weight: 500;
+}
+.piece-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 400; line-height: 1.25;
+  margin-bottom: 3px; color: var(--text);
+}
+.piece-card-opus { font-size: 11px; color: var(--text3); font-weight: 300; }
+.piece-card-footer {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 2px;
+}
+.piece-card-badge {
+  display: inline-block; padding: 3px 7px; border-radius: 2px;
+  font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;
+  background: var(--bg2); color: var(--text3);
+}
+.piece-card-badge.curated { background: rgba(139,94,60,0.07); color: var(--accent); }
+.resume-cta {
+  font-size: 9px; color: var(--accent); font-weight: 500; letter-spacing: 1px;
+  text-transform: uppercase; opacity: 0.3; transform: translateY(2px);
+  transition: all 0.25s ease; display: flex; align-items: center; gap: 3px;
+}
+.piece-card:hover .resume-cta { opacity: 1; transform: translateY(0); }
+
+/* Add card -- refined, no dashes */
+.add-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 22px 22px 18px; cursor: pointer;
+  transition: all 0.3s; display: flex; flex-direction: column;
+  justify-content: space-between; min-height: 168px;
+}
+.add-card:hover {
+  border-color: rgba(139,94,60,0.2); background: var(--bg);
+  box-shadow: 0 4px 16px rgba(28,25,23,0.05);
+}
+.add-card:hover .add-card-plus { color: var(--accent); transform: rotate(90deg); }
+.add-card-plus {
+  font-size: 20px; color: var(--text3); font-weight: 300; line-height: 1;
+  transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+.add-card-label { font-size: 12px; color: var(--text3); font-weight: 300; letter-spacing: 0.2px; }
+.add-card-sub { font-size: 10px; color: var(--text3); opacity: 0.5; margin-top: 3px; }
+
+/* ADD PIECE MODAL */
+#add-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 500;
+  display: none; align-items: center; justify-content: center;
+}
+#add-modal-inner {
+  background: var(--bg); border-radius: var(--radius-lg); padding: 28px 28px 24px;
+  width: 480px; max-width: 90vw;
+}
+#add-modal-inner h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+#add-modal-inner p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+.modal-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 10px; }
+#curated-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+.curated-item {
+  padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: space-between;
+}
+.curated-item:hover { border-color: var(--text); background: var(--bg2); }
+.curated-item span { font-size: 13px; font-weight: 500; }
+.curated-item small { font-size: 11px; color: var(--text2); }
+.modal-divider { border: none; border-top: 1px solid var(--border); margin: 0 0 16px; }
+#upload-area {
+  border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 20px;
+  text-align: center; cursor: pointer; transition: all 0.12s; background: var(--bg2);
+  margin-bottom: 16px;
+}
+#upload-area:hover { border-color: var(--text); }
+#upload-area p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+#modal-file-input { display: none; }
+#pdf-name-input, #pdf-composer-input {
+  width: 100%; padding: 8px 12px; border-radius: var(--radius); font-size: 13px;
+  border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+  outline: none; font-family: inherit; margin-bottom: 8px;
+}
+#pdf-name-input:focus, #pdf-composer-input:focus { border-color: var(--text); }
+#modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.modal-btn {
+  padding: 8px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border); cursor: pointer; font-family: inherit;
+  background: var(--bg2); color: var(--text2); transition: all 0.12s;
+}
+.modal-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.modal-btn:hover { opacity: 0.85; }
+
+#top-bar {
+  display: flex; align-items: center; gap: 12px; padding: 0 20px;
+  background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0; height: 52px;
+}
+#logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 400; letter-spacing: 0.3px; flex-shrink: 0; color: var(--text);
+}
+#logo em {
+  font-style: normal; font-weight: 300; font-size: 11px; margin-left: 10px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif; color: var(--text3);
+}
+#piece-selector { display: none; }
+#mode-toggle { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }
+.mode-btn {
+  padding: 6px 16px; border-radius: 4px; font-size: 11px;
+  font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase;
+  border: none; cursor: pointer; font-family: inherit;
+  background: transparent; color: var(--text2); transition: all 0.15s;
+}
+.mode-btn:hover { color: var(--text); }
+.mode-btn.active { background: var(--bg3); color: var(--text); }
+#main { display: flex; flex: 1; overflow: hidden; }
+#score-panel {
+  flex: 0 0 62%; display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid var(--border); background: var(--bg3);
+}
+#score-header {
+  padding: 8px 18px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg); box-shadow: 0 1px 0 var(--border); height: 52px;
+}
+#score-header-info h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 500; letter-spacing: 0.1px; color: var(--text);
+}
+#score-header-info p { font-size: 11px; color: var(--text2); margin-top: 3px; letter-spacing: 0.3px; }
+#score-header-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+
+.hdr-btn {
+  padding: 6px 12px; border-radius: 4px; font-size: 11px;
+  font-weight: 400; letter-spacing: 0.3px;
+  border: 1px solid var(--border); background: var(--bg2); cursor: pointer;
+  color: var(--text2); font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.hdr-btn:hover {
+  color: var(--text); background: var(--bg3);
+  border-color: var(--border2);
+}
+.hdr-btn.toggled { background: rgba(139,94,60,0.08); border-color: rgba(139,94,60,0.25); color: var(--accent); }
+#draw-btn.toggled { background: rgba(200,60,60,0.07); border-color: rgba(200,60,60,0.2); color: #a33; }
+
+#annotate-banner {
+  padding: 6px 18px; background: rgba(250,240,215,0.8); border-bottom: 1px solid rgba(196,168,130,0.3);
+  font-size: 11px; color: var(--accent); display: none; align-items: center; gap: 8px; flex-shrink: 0;
+  font-weight: 300; letter-spacing: 0.2px;
+}
+#annotate-banner span { flex: 1; }
+#annotate-banner button {
+  padding: 3px 10px; border-radius: 3px; font-size: 10px; letter-spacing: 0.5px;
+  border: 1px solid rgba(139,94,60,0.25); background: transparent; cursor: pointer;
+  color: var(--accent); font-family: inherit; text-transform: uppercase; font-weight: 500;
+}
+#score-display { flex: 1; overflow-y: auto; background: var(--bg3); }
+#upload-zone {
+  margin: 32px; border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 52px 24px; text-align: center;
+  cursor: pointer; transition: all 0.2s; background: var(--bg); position: relative;
+}
+#upload-zone:hover { border-color: var(--accent); background: var(--bg); box-shadow: 0 4px 20px rgba(28,25,23,0.05); }
+#uz-icon { font-size: 24px; margin-bottom: 12px; color: var(--text3); font-weight: 300; }
+#uz-title { font-size: 14px; font-weight: 400; margin-bottom: 6px; color: var(--text); }
+#uz-sub { font-size: 12px; color: var(--text3); font-weight: 300; }
+#uz-hint { font-size: 11px; color: var(--text3); margin-top: 12px; line-height: 1.6; }
+#pdf-pages { display: none; padding: 20px; flex-direction: column; align-items: center; }
+.pdf-page-wrapper {
+  position: relative; margin-bottom: 16px; background: white;
+  box-shadow: 0 2px 16px rgba(28,25,23,0.10), 0 1px 4px rgba(28,25,23,0.06);
+  border-radius: 2px; overflow: visible;
+}
+.pdf-page-wrapper canvas { display: block; width: 100%; }
+.page-click-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  cursor: crosshair; display: none; z-index: 5;
+}
+#draw-canvas-container { position: absolute; top: 0; left: 0; pointer-events: none; }
+.draw-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+.draw-tool-btn {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.draw-tool-btn.active { border-color: var(--text); }
+.draw-size-btn {
+  border: 2px solid transparent; cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.draw-size-btn.active { border-color: var(--text); border-radius: 50%; }
+.draw-canvas {
+  position: absolute; top: 0; left: 0;
+  pointer-events: none; z-index: 15;
+}
+.draw-canvas.active { pointer-events: all !important; cursor: crosshair !important; position: absolute; top: 0; left: 0; }
+#draw-btn.toggled { background: #fde8e8; border-color: #f5b8b8; color: #6b1414; }
+
+/* CHORD STRIP */
+#chord-strip-container {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  background: var(--bg); display: none;
+}
+#chord-strip-header {
+  display: flex; gap: 10px; align-items: center;
+  padding: 6px 16px 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border);
+}
+.strip-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-right: 6px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); font-weight: 300; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+#section-tabs { display: flex; overflow-x: auto; background: var(--bg2); }
+#section-tabs::-webkit-scrollbar { display: none; }
+.section-tab {
+  padding: 7px 16px; font-size: 11px; cursor: pointer; white-space: nowrap;
+  color: var(--text2); border-bottom: 2px solid transparent; border-right: 1px solid var(--border);
+  transition: all 0.15s; background: transparent; letter-spacing: 0.3px; font-weight: 400;
+  border-top: none; border-left: none; font-family: inherit;
+}
+.section-tab:hover { color: var(--text); background: var(--bg); }
+.section-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg); }
+#chord-row { display: flex; gap: 5px; padding: 8px 16px 10px; flex-wrap: wrap; }
+.chord-chip {
+  padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+  font-family: "Georgia", serif;
+}
+.chord-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(28,25,23,0.08); }
+.chord-chip.tonic     { background: var(--tonic-bg); color: var(--tonic-text); border-color: var(--tonic-border); }
+.chord-chip.dominant  { background: var(--dom-bg);   color: var(--dom-text);   border-color: var(--dom-border); }
+.chord-chip.predominant { background: var(--pre-bg); color: var(--pre-text);   border-color: var(--pre-border); }
+.chord-chip.chromatic { background: var(--chr-bg);   color: var(--chr-text);   border-color: var(--chr-border); }
+
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
+
+/* MEASURE NUMBERS */
+.measure-label {
+  position: absolute; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 4px; font-size: 10px; font-weight: 600; color: var(--text2);
+  padding: 1px 5px; pointer-events: none; z-index: 12;
+  transform: translate(-50%, -100%); margin-top: -4px;
+  font-family: -apple-system, sans-serif;
+}
+#measure-popup {
+  position: fixed; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 12px 14px; z-index: 600;
+  display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.12); width: 180px;
+}
+#measure-popup label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 6px; }
+#measure-input {
+  width: 100%; padding: 6px 10px; border-radius: var(--radius); font-size: 14px;
+  border: 1px solid var(--border2); outline: none; font-family: inherit; margin-bottom: 8px;
+  text-align: center; font-weight: 600;
+}
+#measure-input:focus { border-color: var(--text); }
+#measure-popup-btns { display: flex; gap: 6px; }
+.meas-btn { flex:1; padding:5px; border-radius:var(--radius); font-size:11px; border:1px solid var(--border); cursor:pointer; font-family:inherit; background:var(--bg2); color:var(--text2); }
+.meas-btn.primary { background:var(--text); color:var(--bg); border-color:var(--text); }
+
+.ann-dot {
+  position: absolute; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; font-family: "Georgia", serif;
+  cursor: pointer; border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transform: translate(-50%, -50%); z-index: 10;
+  transition: transform 0.1s; pointer-events: all;
+}
+.ann-dot:hover { transform: translate(-50%, -50%) scale(1.2); }
+.ann-dot.tonic     { background: #378add; color: white; }
+.ann-dot.dominant  { background: #d45a5a; color: white; }
+.ann-dot.predominant { background: #d4993a; color: white; }
+.ann-dot.chromatic { background: #7a6fd4; color: white; }
+#annotations-bar {
+  display: none; border-top: 1px solid var(--border); background: var(--bg);
+  padding: 8px 14px; flex-shrink: 0; max-height: 90px; overflow-y: auto;
+}
+#annotations-bar-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+#annotations-bar-header span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+#clear-btn { font-size: 10px; color: var(--text3); cursor: pointer; background: none; border: none; font-family: inherit; }
+#clear-btn:hover { color: var(--text); }
+#annotations-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ann-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 9px; border-radius: 14px; font-size: 12px; font-weight: 600;
+  font-family: "Georgia", serif; cursor: pointer; border: 1px solid transparent; transition: all 0.12s;
+}
+.ann-chip.tonic     { background: #deeefa; color: #0a3d6b; border-color: #aad1f0; }
+.ann-chip.dominant  { background: #fde8e8; color: #6b1414; border-color: #f5b8b8; }
+.ann-chip.predominant { background: #fef3de; color: #5c3100; border-color: #f7c97a; }
+.ann-chip.chromatic { background: #eeeafd; color: #30237a; border-color: #ccc5f5; }
+.ann-chip .ann-pos { font-size: 9px; font-weight: 400; opacity: 0.6; font-family: inherit; }
+#ann-popup {
+  position: fixed; background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 14px 16px; z-index: 1000;
+  display: none; box-shadow: 0 6px 28px rgba(0,0,0,0.14); width: 300px;
+}
+#ann-popup-title { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+#ann-popup-loading { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
+#ann-popup-result { display: none; }
+#ann-popup-roman {
+  font-size: 22px; font-weight: 700; font-family: "Georgia", serif;
+  padding: 4px 14px; border-radius: 16px; display: inline-block; margin-bottom: 8px;
+}
+#ann-popup-roman.tonic     { background: #deeefa; color: #0a3d6b; }
+#ann-popup-roman.dominant  { background: #fde8e8; color: #6b1414; }
+#ann-popup-roman.predominant { background: #fef3de; color: #5c3100; }
+#ann-popup-roman.chromatic { background: #eeeafd; color: #30237a; }
+#ann-popup-explanation { font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+#ann-popup-edit-row { display: flex; gap: 6px; margin-bottom: 8px; }
+#ann-edit-input {
+  flex: 1; padding: 5px 9px; border-radius: var(--radius); font-size: 13px;
+  border: 1px solid var(--border2); font-family: "Georgia", serif; outline: none;
+}
+#ann-edit-input:focus { border-color: var(--text); }
+#ann-apply-btn {
+  padding: 5px 11px; border-radius: var(--radius); font-size: 11px; font-weight: 600;
+  border: none; background: var(--text); color: var(--bg); cursor: pointer; font-family: inherit;
+}
+#ann-popup-footer { display: flex; gap: 6px; }
+.pop-btn {
+  flex: 1; padding: 6px; border-radius: var(--radius); font-size: 11px;
+  border: 1px solid var(--border); cursor: pointer; font-family: inherit;
+  background: var(--bg2); color: var(--text2); transition: all 0.12s; text-align: center;
+}
+.pop-btn:hover { background: var(--bg3); }
+.pop-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.pop-btn.danger { color: #d45a5a; }
+.ldots { display: inline-flex; gap: 3px; }
+.ldots span { width: 5px; height: 5px; border-radius: 50%; background: var(--text2); animation: bounce 1.2s infinite; }
+.ldots span:nth-child(2) { animation-delay: 0.2s; }
+.ldots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+#drag-divider {
+  width: 5px; flex-shrink: 0; background: var(--border); cursor: col-resize;
+  transition: background 0.12s; position: relative; z-index: 10;
+}
+#drag-divider:hover { background: var(--text3); }
+#drag-divider.dragging { background: var(--text2); }
+#analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+#analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
+#analysis-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
+.analysis-tab {
+  padding: 15px 20px; font-size: 11px; cursor: pointer; color: var(--text2);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
+  background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
+}
+.analysis-tab:hover { color: var(--text); }
+.analysis-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#recording-selector {
+  padding: 8px 16px; border-bottom: 1px solid var(--border);
+  display: none; flex-wrap: wrap; gap: 5px; flex-shrink: 0; background: var(--bg);
+}
+.rec-btn {
+  padding: 3px 10px; border-radius: 3px; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text3);
+  transition: all 0.15s; font-family: inherit; letter-spacing: 0.2px;
+}
+.rec-btn:hover { color: var(--text); border-color: var(--border2); }
+.rec-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+#context-banner {
+  padding: 7px 20px; background: rgba(139,94,60,0.05);
+  border-bottom: 1px solid rgba(139,94,60,0.10);
+  font-size: 11px; color: var(--accent); display: none; flex-shrink: 0;
+  font-weight: 300; letter-spacing: 0.2px;
+}
+#context-banner strong { color: var(--accent); font-weight: 500; }
+
+/* ANALYSIS CONTENT -- typography is everything here */
+#analysis-content {
+  flex: 1; overflow-y: auto; padding: 28px 28px 16px;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-overflow-scrolling: touch;
+  -webkit-font-smoothing: antialiased;
+}
+/* Override renderSectioned inline paragraph styles */
+#analysis-content p {
+  font-size: 13px !important;
+  line-height: 1.9 !important;
+  color: var(--text2) !important;
+  font-weight: 300 !important;
+  margin-bottom: 20px !important;
+  letter-spacing: 0.01em;
+}
+/* Section headers from makeHeader() get Cormorant treatment */
+#analysis-content > div { margin-top: 0; }
+#analysis-content::-webkit-scrollbar { width: 3px; }
+#analysis-content::-webkit-scrollbar-track { background: transparent; }
+#analysis-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* CHAT -- integrated pill design */
+#chat-section {
+  border-top: 2px solid var(--border2);
+  padding: 14px 18px 16px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  box-shadow: inset 0 1px 0 var(--bg3);
+}
+#chat-messages {
+  max-height: 160px; overflow-y: auto;
+  margin-bottom: 10px; padding: 0 2px;
+}
+#chat-messages:not(:empty) {
+  min-height: 32px;
+}
+#chat-messages::-webkit-scrollbar { width: 3px; }
+#chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.chat-msg { font-size: 12px; line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
+.chat-msg.user { color: var(--text); font-weight: 400; }
+.chat-msg.assistant { color: var(--text); font-weight: 300; }
+.chat-msg.assistant p.chat-para {
+  margin: 0 0 8px; line-height: 1.7; font-size: 12px; font-weight: 300; color: var(--text);
+}
+.chat-msg.assistant .chat-label {
+  font-size: 10px; font-weight: 500; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin: 10px 0 4px; padding-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+}
+.chat-msg.assistant .chat-bullet {
+  font-size: 12px; color: var(--text); font-weight: 300; line-height: 1.65;
+  padding-left: 14px; position: relative; margin-bottom: 3px;
+}
+.chat-msg.assistant .chat-bullet::before {
+  content: "–"; position: absolute; left: 0; color: var(--accent2);
+}
+.chat-msg.assistant .chat-step {
+  display: flex; gap: 8px; margin-bottom: 5px; align-items: baseline;
+}
+.chat-msg.assistant .chat-step-num {
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  background: rgba(139,94,60,0.08); border-radius: 10px;
+  width: 17px; height: 17px; display: inline-flex; align-items: center;
+  justify-content: center; flex-shrink: 0; margin-top: 1px;
+}
+.chat-msg.assistant .chat-step-body {
+  font-size: 12px; color: var(--text); font-weight: 300; line-height: 1.65; flex: 1;
+}
+.chat-msg.thinking-msg { opacity: 0.7; }
+.chat-msg.thinking-msg::before { content: "Arioso  --  "; font-weight: 600; color: var(--accent); font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; font-family: 'DM Sans', sans-serif; }
+.chat-msg.thinking-msg .ldots { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 2px; }
+.chat-msg.thinking-msg .ldots span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; opacity: 0.6; }
+.chat-msg.thinking-msg .ldots span:nth-child(2) { animation-delay: 0.2s; }
+.chat-msg.thinking-msg .ldots span:nth-child(3) { animation-delay: 0.4s; }
+.chat-msg.assistant:not(.thinking-msg)::before {
+  content: "Arioso  --  "; font-weight: 600; color: var(--accent);
+  font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+}
+#chat-input-row { display: flex; gap: 7px; align-items: center; }
+#chat-input {
+  flex: 1; padding: 9px 16px; border-radius: 22px; font-size: 12px;
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text);
+  outline: none; font-family: inherit; transition: all 0.2s; font-weight: 300;
+}
+#chat-input:focus {
+  border-color: var(--accent); background: var(--bg);
+  box-shadow: 0 0 0 3px rgba(139,94,60,0.06);
+}
+#chat-input::placeholder { color: var(--text3); font-weight: 300; }
+#send-btn {
+  padding: 9px 16px; border-radius: 22px; font-size: 10px; font-weight: 500;
+  letter-spacing: 0.8px; text-transform: uppercase; flex-shrink: 0;
+  border: none; cursor: pointer; background: var(--text); color: var(--bg);
+  font-family: inherit; transition: opacity 0.15s;
+}
+#send-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+#send-btn:hover:not(:disabled) { opacity: 0.8; }
+
+#study-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; background: var(--panel); }
+#study-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
+.study-tab {
+  padding: 15px 20px; font-size: 11px; cursor: pointer; color: var(--text2);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
+  background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
+}
+.study-tab:hover { color: var(--text); }
+.study-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#study-content {
+  flex: 1; overflow-y: auto; padding: 28px 28px 16px;
+  font-family: 'DM Sans', sans-serif; line-height: 1.9;
+  -webkit-overflow-scrolling: touch;
+}
+#study-content p { margin-bottom: 18px; font-size: 13px; font-weight: 300; color: var(--text2); line-height: 1.9; }
+#study-content::-webkit-scrollbar { width: 3px; }
+#study-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.loading-wrap { display: flex; align-items: center; justify-content: center; padding: 52px; }
+.empty { color: var(--text3); font-size: 13px; font-weight: 300; letter-spacing: 0.3px; }
+
+/* PERFORMER SEARCH -- YouTube autocomplete */
+#performer-search-wrap {
+  width: 100%; padding: 8px 16px 10px; border-top: 1px solid var(--border);
+  background: var(--bg2); display: none;
+}
+#performer-search-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--text3); font-weight: 500; margin-bottom: 6px;
+}
+#performer-search-row { display: flex; gap: 6px; align-items: center; position: relative; }
+#performer-search-input {
+  flex: 1; padding: 7px 12px; border-radius: 4px; font-size: 12px;
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text);
+  outline: none; font-family: inherit; transition: all 0.2s; font-weight: 300;
+}
+#performer-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,94,60,0.06); }
+#performer-search-input::placeholder { color: var(--text3); }
+#performer-search-cancel {
+  font-size: 10px; color: var(--text3); cursor: pointer; background: none;
+  border: none; font-family: inherit; padding: 4px 6px; transition: color 0.15s;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+#performer-search-cancel:hover { color: var(--text); }
+#performer-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 40px; z-index: 200;
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 6px; box-shadow: 0 8px 32px rgba(28,25,23,0.12), 0 2px 8px rgba(28,25,23,0.06);
+  overflow: hidden; display: none;
+}
+.performer-suggestion {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  cursor: pointer; transition: background 0.12s; border-bottom: 1px solid var(--border);
+}
+.performer-suggestion:last-child { border-bottom: none; }
+.performer-suggestion:hover { background: var(--bg2); }
+.performer-suggestion:hover .ps-name { color: var(--accent); }
+.ps-thumb {
+  width: 40px; height: 28px; object-fit: cover; border-radius: 3px;
+  flex-shrink: 0; background: var(--bg3);
+}
+.ps-thumb-placeholder {
+  width: 40px; height: 28px; border-radius: 3px; background: var(--bg3);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--text3);
+}
+.ps-info { flex: 1; min-width: 0; }
+.ps-name {
+  font-size: 12px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s;
+}
+.ps-subtitle {
+  font-size: 10px; color: var(--text3); font-weight: 300;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+}
+.ps-yt { font-size: 9px; color: #e00; flex-shrink: 0; opacity: 0.8; }
+#performer-dropdown-status {
+  padding: 10px 12px; font-size: 11px; color: var(--text3); font-weight: 300;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- WELCOME SCREEN -->
+<div id="welcome-screen">
+  <div id="welcome-inner">
+    <h1>Arioso</h1>
+    <p>AI Score Companion</p>
+    <input id="welcome-input" type="text" placeholder="First name" maxlength="40">
+    <button id="welcome-btn" onclick="submitWelcome()">Get started</button>
+  </div>
+</div>
+
+<!-- LIBRARY SCREEN -->
+<div id="library-screen">
+  <div id="library-header">
+    <div id="library-nav">
+      <div id="library-nav-brand">
+        <span id="library-logo">Arioso</span>
+        <span id="library-logo-sub">AI Score Companion</span>
+      </div>
+      <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
+    </div>
+    <div id="library-header-top">
+      <div>
+        <div id="library-greeting">Good evening, <span id="greeting-name"></span></div>
+        <div id="library-subtitle">Your practice studio</div>
+      </div>
+    </div>
+    <div id="library-tabs">
+      <button class="lib-tab active">My library</button>
+    </div>
+  </div>
+  <div id="library-body">
+    <div id="library-section-label">Curated pieces</div>
+    <div id="library-grid"></div>
+  </div>
+</div>
+
+<!-- ADD PIECE MODAL -->
+<div id="add-modal">
+  <div id="add-modal-inner">
+    <h3>Add a piece</h3>
+    <p>Choose from the curated library or upload your own score.</p>
+    <div class="modal-section-title">Curated pieces</div>
+    <div id="curated-list"></div>
+    <hr class="modal-divider">
+    <div class="modal-section-title">Upload your own PDF</div>
+    <div id="upload-area" onclick="document.getElementById('modal-file-input').click()">
+      <div style="font-size:20px;"></div>
+      <p>Click to upload a score PDF</p>
+    </div>
+    <input type="file" id="modal-file-input" accept=".pdf" onchange="handleModalPDF(this)">
+    <input id="pdf-composer-input" type="text" placeholder="Composer (e.g. Brahms)" style="display:none;">
+    <input id="pdf-name-input" type="text" placeholder="Piece name (e.g. Intermezzo Op. 118 No. 2)" style="display:none;">
+    <div id="modal-footer">
+      <button class="modal-btn" onclick="closeAddModal()">Cancel</button>
+      <button class="modal-btn primary" id="modal-save-btn" onclick="saveCustomPiece()" style="display:none;">Add to library</button>
+    </div>
+  </div>
+</div>
+
+<div id="top-bar">
+  <button id="back-btn" onclick="goToLibrary()" style="padding:6px 12px;border-radius:var(--radius);font-size:11px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;color:var(--text2);font-family:inherit;margin-right:4px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">&#8592; Library</button>
+  <div id="logo">Arioso <em>AI Score Companion</em></div>
+  <div id="piece-selector"></div>
+  <div id="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('score')">Score</button>
+    <button class="mode-btn" onclick="setMode('study')">Study</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="score-panel">
+    <div id="score-header">
+      <div id="score-header-info">
+        <h2 id="score-title" class="empty">Select a piece to begin</h2>
+        <p id="score-subtitle"></p>
+      </div>
+      <div id="score-header-actions">
+        <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate Score</button>
+        <!-- divider between primary and utility actions -->
+        <span id="toolbar-divider" style="display:none;width:1px;height:18px;background:var(--border2);margin:0 4px;flex-shrink:0;"></span>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border2);border-radius:4px;overflow:hidden;margin:0 3px;background:var(--bg2);">
+          <button class="hdr-btn" onclick="zoomOut()" style="border:none;border-radius:0;padding:6px 11px;background:transparent;">−</button>
+          <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:38px;text-align:center;line-height:1;border-left:1px solid var(--border);border-right:1px solid var(--border);padding:6px 4px;display:inline-flex;align-items:center;justify-content:center;">100%</span>
+          <button class="hdr-btn" onclick="zoomIn()" style="border:none;border-radius:0;padding:6px 11px;background:transparent;">+</button>
+        </div>
+        <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">Add measures</button>
+        <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
+        <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
+      </div>
+    </div>
+    <div id="annotate-banner">
+      <span>Draw and annotate directly on the score. Use the chord strip below for harmonic analysis.</span>
+      <button onclick="toggleAnnotate()">Done</button>
+    </div>
+    <div id="draw-toolbar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;">Draw</span>
+      <div style="display:flex;gap:4px;" id="draw-color-btns">
+        <button class="draw-tool-btn active" data-color="#e05050" onclick="setDrawColor(this,'#e05050')" style="background:#e05050;" title="Red"></button>
+        <button class="draw-tool-btn" data-color="#2266cc" onclick="setDrawColor(this,'#2266cc')" style="background:#2266cc;" title="Blue"></button>
+        <button class="draw-tool-btn" data-color="#22aa66" onclick="setDrawColor(this,'#22aa66')" style="background:#22aa66;" title="Green"></button>
+        <button class="draw-tool-btn" data-color="#cc8800" onclick="setDrawColor(this,'#cc8800')" style="background:#cc8800;" title="Orange"></button>
+        <button class="draw-tool-btn" data-color="#111111" onclick="setDrawColor(this,'#111111')" style="background:#111111;" title="Black"></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-size:10px;color:var(--text3);">Size</span>
+        <button class="draw-size-btn active" data-size="2" onclick="setDrawSize(this,2)" style="width:14px;height:14px;border-radius:50%;background:var(--text2);" title="Thin"></button>
+        <button class="draw-size-btn" data-size="5" onclick="setDrawSize(this,5)" style="width:18px;height:18px;border-radius:50%;background:var(--text2);" title="Medium"></button>
+        <button class="draw-size-btn" data-size="10" onclick="setDrawSize(this,10)" style="width:22px;height:22px;border-radius:50%;background:var(--text2);" title="Thick"></button>
+      </div>
+      <button onclick="setEraseMode()" id="erase-btn" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2);">Eraser</button>
+      <button onclick="clearDrawings()" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2);">Clear all</button>
+      <button onclick="toggleDraw()" style="padding:3px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border);background:var(--text);color:var(--bg);cursor:pointer;font-family:inherit;margin-left:auto;">Done</button>
+    </div>
+    <div id="score-display">
+      <div id="upload-zone" style="position:relative;">
+        <div id="uz-icon" style="font-size:36px;font-weight:300;color:var(--text2);">+</div>
+        <div id="uz-title">Upload your score PDF</div>
+        <div id="uz-sub">Henle, Peters, IMSLP  --  any edition works</div>
+        <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(this)"
+          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;">
+      </div>
+      <div id="pdf-pages"></div>
+    </div>
+    <!-- CHORD STRIP for curated pieces -->
+    <div id="chord-strip-container">
+      <div id="chord-strip-header">
+        <span class="strip-label">Harmonic analysis</span>
+        <div class="legend-item"><div class="legend-dot" style="background:#378add;"></div>Tonic</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d45a5a;"></div>Dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d4993a;"></div>Pre-dominant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a6fd4;"></div>Chromatic</div>
+      </div>
+      <div id="section-tabs"></div>
+      <div id="chord-row"></div>
+      <div style="padding:4px 16px 8px;font-size:11px;color:var(--text3);font-weight:300;">AI-generated analysis -- click any chord to see reasoning. Override if incorrect.</div>
+    </div>
+
+    <div id="annotations-bar">
+      <div id="annotations-bar-header">
+        <span>Annotations</span>
+        <button id="clear-btn" onclick="clearAll()">Clear all</button>
+      </div>
+      <div id="annotations-chips"></div>
+    </div>
+  </div>
+
+  <!-- DRAG DIVIDER -->
+  <div id="drag-divider"></div>
+
+  <div id="analysis-panel">
+    <div id="analysis-tabs">
+      <button class="analysis-tab active" onclick="setTab('story')">Analysis</button>
+      <button class="analysis-tab" onclick="setTab('recording')">Interpretations</button>
+      <button class="analysis-tab" onclick="setTab('practice')">Practice</button>
+    </div>
+    <div id="recording-selector"></div>
+    <!-- PERFORMER SEARCH -- shown only on Interpretations tab -->
+    <div id="performer-search-wrap">
+      <div id="performer-search-label">Search for a performer</div>
+      <div id="performer-search-row">
+        <input id="performer-search-input" type="text" placeholder="e.g. Yuja Wang, Kissin, Trifonov…" autocomplete="off">
+        <button id="performer-search-cancel" onclick="clearPerformerSearch()">Clear</button>
+        <div id="performer-dropdown">
+          <div id="performer-dropdown-status"></div>
+        </div>
+      </div>
+    </div>
+    <div id="context-banner"></div>
+    <div id="analysis-content"><span class="empty">Select a piece to begin.</span></div>
+    <div id="chat-section">
+      <div id="vision-status" style="font-size:10px;color:var(--text3);padding:4px 2px 6px;display:none;"></div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Ask about what you see in the score…">
+        <button id="send-btn" onclick="sendChat()">Ask</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="study-panel">
+    <div id="study-tabs">
+      <button class="study-tab active" onclick="setStudyTab('history')">History &amp; context</button>
+      <button class="study-tab" onclick="setStudyTab('scholarship')">Scholarship</button>
+      <button class="study-tab" onclick="setStudyTab('interviews')">Composer &amp; performers</button>
+    </div>
+    <div id="study-content"><span class="empty">Select a piece to begin.</span></div>
+  </div>
+</div>
+
+<!-- MEASURE NUMBER POPUP -->
+<div id="measure-popup" onmousedown="event.stopPropagation()">
+  <label>Measure number</label>
+  <input id="measure-input" type="number" min="1" placeholder="e.g. 36">
+  <div id="measure-popup-btns">
+    <div class="meas-btn" onclick="closeMeasurePopup()">Cancel</div>
+    <div class="meas-btn primary" onclick="placeMeasureLabel()">Place</div>
+  </div>
+</div>
+
+<div id="ann-popup">
+  <div id="ann-popup-title"></div>
+  <div id="ann-popup-loading">
+    <div class="ldots"><span></span><span></span><span></span></div>
+    &nbsp; Arioso is analyzing this passage...
+  </div>
+  <div id="ann-popup-result">
+    <div id="ann-popup-roman"></div>
+    <div id="ann-popup-explanation"></div>
+    <div id="ann-popup-edit-row">
+      <input id="ann-edit-input" type="text" placeholder="Override (e.g. V7, N6, ii)">
+      <button id="ann-apply-btn" onclick="applyOverride()">Apply</button>
+    </div>
+    <div id="ann-popup-footer">
+      <div class="pop-btn primary" onclick="confirmAnnotation()">Add to score</div>
+      <div class="pop-btn danger" onclick="closePopup()">Dismiss</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
+
+/* MEASURE NUMBERS */
+var measureMode = false;
+var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
+
+function toggleMeasureMode() {
+  measureMode = !measureMode;
+  if (measureMode && annotating) toggleAnnotate();
+  if (measureMode && drawMode) toggleDraw();
+  var btn = document.getElementById("measure-btn");
+  btn.classList.toggle("toggled", measureMode);
+  btn.textContent = measureMode ? "Done" : "Add measures";
+  // Toggle class on score panel for CSS targeting
+  var panel = document.getElementById("score-panel");
+  if (panel) panel.classList.toggle("measure-mode", measureMode);
+  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
+    w.style.cursor = measureMode ? "crosshair" : "default";
+  });
+  document.querySelectorAll(".pdf-page-wrapper canvas").forEach(function(c) {
+    c.style.cursor = measureMode ? "crosshair" : "default";
+  });
+}
+
+function handleMeasureClick(e, pageNum) {
+  if (!measureMode) return;
+  var rect = e.currentTarget.getBoundingClientRect();
+  pendingMeasureX = e.clientX - rect.left;
+  pendingMeasureY = e.clientY - rect.top;
+  pendingMeasurePage = pageNum;
+  var popup = document.getElementById("measure-popup");
+  document.getElementById("measure-input").value = "";
+  popup.style.display = "block";
+  popup.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + "px";
+  popup.style.top = Math.min(e.clientY - 80, window.innerHeight - 120) + "px";
+  setTimeout(function() { document.getElementById("measure-input").focus(); }, 50);
+}
+
+// Row band size in pixels - snap Y to nearest multiple of this
+var ROW_BAND = 150;
+
+function snapToRow(y) {
+  // Floor to band, place label 30px below band start (above staff lines)
+  var band = Math.floor(y / ROW_BAND);
+  return band * ROW_BAND + 30;
+}
+
+function placeMeasureLabel() {
+  var val = document.getElementById("measure-input").value.trim();
+  if (!val) return;
+  var wrapper = document.getElementById("pw-" + pendingMeasurePage);
+  if (!wrapper) return;
+
+  var label = document.createElement("div");
+  label.className = "measure-label";
+  label.textContent = "m." + val;
+  label.style.left = pendingMeasureX + "px";
+  // Snap Y to nearest row band so labels in same row align
+  var snappedY = snapToRow(pendingMeasureY);
+  label.style.top = snappedY + "px";
+
+  // Click to delete
+  label.title = "Click to delete";
+  label.addEventListener("click", function(e) {
+    e.stopPropagation();
+    if (measureMode) label.remove();
+  });
+
+  wrapper.appendChild(label);
+  saveMeasureLabels(pendingMeasurePage);
+  closeMeasurePopup();
+}
+
+function closeMeasurePopup() {
+  document.getElementById("measure-popup").style.display = "none";
+  document.getElementById("measure-input").value = "";
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && document.getElementById("measure-popup").style.display === "block") {
+    placeMeasureLabel();
+  }
+  if (e.key === "Escape") {
+    closeMeasurePopup();
+    document.getElementById("ann-popup").style.display = "none";
+  }
+});
+
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* INDEXEDDB PDF PERSISTENCE */
+var DB_NAME = "arioso-db";
+var DB_VERSION = 1;
+var STORE_NAME = "pdfs";
+var db = null;
+
+function openDB(callback) {
+  if (db) { callback(db); return; }
+  var req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = function(e) {
+    e.target.result.createObjectStore(STORE_NAME);
+  };
+  req.onsuccess = function(e) {
+    db = e.target.result;
+    callback(db);
+  };
+  req.onerror = function() {
+    console.log("IndexedDB unavailable");
+  };
+}
+
+function savePDFtoDB(arrayBuffer) {
+  savePDFtoDBKey("current-pdf", arrayBuffer);
+}
+
+function savePDFtoDBKey(key, arrayBuffer) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(arrayBuffer, key);
+  });
+}
+
+function loadPDFfromDB(callback) {
+  loadPDFfromDBKey("current-pdf", callback);
+}
+
+function loadPDFfromDBKey(key, callback) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readonly");
+    var req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = function(e) {
+      if (e.target.result) callback(e.target.result);
+      else callback(null);
+    };
+    req.onerror = function() { callback(null); };
+  });
+}
+
+function clearSavedPDF() {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete("current-pdf");
+    pdfDoc = null;
+    document.getElementById("pdf-pages").innerHTML = "";
+    document.getElementById("pdf-pages").style.display = "none";
+    document.getElementById("upload-zone").style.display = "block";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
+    document.getElementById("measure-btn").style.display = "none";
+    document.getElementById("clear-pdf-btn").style.display = "none";
+    annotations = [];
+    document.getElementById("annotations-bar").style.display = "none";
+  });
+}
+
+function initPDF() {
+  loadPDFfromDB(function(arrayBuffer) {
+    pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById("upload-zone").style.display = "none";
+      document.getElementById("pdf-pages").style.display = "flex";
+      if(piece) {
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
+      }
+      renderAllPages();
+      showUploadSuccess("Score loaded from last session");
+    });
+  });
+}
+
+function showUploadSuccess(msg) {
+  var banner = document.getElementById("upload-success");
+  if (!banner) return;
+  banner.textContent = msg;
+  banner.style.display = "block";
+  setTimeout(function() { banner.style.display = "none"; }, 3000);
+}
+
+/* ===== CURATED PDF AUTO-LOAD ===== */
+// IMSLP public domain PDFs hosted on GitHub. Replace these URLs with your own repo raw URLs.
+var CURATED_PDFS = {
+  "chopin-ballade-1":  "https://kcexzehqwdiwcsrtizyg.supabase.co/storage/v1/object/public/scores2/chopin-ballade-1.pdf",
+  "beethoven-op109":   "https://kcexzehqwdiwcsrtizyg.supabase.co/storage/v1/object/public/scores2/beethoven-op109.pdf",
+  "schubert-d960":     "https://kcexzehqwdiwcsrtizyg.supabase.co/storage/v1/object/public/scores2/schubert-d960.pdf",
+  "ravel-gaspard":     "https://kcexzehqwdiwcsrtizyg.supabase.co/storage/v1/object/public/scores2/ravel-gaspard.pdf",
+  "scriabin-op53":     "https://kcexzehqwdiwcsrtizyg.supabase.co/storage/v1/object/public/scores2/scriabin-op53.pdf"
+};
+
+function fetchCuratedPDF(pieceId, callback) {
+  var url = CURATED_PDFS[pieceId];
+  if (!url) { callback(null); return; }
+  fetch(url).then(function(r) {
+    if (!r.ok) { callback(null); return; }
+    return r.arrayBuffer();
+  }).then(function(buf) {
+    if (buf) {
+      savePDFtoDBKey(pieceId, buf.slice(0));
+      callback(buf);
+    } else { callback(null); }
+  }).catch(function() { callback(null); });
+}
+
+function loadOrFetchCuratedPDF(pieceId, onLoaded, onMissing) {
+  loadPDFfromDBKey(pieceId, function(buf) {
+    if (buf) { onLoaded(buf); return; }
+    var uploadZone = document.getElementById("upload-zone");
+    if (uploadZone) {
+      uploadZone.innerHTML = "<div id='uz-icon' style='font-size:28px;font-weight:300;color:var(--text2);'>↓</div>" +
+        "<div id='uz-title'>Loading score...</div>" +
+        "<div id='uz-sub'>Fetching curated edition</div>";
+    }
+    fetchCuratedPDF(pieceId, function(fetched) {
+      if (fetched) { onLoaded(fetched); }
+      else { onMissing(); }
+    });
+  });
+}
+
+/* ===== SCREEN MANAGEMENT ===== */
+var userName = "";
+var libraryPieces = []; // {id, composer, title, opus, curated, pdfKey}
+var pendingModalPDFBuffer = null;
+var pendingModalPDFName = "";
+
+function showScreen(name) {
+  document.getElementById("welcome-screen").style.display = name === "welcome" ? "flex" : "none";
+  document.getElementById("library-screen").style.display = name === "library" ? "flex" : "none";
+  document.getElementById("top-bar").style.display = name === "score" ? "flex" : "none";
+  document.getElementById("main").style.display = name === "score" ? "flex" : "none";
+}
+
+function submitWelcome() {
+  var val = document.getElementById("welcome-input").value.trim();
+  if (!val) return;
+  userName = val;
+  localStorage.setItem("arioso-name", userName);
+  showScreen("library");
+  loadLibrary();
+}
+
+var welcomeInput = document.getElementById("welcome-input");
+if (welcomeInput) {
+  welcomeInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") submitWelcome();
+  });
+}
+
+function loadLibrary() {
+  try {
+    var saved = localStorage.getItem("arioso-library");
+    libraryPieces = saved ? JSON.parse(saved) : [];
+  } catch(e) {
+    libraryPieces = [];
+    localStorage.removeItem("arioso-library");
+  }
+  renderLibrary();
+}
+
+function saveLibrary() {
+  localStorage.setItem("arioso-library", JSON.stringify(libraryPieces));
+}
+
+function makeScorePreview() {
+  var w = 220, h = 52;
+  // Staff: 5 lines spaced 8px apart, starting at y=12
+  var staffLines = [12,20,28,36,44];
+  var lines = staffLines.map(function(y) {
+    return '<line x1="4" y1="' + y + '" x2="' + (w-4) + '" y2="' + y + '" stroke="#b8b0a8" stroke-width="0.7"/>';
+  }).join('');
+  // Clef indicator -- simple vertical line at left
+  var clef = '<line x1="10" y1="10" x2="10" y2="46" stroke="#b8b0a8" stroke-width="1.2"/>';
+  // Bar line in middle
+  var barline = '<line x1="112" y1="12" x2="112" y2="44" stroke="#b8b0a8" stroke-width="0.8"/>';
+  // Notes: positions chosen to sit on/between staff lines musically
+  var notes = [
+    [22,28],[34,20],[46,32],[60,16],[72,24],[84,36],[92,20],
+    [122,28],[134,20],[146,12],[158,28],[170,20],[184,32],[198,24]
+  ];
+  var notesSvg = notes.map(function(n, i) {
+    var x=n[0], y=n[1];
+    var stemUp = y > 28;
+    var stemY2 = stemUp ? y-13 : y+13;
+    return '<ellipse cx="' + x + '" cy="' + y + '" rx="4.2" ry="3" fill="#9e968f" transform="rotate(-10 ' + x + ' ' + y + ')"/>' +
+      '<line x1="' + (x+3.8) + '" y1="' + y + '" x2="' + (x+3.8) + '" y2="' + stemY2 + '" stroke="#9e968f" stroke-width="0.9"/>';
+  }).join('');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="48" preserveAspectRatio="xMinYMid meet" ' +
+    'style="display:block;opacity:0.5;margin:14px 0 18px;">' + lines + clef + barline + notesSvg + '</svg>';
+}
+
+function renderLibrary() {
+  var grid = document.getElementById("library-grid");
+  grid.innerHTML = "";
+
+  // Update greeting time-of-day
+  var hour = new Date().getHours();
+  var tod = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  var greetEl = document.getElementById("library-greeting");
+  if (greetEl) greetEl.innerHTML = tod + ", <span>" + userName + "</span>";
+
+  // Section label
+  var labelEl = document.getElementById("library-section-label");
+  if (labelEl) {
+    if (libraryPieces.length === 0) {
+      labelEl.style.display = "none";
+    } else {
+      labelEl.style.display = "block";
+      var hasCurated = libraryPieces.some(function(p){ return p.curated; });
+      var hasCustom = libraryPieces.some(function(p){ return !p.curated; });
+      labelEl.textContent = (hasCurated && !hasCustom) ? "Curated pieces" : (!hasCurated && hasCustom) ? "My scores" : "My library";
+    }
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+  libraryPieces.forEach(function(p, i) {
+    var card = document.createElement("div");
+    card.className = "piece-card";
+    card.innerHTML =
+      "<div class='piece-card-composer'>" + p.composer + "</div>" +
+      "<div class='piece-card-title'>" + p.title + "</div>" +
+      (p.opus ? "<div class='piece-card-opus'>" + p.opus + "</div>" : "") +
+      makeScorePreview() +
+      "<div class='piece-card-footer'>" +
+        "<div class='piece-card-badge " + (p.curated ? "curated" : "") + "'>" + (p.curated ? "Curated" : "My score") + "</div>" +
+        "<div class='resume-cta'>Resume &#8594;</div>" +
+      "</div>";
+    card.onclick = (function(idx) { return function() { openPiece(idx); }; })(i);
+    grid.appendChild(card);
+  });
 
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",  // Sonnet supports vision
-        max_tokens: 2500,
-        system: system || "",
-        messages: messages
-      })
+  // Add card
+  var addCard = document.createElement("div");
+  addCard.className = "add-card";
+  addCard.innerHTML =
+    "<div class='add-card-plus'>+</div>" +
+    "<div>" +
+      "<div class='add-card-label'>Add a piece</div>" +
+      "<div class='add-card-sub'>Curated library or your own PDF</div>" +
+    "</div>";
+  addCard.onclick = openAddModal;
+  grid.appendChild(addCard);
+}
+
+function openPiece(libIdx) {
+  var libPiece = libraryPieces[libIdx];
+  showScreen("score");
+
+  // Find matching PIECES entry if curated
+  if (libPiece.curated) {
+    var pIdx = PIECES.findIndex(function(p) { return p.id === libPiece.id; });
+    if (pIdx >= 0) selectPiece(pIdx);
+  } else {
+    // Custom piece  --  set up minimal piece object
+    piece = {
+      id: libPiece.id,
+      composer: libPiece.composer,
+      title: libPiece.title,
+      full: libPiece.composer + (libPiece.opus ? ", " + libPiece.opus : ""),
+      year: "",
+      key: "",
+      recordings: []
+    };
+    rec = null;
+    chatHistory = [];
+    document.getElementById("score-title").textContent = libPiece.composer + "  --  " + libPiece.title;
+    document.getElementById("score-title").classList.remove("empty");
+    document.getElementById("score-subtitle").textContent = libPiece.composer + (libPiece.opus ? "   .   " + libPiece.opus : "");
+    document.querySelectorAll(".piece-btn").forEach(function(b) { b.classList.remove("active"); });
+    document.getElementById("chat-messages").innerHTML = "";
+    renderRecs();
+    loadAnalysis();
+  }
+
+  // Load PDF -- for curated pieces, auto-fetch from GitHub if not cached
+  var pdfKey = libPiece.pdfKey || libPiece.id;
+  var loadBuffer = function(buffer) {
+    pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById("upload-zone").style.display = "none";
+      document.getElementById("pdf-pages").style.display = "flex";
+      document.getElementById("clear-pdf-btn").style.display = "block";
+      if (piece) {
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
+        document.getElementById("measure-btn").style.display = "block";
+      }
+      renderAllPages();
     });
+  };
+  var showUploadZone = function() {
+    var uz = document.getElementById("upload-zone");
+    uz.style.display = "block";
+    uz.innerHTML = "<div id='uz-icon' style='font-size:36px;font-weight:300;color:var(--text2);'>+</div>" +
+      "<div id='uz-title'>Upload your score PDF</div>" +
+      "<div id='uz-sub'>Henle, Peters, IMSLP \u2014 any edition works</div>" +
+      "<input type='file' id='file-input' accept='.pdf' onchange='loadPDF(this)' style='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;'>";
+    document.getElementById("pdf-pages").style.display = "none";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
+    document.getElementById("clear-pdf-btn").style.display = "none";
+  };
+  if (libPiece.curated && CURATED_PDFS[libPiece.id]) {
+    loadOrFetchCuratedPDF(libPiece.id, loadBuffer, showUploadZone);
+  } else {
+    loadPDFfromDBKey(pdfKey, function(buffer) {
+      if (!buffer) { showUploadZone(); return; }
+      loadBuffer(buffer);
+    });
+  }
+}
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("Anthropic vision API error:", err);
-      return res.status(response.status).json({ error: err });
+/* ===== ADD MODAL ===== */
+function openAddModal() {
+  var modal = document.getElementById("add-modal");
+  modal.style.display = "flex";
+  var list = document.getElementById("curated-list");
+  list.innerHTML = "";
+  PIECES.forEach(function(p) {
+    // Only show if not already in library
+    var already = libraryPieces.some(function(lp) { return lp.id === p.id; });
+    if (already) return;
+    var item = document.createElement("div");
+    item.className = "curated-item";
+    item.innerHTML = "<span>" + p.composer + "  --  " + p.title + "</span><small>" + p.opus + "</small>";
+    item.onclick = (function(pp) { return function() { addCuratedPiece(pp); }; })(p);
+    list.appendChild(item);
+  });
+  if (list.children.length === 0) {
+    list.innerHTML = "<p style='font-size:12px;color:var(--text3);'>All curated pieces are in your library.</p>";
+  }
+}
+
+function closeAddModal() {
+  document.getElementById("add-modal").style.display = "none";
+  pendingModalPDFBuffer = null;
+  document.getElementById("pdf-name-input").style.display = "none";
+  document.getElementById("pdf-composer-input").style.display = "none";
+  document.getElementById("modal-save-btn").style.display = "none";
+  document.getElementById("pdf-name-input").value = "";
+  document.getElementById("pdf-composer-input").value = "";
+}
+
+var addModal = document.getElementById("add-modal");
+if (addModal) {
+  addModal.addEventListener("click", function(e) {
+    if (e.target === this) closeAddModal();
+  });
+}
+
+function addCuratedPiece(p) {
+  libraryPieces.push({ id: p.id, composer: p.composer, title: p.title, opus: p.opus, curated: true, pdfKey: p.id });
+  saveLibrary();
+  renderLibrary();
+  closeAddModal();
+}
+
+function handleModalPDF(input) {
+  var file = input.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    pendingModalPDFBuffer = e.target.result.slice(0);
+    pendingModalPDFName = file.name.replace(".pdf","");
+    document.getElementById("pdf-composer-input").style.display = "block";
+    document.getElementById("pdf-name-input").style.display = "block";
+    document.getElementById("pdf-name-input").value = pendingModalPDFName;
+    document.getElementById("modal-save-btn").style.display = "block";
+    document.getElementById("upload-area").innerHTML = "<div style='font-size:20px;'>OK</div><p style='color:var(--text);'>PDF ready: " + file.name + "</p>";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function saveCustomPiece() {
+  var name = document.getElementById("pdf-name-input").value.trim();
+  var composer = document.getElementById("pdf-composer-input").value.trim();
+  if (!name || !pendingModalPDFBuffer) return;
+  var id = "custom-" + Date.now();
+  savePDFtoDBKey(id, pendingModalPDFBuffer);
+  libraryPieces.push({ id: id, composer: composer || "Unknown", title: name, opus: "", curated: false, pdfKey: id });
+  saveLibrary();
+  renderLibrary();
+  closeAddModal();
+}
+
+var PIECES = [
+  { id:"chopin-ballade-1", composer:"Chopin", title:"Ballade No. 1", full:"Ballade No. 1 in G minor, Op. 23", year:"1835", key:"G minor",
+    recordings:[{id:"a75",label:"Argerich 1975",full:"Martha Argerich, 1975"},{id:"p75",label:"Pollini 1975",full:"Maurizio Pollini, 1975"},{id:"z87",label:"Zimerman 1987",full:"Krystian Zimerman, 1987"},{id:"k93",label:"Kissin 1993",full:"Evgeny Kissin, 1993"},{id:"t16",label:"Trifonov 2016",full:"Daniil Trifonov, 2016"}],
+    sources: {
+      analysis: "Priority scholarly sources: Karol Berger The form of Chopin Ballade Op 23 Nineteenth Century Music 1996; William Rothstein Ambiguity in Chopin First Ballade Integral 1994; John Rink Chopin ballades dialectic Music Analysis 1994; Jim Samson Music of Chopin; Charles Rosen The Romantic Generation chapter on Chopin. Secondary: search JSTOR or Google Scholar for peer-reviewed analyses of Chopin Ballade Op 23 harmonic form. Avoid blogs and amateur analyses.",
+      history: "Priority sources: Jim Samson Music of Chopin biography chapters; Jeffrey Kallberg Chopin at the Boundaries; LA Phil or Carnegie Hall program notes for Chopin Ballade Op 23. Search for documented Chopin correspondence about this piece. Avoid Wikipedia as primary source.",
+      scholarship: "Priority sources: Berger 1996 Nineteenth Century Music; Rothstein 1994 Integral; Rink 1994 Music Analysis; Samson 1985 Music of Chopin; Reisa and Santoso 2022 harmonic innovation Chopin Ballade Jurnal Seni Musik. Search JSTOR Google Scholar for peer-reviewed scholarship only."
+    },
+    sections:[
+      {label:"Introduction",measures:"mm. 1-7",page:"p. 1",chords:[
+        {symbol:" -- ",fn:"tonic",note:"m.1  --  A unison in octaves. No harmony declared yet. Chopin withholds the key  --  the listener is disoriented before a single chord is heard."},
+        {symbol:"V7",fn:"dominant",note:"m.2  --  D dominant seventh, the first harmonic statement. Tense, unresolved. The story opens in medias res."},
+        {symbol:"i",fn:"tonic",note:"m.3  --  G minor arrives, but without the bass confirmation that would give it weight. Unstable tonic."},
+        {symbol:"iv",fn:"predominant",note:"m.4  --  C minor. Modal darkening  --  the flat side of the harmonic world. The atmosphere thickens."},
+        {symbol:"V7",fn:"dominant",note:"m.5  --  Dominant seventh again, more insistent. The introduction is cycling toward a proper cadence."},
+        {symbol:"i",fn:"tonic",note:"m.6  --  G minor with more weight now. The key is established, the introduction closes."},
+        {symbol:"V",fn:"dominant",note:"m.7  --  A bare dominant, no seventh. Austere, expectant. The first theme is about to speak."}
+      ]},
+      {label:"First theme",measures:"mm. 8-36",page:"pp. 1-3",chords:[
+        {symbol:"III",fn:"tonic",note:"m.8  --  Bb major, the relative major. After the brooding introduction, this arrival is a sudden warmth  --  let it breathe."},
+        {symbol:"V/III",fn:"dominant",note:"m.10  --  F major as dominant of Bb. The melody is still searching, not yet settled."},
+        {symbol:"III",fn:"tonic",note:"m.12  --  Bb major returns. The theme begins to feel more confident, but Chopin is already planning his departure."},
+        {symbol:"i",fn:"tonic",note:"m.16  --  Brief touch of G minor. A shadow passes across the melody before the theme continues."},
+        {symbol:"V7/III",fn:"chromatic",note:"m.18  --  Secondary dominant pushing back toward Bb. Chopin keeps circling, delaying the inevitable return."},
+        {symbol:"III",fn:"tonic",note:"m.20  --  Bb major again, but the phrase structure is tightening. The cadences are coming faster."},
+        {symbol:"iv",fn:"predominant",note:"m.24  --  C minor. The modal darkening intensifies  --  the theme is losing its warmth."},
+        {symbol:"ii",fn:"predominant",note:"m.26  --  Diminished ii. Tension is accumulating now in earnest. The lyrical episode is ending."},
+        {symbol:"N6",fn:"chromatic",note:"m.28  --  The Neapolitan sixth. Ab major in first inversion  --  Chopin's most characteristic harmonic fingerprint. Maximum harmonic pressure before the cadence. Give this chord full weight."},
+        {symbol:"V7",fn:"dominant",note:"m.30  --  Dominant seventh on D. The accumulated tension finally finds its direction. Everything has been leading here."},
+        {symbol:"i",fn:"tonic",note:"m.32  --  G minor confirmed. But notice: the return is darker than the departure. The theme has been transformed by its journey."},
+        {symbol:"V7",fn:"dominant",note:"m.34  --  Dominant again, extending the cadential phrase. Chopin is prolonging the resolution, savoring the tension."},
+        {symbol:"i",fn:"tonic",note:"m.36  --  Final cadence of the first theme. G minor, but the second theme in Eb is already audible in the harmony's undertow."}
+      ]},
+      {label:"Second theme",measures:"mm. 37-67",page:"pp. 3-5",chords:[
+        {symbol:"Eb I",fn:"tonic",note:"m.37  --  Eb major arrives like sunlight. One of the most radiant moments in all of Chopin. The shift from G minor is a harmonic miracle  --  play it as one."},
+        {symbol:"V/IV",fn:"chromatic",note:"m.39  --  Bb7 as secondary dominant of Ab. Chopin enriches the new key immediately  --  the paradise is not simple."},
+        {symbol:"IV",fn:"predominant",note:"m.40  --  Ab major, subdominant of Eb. The harmony opens outward, warm and unhurried."},
+        {symbol:"I",fn:"tonic",note:"m.42  --  Eb returns, singing. Settle into this  --  long bow, deep resonance in the left hand."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.44  --  Eb7 pointing toward Ab. Chopin keeps enriching the harmonic palette."},
+        {symbol:"IV",fn:"predominant",note:"m.45  --  Ab major again. The phrase breathes here."},
+        {symbol:"I",fn:"tonic",note:"m.47  --  Eb, confirmed. The melody floats above a deep, resonant bass."},
+        {symbol:"ii",fn:"predominant",note:"m.49  --  F minor. The first shadow at the edge of paradise."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.50  --  Bb7 as dominant of the dominant. A gentle intensification."},
+        {symbol:"V",fn:"dominant",note:"m.51  --  Bb major. The first real dominant -- resolution comes, but feels earned."},
+        {symbol:"I",fn:"tonic",note:"m.52  --  Eb returns. But the inner voices are beginning to move chromatically."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.54  --  The color deepens again. The idyll is starting to feel fragile."},
+        {symbol:"IV",fn:"predominant",note:"m.55  --  Ab. Still warm but less certain than before."},
+        {symbol:"I",fn:"tonic",note:"m.57  --  Eb, but listen: the bass is beginning to destabilize."},
+        {symbol:"ii°",fn:"predominant",note:"m.58  --  F half-diminished. The shadows have reached the heart of the melody."},
+        {symbol:"V7",fn:"dominant",note:"m.60  --  Bb7. The dominant no longer feels reassuring  --  resolution is becoming uncertain."},
+        {symbol:"I",fn:"tonic",note:"m.62  --  Eb major, but fragile now. Chopin is preparing the listener for destruction."},
+        {symbol:"viio/i",fn:"chromatic",note:"m.63  --  Diminished seventh pulling toward G minor. The second theme is being reclaimed by darkness."},
+        {symbol:"V7/i",fn:"chromatic",note:"m.65  --  D7, dominant of G minor. The Eb paradise is dissolving."},
+        {symbol:"i",fn:"tonic",note:"m.67  --  G minor returns. The second theme is over. The development will not be gentle."}
+      ]},
+      {label:"Development",measures:"mm. 68-166",page:"pp. 5-9",chords:[
+        {symbol:"i",fn:"tonic",note:"m.68  --  G minor, transformed. The development begins with the first theme compressed and darkened."},
+        {symbol:"V7/III",fn:"chromatic",note:"m.74  --  Secondary dominant reaching for Bb. One last grasp at the relative major's warmth."},
+        {symbol:"III",fn:"tonic",note:"m.76  --  Bb major briefly. But it cannot hold  --  the development pulls it apart immediately."},
+        {symbol:"iv",fn:"predominant",note:"m.84  --  C minor. The subdominant darkness takes over. The harmonic world is narrowing."},
+        {symbol:"V7",fn:"dominant",note:"m.94  --  Dominant, insistent. Chopin hammers the dominant pedal  --  this is the engine of the development."},
+        {symbol:"N",fn:"chromatic",note:"m.106  --  Neapolitan harmony. The darkness is now extreme  --  harmonically as far from G minor as possible."},
+        {symbol:"V7",fn:"dominant",note:"m.116  --  Dominant again, relentless. The famous climactic passage  --  the cataclysm is approaching."},
+        {symbol:"i",fn:"tonic",note:"m.124  --  G minor. A false recapitulation  --  it will not last."},
+        {symbol:"V7",fn:"dominant",note:"m.138  --  Dominant once more, building to unbearable tension over the next 20 measures."},
+        {symbol:"A I",fn:"chromatic",note:"m.166  --  A major. The shocking recapitulation. The first theme in the wrong key  --  beautiful, disoriented, doomed. Play it as something that knows it cannot survive."}
+      ]},
+      {label:"Coda",measures:"mm. 194-264",page:"pp. 9-11",chords:[
+        {symbol:"i",fn:"tonic",note:"m.194  --  Presto con fuoco. G minor at full speed. This is not a normal coda  --  it is annihilation."},
+        {symbol:"V7",fn:"dominant",note:"m.200  --  Dominant seventh, relentless. Harmonic rhythm accelerates  --  chords that took measures before now last only beats."},
+        {symbol:"i",fn:"tonic",note:"m.208  --  G minor, texture fragmenting. The two-hand unison passages are Chopin at his most primitive and violent."},
+        {symbol:"N",fn:"chromatic",note:"m.216  --  The Neapolitan returns. In the introduction it was a question; here it is a verdict."},
+        {symbol:"V7",fn:"dominant",note:"m.224  --  Dominant, merciless. No room for the lyrical. The Ballade has become a different kind of music."},
+        {symbol:"i",fn:"tonic",note:"m.234  --  G minor in octaves. The second theme's melody appears briefly  --  a ghost of Eb paradise  --  before being destroyed."},
+        {symbol:"V7",fn:"dominant",note:"m.248  --  Final dominant preparation. Everything Chopin built over 247 measures is being demolished in these last bars."},
+        {symbol:"i",fn:"tonic",note:"m.264  --  Final G minor. Not resolution  --  annihilation. The only possible ending to a piece that began by questioning whether it could exist."}
+      ]}
+    ]},
+  { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
+    recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"},{id:"af22",label:"Afanassiev 2022",full:"Valery Afanassiev, 2022"}],
+    sections:[
+      {label:"Mvt I -- Vivace",measures:"Vivace ma non troppo",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  E major, but the meter is ambiguous -- compound duple disguised as simple. The opening is a question, not a statement."},
+        {symbol:"V7",fn:"dominant",note:"m.3  --  B dominant seventh. Beethoven establishes the dominant before the tonic is even settled."},
+        {symbol:"I",fn:"tonic",note:"m.5  --  E major returns, but with added inner voices. The texture is filling in."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. The subdominant world enters early -- Beethoven is not interested in diatonic simplicity."},
+        {symbol:"V7",fn:"dominant",note:"m.11  --  Dominant seventh, driving toward the half cadence."},
+        {symbol:"I",fn:"tonic",note:"m.13  --  E major, more assertive. The first theme completes its arc."},
+        {symbol:"vi",fn:"tonic",note:"m.17  --  C# minor. The submediant -- a darkening of the tonic that foreshadows the Adagio."},
+        {symbol:"IV",fn:"predominant",note:"m.21  --  A major. The subdominant is warm here, not tragic."},
+        {symbol:"V",fn:"dominant",note:"m.24  --  B major. Clean, structural -- Beethoven clears the air for the Adagio transition."},
+        {symbol:"I",fn:"tonic",note:"m.28  --  E major, closing the Vivace. But the transition to Adagio is immediate and shocking."}
+      ]},
+      {label:"Mvt I -- Adagio",measures:"Adagio espressivo",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor. The parallel minor -- the first dark shadow in the sonata. This is not the same E as before."},
+        {symbol:"iv",fn:"predominant",note:"m.2  --  A minor. The subdominant in minor deepens the tragedy."},
+        {symbol:"V7",fn:"dominant",note:"m.4  --  B dominant seventh. The Adagio's harmonic language is simpler but more concentrated."},
+        {symbol:"i",fn:"tonic",note:"m.6  --  E minor again. The resolution is no comfort -- it is resignation."},
+        {symbol:"VI",fn:"tonic",note:"m.7  --  C major. The submediant in minor is here a moment of warmth before the final cadence."},
+        {symbol:"V7",fn:"dominant",note:"m.8  --  B7. The final dominant -- the Adagio will close, and the Vivace will return."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  E major, the Vivace returns. Beethoven's tempo alternation is a formal innovation with no precedent."}
+      ]},
+      {label:"Mvt II -- Prestissimo",measures:"Prestissimo",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor, presto. This movement is an eruption -- the darkness hinted at in the Adagio now unleashed."},
+        {symbol:"III",fn:"tonic",note:"m.8  --  G major, the relative major. Brief warmth immediately extinguished."},
+        {symbol:"V7",fn:"dominant",note:"m.16  --  B7, relentless. The dominant hammering is characteristic of Beethoven's late style."},
+        {symbol:"iv",fn:"predominant",note:"m.24  --  A minor. Subdominant darkening -- the movement refuses any comfort."},
+        {symbol:"N6",fn:"chromatic",note:"m.36  --  F major in first inversion. The Neapolitan -- borrowed from the Romantic future. Maximum tension."},
+        {symbol:"V7",fn:"dominant",note:"m.44  --  B dominant seventh. Everything has been leading to this point."},
+        {symbol:"i",fn:"tonic",note:"m.52  --  E minor. The recapitulation -- but compressed and intensified."},
+        {symbol:"V7",fn:"dominant",note:"m.72  --  Final dominant preparation. The Prestissimo is about to close."},
+        {symbol:"I",fn:"tonic",note:"m.98  --  E major, the parallel major. The ending is not tragic but transcendent -- a Beethoven speciality."}
+      ]},
+      {label:"Mvt III -- Theme & Vars",measures:"Gesangvoll",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  E major, Gesangvoll. The most sustained, singing theme Beethoven ever wrote for piano. Every note matters."},
+        {symbol:"V7",fn:"dominant",note:"m.3  --  B7. The dominant is gentle here -- no urgency, only inevitability."},
+        {symbol:"I",fn:"tonic",note:"m.5  --  E major. The theme unfolds like a slow exhalation."},
+        {symbol:"IV",fn:"predominant",note:"m.7  --  A major. The subdominant is warm, hymn-like. Beethoven is writing spiritual music."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. A shadow -- brief but telling."},
+        {symbol:"V7",fn:"dominant",note:"m.11  --  B7. The dominant, inevitable. The variations will depart from this center and return."},
+        {symbol:"vi",fn:"tonic",note:"m.13  --  C# minor. Beethoven's characteristic submediant color."},
+        {symbol:"I",fn:"tonic",note:"m.16  --  E major. The theme closes. Six variations will follow, each a different world."}
+      ]}
+    ]},
+  { id:"schubert-d960", composer:"Schubert", title:"Sonata D. 960", full:"Piano Sonata in Bb major, D. 960", year:"1828", key:"Bb major",
+    recordings:[{id:"s37",label:"Schnabel 1937",full:"Artur Schnabel, 1937"},{id:"b88",label:"Brendel 1988",full:"Alfred Brendel, 1988"},{id:"p03",label:"Perahia 2003",full:"Murray Perahia, 2003"},{id:"im19",label:"Imogen Cooper 2019",full:"Imogen Cooper, 2019"}],
+    sections:[
+      {label:"Mvt I -- Exposition",measures:"mm. 1-80",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, serene and vast. No urgency. Schubert wrote this three months before he died."},
+        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. Flat-VI, otherworldly, unrepeated. The most analyzed moment in the sonata -- it appears without preparation and resolves as if always there."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  Bb returns. But the listener has been displaced -- the tonic now has a shadow."},
+        {symbol:"V",fn:"dominant",note:"m.18  --  F major, delayed unusually long. The first theme has been floating, harmonically uncommitted."},
+        {symbol:"IV",fn:"predominant",note:"m.20  --  Eb major. The subdominant broadens the phrase before the transition."},
+        {symbol:"ii",fn:"predominant",note:"m.24  --  C minor. Transition darkens toward the second theme."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.28  --  C7. Points toward F major -- but Schubert refuses the expected arrival."},
+        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Deliberate estrangement -- listener expected F major warmth, received shadow instead."},
+        {symbol:"A I",fn:"tonic",note:"m.48  --  A major. The relative major appears late and in the wrong place."},
+        {symbol:"E I",fn:"chromatic",note:"m.52  --  E major. A third below A -- Schubert moves by thirds, not fifths."},
+        {symbol:"V7",fn:"dominant",note:"m.72  --  F7. Final dominant push toward the double bar."},
+        {symbol:"I",fn:"tonic",note:"m.80  --  Bb major. End of exposition. Schubert has undermined confidence in Bb throughout."}
+      ]},
+      {label:"Mvt I -- Development",measures:"mm. 81-212",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.81  --  Development begins on the tonic -- unexpected. Schubert refuses the conventional dominant move."},
+        {symbol:"b i",fn:"chromatic",note:"m.96  --  Bb minor, the parallel minor. The home key becomes its own shadow."},
+        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant -- Schubert's world operates by thirds, not fifths."},
+        {symbol:"Ab I",fn:"chromatic",note:"m.116  --  Ab major. Another third down. The flat-key journey continues."},
+        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb -- the harmonic antipode of home."},
+        {symbol:"Db I",fn:"chromatic",note:"m.132  --  Db major. Beginning the long return journey."},
+        {symbol:"Ab I",fn:"chromatic",note:"m.136  --  Ab major. Return through thirds, in reverse."},
+        {symbol:"V7",fn:"dominant",note:"m.148  --  F7. The journey home begins. But the recapitulation will not bring comfort."},
+        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. Recapitulation -- but the Gb trill now appears over an unexpected harmony."},
+        {symbol:"f# i",fn:"chromatic",note:"m.192  --  F# minor returns. The second theme now in the tonic minor -- even darker than before."},
+        {symbol:"I",fn:"tonic",note:"m.212  --  Bb major. The movement ends -- not resolved, only exhausted."}
+      ]},
+      {label:"Mvt II -- Andante",measures:"mm. 1-50",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. Remote from Bb by a major third -- Schubert's characteristic third-relation between movements."},
+        {symbol:"iv",fn:"predominant",note:"m.3  --  F# minor. The subdominant deepens the opening darkness."},
+        {symbol:"V",fn:"dominant",note:"m.6  --  G# major. The dominant in minor is desolate here."},
+        {symbol:"i",fn:"tonic",note:"m.8  --  C# minor. The melody is a lament."},
+        {symbol:"VI",fn:"tonic",note:"m.10  --  A major. A moment of warmth, immediately extinguished."},
+        {symbol:"iv",fn:"predominant",note:"m.14  --  F# minor. The subdominant returns -- the lament deepens."},
+        {symbol:"A I",fn:"chromatic",note:"m.20  --  A major, the relative major. A middle section of comparative serenity."},
+        {symbol:"E I",fn:"chromatic",note:"m.24  --  E major. Another third away -- Schubert never stays in one harmonic world."},
+        {symbol:"V7",fn:"dominant",note:"m.32  --  G#7. Preparing the return of C# minor."},
+        {symbol:"i",fn:"tonic",note:"m.36  --  C# minor. The lament returns with inner-voice chromaticism."},
+        {symbol:"N6",fn:"chromatic",note:"m.40  --  D major in first inversion. The Neapolitan -- maximum harmonic pressure at the emotional peak."},
+        {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with unresolved longing."},
+        {symbol:"i",fn:"tonic",note:"m.50  --  C# minor. The final cadence -- not resolution, only settling."}
+      ]},
+      {label:"III -- Scherzo",measures:"mm. 1-68",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.1  --  Bb major, Allegro vivace. The Scherzo erupts after the slow movement's C# minor -- the return to Bb is a relief, but Schubert makes it rough and angular, not warm."},
+        {symbol:"v",fn:"tonic",note:"m.8  --  F minor. The parallel minor intrudes immediately -- Schubert refuses to let Bb be simple."},
+        {symbol:"IV",fn:"predominant",note:"m.16  --  Eb major. The subdominant broadens the phrase."},
+        {symbol:"V",fn:"dominant",note:"m.24  --  F major. The dominant prepares the repeat."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The Scherzo section closes -- the Trio follows."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.36  --  Gb major, the Trio. The same flat-VI from the first movement opening trill -- now a full section. Schubert is obsessed with this relationship."},
+        {symbol:"Db I",fn:"chromatic",note:"m.44  --  Db major. A third below Gb -- Schubert's third-chain harmonic world again."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.52  --  Gb major returns. The Trio breathes in these remote flat keys."},
+        {symbol:"V",fn:"dominant",note:"m.60  --  F major. The dominant prepares the Scherzo da capo."},
+        {symbol:"I",fn:"tonic",note:"m.68  --  Bb major. Scherzo returns. D.C. al Fine."}
+      ]},
+      {label:"IV -- Allegro",measures:"mm. 1-360",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, the Rondo theme. Gentle, song-like -- almost too simple after everything that came before. Schubert is lulling the listener."},
+        {symbol:"V",fn:"dominant",note:"m.16  --  F major. The dominant, perfectly placed. The Rondo has classical clarity Schubert allows himself rarely."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The theme returns -- the first rondo refrain."},
+        {symbol:"f i",fn:"chromatic",note:"m.48  --  F minor. The first episode -- the parallel minor darkens the texture without warning."},
+        {symbol:"Db I",fn:"chromatic",note:"m.64  --  Db major. The third-relation again. Schubert cannot help himself -- the flat mediant appears in every movement."},
+        {symbol:"I",fn:"tonic",note:"m.96  --  Bb major. The Rondo theme returns -- but something has shifted."},
+        {symbol:"b i",fn:"chromatic",note:"m.128  --  Bb minor. The parallel minor, this time sustained. The darkness that has been circling since the first movement finally arrives in the home key."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.160  --  Gb major. The flat-VI trill pitch from the opening -- now a full harmonic area in the final movement. The circle closes."},
+        {symbol:"V7",fn:"dominant",note:"m.280  --  F7. The long dominant preparation for the final return. Schubert extends it mercilessly."},
+        {symbol:"I",fn:"tonic",note:"m.320  --  Bb major. The final Rondo statement -- but played as if returning from very far away. The coda is not triumphant. It is acceptance."}
+      ]}
+    ]},
+  { id:"ravel-gaspard", composer:"Ravel", title:"Gaspard de la Nuit", full:"Gaspard de la Nuit", year:"1908", key:"C# (Ondine)",
+    recordings:[{id:"a78",label:"Argerich 1978",full:"Martha Argerich, 1978"},{id:"pg81",label:"Pogorelich 1981",full:"Ivo Pogorelich, 1981"},{id:"t98",label:"Thibaudet 1998",full:"Jean-Yves Thibaudet, 1998"},{id:"yw19",label:"Yuja Wang 2019",full:"Yuja Wang, 2019"}],
+    sections:[
+      {label:"Ondine",measures:"mm. 1-80",page:"pp. 1-5",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  C# major, the water music begins. The repeated C# in the right hand is the surface of the lake -- it never changes, it shimmers."},
+        {symbol:"V9",fn:"dominant",note:"m.8  --  G# with added ninth. Ravel's dominants are always enriched with color tones -- never bare."},
+        {symbol:"I",fn:"tonic",note:"m.12  --  C# returns. The tonic is not a resolution here but a stasis -- the water has no intention of moving."},
+        {symbol:"bVI",fn:"chromatic",note:"m.20  --  A major, flat-VI. Impressionist harmonic color borrowed from the modal world. The water becomes opaque."},
+        {symbol:"V7",fn:"dominant",note:"m.28  --  G# dominant seventh. A rare moment of traditional harmonic function in a work that largely suspends it."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  C# major. The melody of Ondine's song."},
+        {symbol:"bVII",fn:"chromatic",note:"m.40  --  B major, the subtonic. Modal borrowing -- Ravel is thinking in Dorian and Mixolydian as much as major."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.48  --  F#7, secondary dominant of the subdominant. The harmonic color deepens."},
+        {symbol:"IV",fn:"predominant",note:"m.52  --  F# major. The subdominant is warm here, a moment of lyrical expansion."},
+        {symbol:"I",fn:"tonic",note:"m.60  --  C# major. Ondine's song reaches its apex -- the texture thickens before the final dissolution."},
+        {symbol:"V7",fn:"dominant",note:"m.68  --  G#7. The dominant approaches -- but Ondine will reject the human, and the cadence will not resolve conventionally."},
+        {symbol:"I",fn:"tonic",note:"m.80  --  C# major, but the texture evaporates. The water closes. Nothing remains."}
+      ]},
+      {label:"Le Gibet",measures:"mm. 1-67",page:"pp. 6-10",chords:[
+        {symbol:"Bb ostinato",fn:"tonic",note:"m.1  --  Bb, the tolling bell. It never moves. It is the most famous pedal point in piano music -- 67 measures, not one deviation."},
+        {symbol:"bii",fn:"chromatic",note:"m.4  --  Cb minor. A flat-two minor -- the Phrygian inflection. The harmonic language of death and the gallows."},
+        {symbol:"V7",fn:"dominant",note:"m.8  --  F dominant seventh, above the Bb pedal. The tension between the pedal and the moving harmonies is the entire drama."},
+        {symbol:"bVI",fn:"chromatic",note:"m.12  --  Gb major. Modal color, cold, distant."},
+        {symbol:"i",fn:"tonic",note:"m.16  --  Bb minor. The tolling bell continues, indifferent."},
+        {symbol:"bVII",fn:"chromatic",note:"m.24  --  Ab major. The harmonies drift above the pedal like clouds over a corpse."},
+        {symbol:"V",fn:"dominant",note:"m.36  --  F major. The dominant over the Bb pedal creates maximum harmonic tension."},
+        {symbol:"bii",fn:"chromatic",note:"m.44  --  Cb minor again. The Phrygian darkness returns."},
+        {symbol:"Bb",fn:"tonic",note:"m.67  --  The final toll. The bell stops. The piece does not end so much as cease."}
+      ]},
+      {label:"Scarbo",measures:"mm. 1-115",page:"pp. 11-17",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor, presto. The demon appears -- a single note repeated at impossible speed. The technical demand is inseparable from the harmonic meaning: instability made physical."},
+        {symbol:"V7",fn:"dominant",note:"m.12  --  G#7. The dominant arrives before the tonic is established -- Scarbo refuses to be contained."},
+        {symbol:"i",fn:"tonic",note:"m.20  --  C# minor. The demon dances."},
+        {symbol:"bVI",fn:"chromatic",note:"m.32  --  A major. Grotesque warmth -- Scarbo's parody of beauty."},
+        {symbol:"N6",fn:"chromatic",note:"m.48  --  D major in first inversion. The Neapolitan -- maximum harmonic pressure. Ravel uses this at the climax."},
+        {symbol:"V7",fn:"dominant",note:"m.56  --  G#7. Relentless dominant -- Scarbo never lets the tonic breathe."},
+        {symbol:"i",fn:"tonic",note:"m.68  --  C# minor. A false repose -- the demon is merely gathering speed."},
+        {symbol:"bVII",fn:"chromatic",note:"m.80  --  B major. The harmonic language becomes increasingly chromatic as Scarbo nears his vanishing point."},
+        {symbol:"V7",fn:"dominant",note:"m.96  --  G#7 one final time. Everything has been preparation for the evaporation."},
+        {symbol:"i",fn:"tonic",note:"m.115  --  C# minor -- and Scarbo disappears. The last note is a single C#, pianissimo. The silence after it is the piece."}
+      ]}
+    ]},
+  { id:"scriabin-op53", composer:"Scriabin", title:"Sonata No. 5", full:"Piano Sonata No. 5, Op. 53", year:"1907", key:"F# mystic chord",
+    recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"},{id:"dt21",label:"Trifonov 2021",full:"Daniil Trifonov, 2021"}],
+    sections:[
+      {label:"Intro -- Impetuoso",measures:"mm. 1-24",page:"p. 1",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.1  --  The mystic chord: F#-A#-C#-E#-G#-B. Not a dominant seventh but a synthetic sonority -- Scriabin's musical cosmos in a single chord. It neither resolves nor requires resolution."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.4  --  The chord transposed to C#. In the mystic chord world, 'dominant' means something different -- this is not a B7 resolving to E, but a color relationship."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.6  --  The home sonority returns. The Introduction establishes the harmonic universe: suspended, floating, non-teleological."},
+        {symbol:"E7(#11)",fn:"chromatic",note:"m.10  --  A tritone away from the home. Scriabin structures by tritone symmetry, not by fifth."},
+        {symbol:"Bb7(#11)",fn:"chromatic",note:"m.14  --  The enharmonic equivalent of A#7. The tritone axis is the structural principle."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.18  --  Home chord, more insistent. The Introduction is building harmonic pressure."},
+        {symbol:"V7",fn:"dominant",note:"m.22  --  C#7, the closest thing to a traditional dominant. The flying theme is about to appear."},
+        {symbol:"I",fn:"tonic",note:"m.24  --  F# area, momentarily settled. The main body of the sonata begins."}
+      ]},
+      {label:"First Theme",measures:"mm. 25-80",page:"pp. 1-3",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.25  --  The presto begins. The flying theme -- Scriabin's most physically demanding passage -- is built on the mystic chord in motion."},
+        {symbol:"D7(#11)",fn:"chromatic",note:"m.32  --  A third away. Scriabin's third-related harmonic moves give the music its characteristic hovering quality."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.36  --  Home sonority, briefly confirmed."},
+        {symbol:"A7(#11)",fn:"chromatic",note:"m.40  --  The augmented triad relationship: F#-A-C# generates a chain of thirds."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.48  --  The dominant chord, building tension toward the lyrical second theme."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.56  --  Return. The first theme recapitulates its opening figure."},
+        {symbol:"Eb7(#11)",fn:"chromatic",note:"m.64  --  Tritone of A: maximum harmonic distance from F#. The texture is at its most dense."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.72  --  The dominant prepares the transition."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.80  --  The first theme closes. The mystic chord is both home and elsewhere -- simultaneously resolved and unresolved."}
+      ]},
+      {label:"Second Theme",measures:"mm. 81-140",page:"pp. 3-5",chords:[
+        {symbol:"A7(#11)",fn:"tonic",note:"m.81  --  A major-ish. The second theme is more lyrical, but Scriabin's 'lyrical' still dissolves traditional tonality. The melody floats above the mystic chord."},
+        {symbol:"F#7(#11)",fn:"chromatic",note:"m.88  --  The home sonority underneath the A-area melody. Scriabin layers harmonic worlds simultaneously."},
+        {symbol:"D7(#11)",fn:"chromatic",note:"m.96  --  Third-relation move. The melody continues floating."},
+        {symbol:"A7(#11)",fn:"tonic",note:"m.104  --  Return to the second theme's area."},
+        {symbol:"Bb7(#11)",fn:"chromatic",note:"m.112  --  Semitone above A: maximum tension in the second theme."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.124  --  The dominant of F#, preparing the development."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.140  --  The development begins. The mystic chord is its own development -- it never truly changes."}
+      ]},
+      {label:"Dev & Coda",measures:"mm. 141-235",page:"pp. 5-8",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.141  --  The development compresses the first theme material. At this speed, the mystic chord becomes a blur of color rather than a harmony."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.156  --  The dominant, preparing the climax."},
+        {symbol:"Eb7(#11)",fn:"chromatic",note:"m.168  --  Tritone of A: the harmonic extreme. The climax is approaching."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.180  --  The presto returns, the climax of the sonata."},
+        {symbol:"V7",fn:"dominant",note:"m.196  --  C#7, the most traditional-sounding moment in the entire sonata. Scriabin allows one moment of conventional harmonic function at the peak."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.208  --  The coda begins. The sonata is contracting back to its opening materials."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.220  --  The final dominant preparation."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.235  --  The final mystic chord, fortissimo. The sonata ends not with resolution but with affirmation -- the mystic chord is all there is, and it is enough."}
+      ]}
+    ]}
+];
+
+/* ===== SYSTEM PROMPTS -- two modes ===== */
+
+// MODE 1: Score-grounded -- used for chord clicks, chord popup, chat, practice tab
+var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Your job is to describe and analyze what the notation shows, not what you know about the music.\n\nSTEP 1 -- OBSERVE LITERALLY (do this first, always):\nLook at the image and answer these questions from what you can see:\n- Right hand: are the notes single-line, chords, or rapid figuration? How many notes per beat?\n- Left hand: are the notes single-line, chords, octaves, or a repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value visible? Is the rhythm even, syncopated, or mixed?\n- Markings: list any dynamic markings, tempo words, articulation, or pedal marks that are literally printed in this image.\n\nSTEP 2 -- DESCRIBE WITHOUT NAMING:\nDescribe the texture using only what you observed. Do not use any of these words unless they are printed in the score:\nwaltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy\n\nInstead, say what the notes are doing:\n- 'The right hand has a single line of eighth notes'\n- 'The left hand repeats a three-note pattern on each beat'\n- 'Both hands play chords simultaneously'\n\nSTEP 3 -- PRACTICE ADVICE:\nGive 2-3 practice points. Each must:\n- Reference a specific observable feature from Step 1\n- State a concrete physical action (finger independence, wrist rotation, subdivision, voicing weight)\n- NOT assume what the passage 'should' sound like based on the piece's reputation\n\nABSOLUTE PROHIBITIONS:\n- Do not call anything a 'theme', 'subject', 'episode', or 'section' unless labeled in the score\n- Do not assume which hand has the melody -- describe both hands neutrally\n- Do not reference dynamics unless the marking is visible\n- Do not say 'typical Chopin' or reference any stylistic expectation\n- No preamble, no disclaimers\n\nIf you cannot clearly read a feature, say: 'This area of the image is unclear -- I can see [what you can see].'\n\nFor harmony: identify bass note -> upper voices -> interval stack -> chord quality -> Roman numeral -> function -> one performance implication.\n\nRESPONSE LENGTH: Target 200-350 words. Complete every sentence before starting a new point. If running long, drop the last point rather than truncating mid-thought.\n\nFORMATTING RULES -- mandatory:
+
+// MODE 2: Knowledge-driven -- used for Analysis tab, Interpretations tab, Study tabs
+// The model draws on deep musical knowledge of the piece. No score image attached.
+var SYS_KNOWLEDGE = "You are Arioso, a musical analyst and score companion for advanced pianists -- conservatory-trained or equivalent. You know this repertoire cold. You speak like the best professor a pianist has ever had: direct, opinionated, precise, always in service of the performer.\n\nFor ANALYSIS: Write like a rigorous musicologist-performer. Describe formal structures and tonal motion with confidence, but calibrate your harmonic language to your certainty:\n- For broad tonal areas and key relationships, speak with authority: 'the second theme moves into E-flat major', 'Chopin returns to G minor here'\n- For specific chord function, prefer directional language over exact Roman numerals unless you are certain: say 'moves toward the dominant' rather than 'V7/IV' when in doubt; say 'a chromatic chord that destabilizes the tonic' rather than 'bVI'\n- Avoid pinning exact Roman numerals to specific measure numbers unless you are confident -- a wrong label destroys trust more than a general description\n- For Chopin: the central interpretive lens is tonal ambiguity -- delayed resolution, floating between relative keys, the Neapolitan as structural rival. You can describe this compellingly without requiring measure-precise labeling\n- Always connect tonal observations to what the performer must do: timing, voicing, pedaling, phrasing\n\nFor INTERPRETATIONS: Discuss specific named recordings -- pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube link formatted as: [Listen: Name](https://www.youtube.com/results?search_query=Name+Piece). Always include at least one contemporary pianist (Trifonov, Yuja Wang, Abduraimov, Cho, Debargue). Be opinionated about which recordings are essential.\n\nFor HISTORY and CONTEXT: Write like serious program notes -- LA Phil register. Specific, biographical, culturally grounded.\n\nRESPONSE LENGTH AND STRUCTURE -- mandatory:\nTarget 400-600 words per response. Use these three sections in order:\n1. Overview -- 2-3 sentences on the big picture (tonal language, form, character)\n2. Key harmonic idea -- the most important harmonic event or pattern, and what it means for the performer\n3. What to listen for / how to practice -- specific, actionable guidance tied to the analysis\n\nDo not begin a new section unless you can finish it. If the response is getting long, summarize later sections in 1-2 sentences rather than expanding them. Always end on a complete sentence -- never mid-thought.\n\nFORMATTING RULES -- mandatory:\n- Never use ** for bold or ## for headers. Never output raw markdown syntax.\n- Use plain section labels on their own line followed by a blank line. Example: 'What is happening' then blank line then content.\n- Keep paragraphs to 2-3 sentences max. Blank line between each paragraph or section.\n- For practice steps or lists: use '1.' '2.' '3.' or '-' on separate lines.\n- No walls of unbroken text. Every response must be visually scannable.\n\nOTHER RULES:\n- Never say you cannot find a source, cannot verify, or need more context.\n- Never ask the user for information. Deliver the analysis directly.\n- Uncertainty is always framed musically: 'this can be heard as...' or 'the harmony suggests...' rather than 'I am not sure.'";
+
+// Active system prompt -- resolved per call
+var SYS = SYS_KNOWLEDGE; // default; overridden per-call below
+
+
+var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
+var analysisReqId = 0; // increments on each new request to cancel stale ones
+var currentSection = 0;
+var chatHistory = [], annotations = [], pending = null, annotating = false, pdfDoc = null;
+var clickX = 0, clickY = 0, clickPage = 0;
+var drawMode = false, isDrawing = false, currentDrawCanvas = null, currentDrawCtx = null;
+var drawMode = false, zoomLevel = 1.0, annotating = false;
+var isDrawing = false, lastX = 0, lastY = 0;
+
+function init() {
+  // Check for saved name
+  var savedName = localStorage.getItem("arioso-name");
+  if (savedName) {
+    userName = savedName;
+    showScreen("library");
+    loadLibrary(); // renderLibrary() inside sets the greeting
+  } else {
+    showScreen("welcome");
+  }
+  var sel = document.getElementById("piece-selector");
+  PIECES.forEach(function(p, i) {
+    var b = document.createElement("button");
+    b.className = "piece-btn";
+    b.textContent = p.composer + "  --  " + p.title;
+    b.onclick = (function(n){ return function(){ selectPiece(n); }; })(i);
+    sel.appendChild(b);
+  });
+  document.getElementById("chat-input").addEventListener("keydown", function(e){ if(e.key==="Enter") sendChat(); });
+  document.addEventListener("click", function(e){
+    var p = document.getElementById("ann-popup");
+    if(p.style.display==="block" && !p.contains(e.target)) closePopup();
+  });
+  initPerformerSearch();
+}
+
+function selectPiece(i) {
+  piece = PIECES[i]; rec = null; chatHistory = [];
+  currentSection = 0;
+  pdfDoc = null;
+  contentCache = {}; // clear cache for new piece
+  document.getElementById("pdf-pages").innerHTML = "";
+  document.getElementById("pdf-pages").style.display = "none";
+  document.querySelectorAll(".piece-btn").forEach(function(b,j){ b.classList.toggle("active",j===i); });
+  var t = document.getElementById("score-title");
+  t.textContent = piece.full; t.classList.remove("empty");
+  document.getElementById("score-subtitle").textContent = piece.composer + "   .   " + piece.year + "   .   " + piece.key;
+  document.getElementById("chat-messages").innerHTML = "";
+  prefetchAll(piece); // kick off all parallel fetches
+  renderRecs(); loadAnalysis();
+  renderChordStrip();
+  if(mode==="study") loadStudy();
+
+  // Auto-load PDF from Supabase if not already loaded
+  if (!pdfDoc) {
+    var loadBuffer = function(buffer) {
+      pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        document.getElementById("upload-zone").style.display = "none";
+        document.getElementById("pdf-pages").style.display = "flex";
+        document.getElementById("clear-pdf-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
+        document.getElementById("measure-btn").style.display = "block";
+        renderAllPages();
+      });
+    };
+    var showUploadZone = function() {
+      var uz = document.getElementById("upload-zone");
+      uz.style.display = "block";
+      uz.innerHTML = "<div id='uz-icon' style='font-size:36px;font-weight:300;color:var(--text2);'>+</div>" +
+        "<div id='uz-title'>Upload your score PDF</div>" +
+        "<div id='uz-sub'>Henle, Peters, IMSLP \u2014 any edition works</div>" +
+        "<input type='file' id='file-input' accept='.pdf' onchange='loadPDF(this)' style='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;'>";
+      document.getElementById("pdf-pages").style.display = "none";
+    };
+    loadOrFetchCuratedPDF(piece.id, loadBuffer, showUploadZone);
+  }
+}
+
+/* PDF  --  ALL PAGES */
+function loadPDF(input) {
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var buffer = e.target.result;
+    var key = piece ? piece.id : "current-pdf";
+    savePDFtoDBKey(key, buffer.slice(0));
+    // Also update library entry
+    if (piece) {
+      var lp = libraryPieces.find(function(p) { return p.id === piece.id; });
+      if (lp) { lp.pdfKey = key; saveLibrary(); }
+    }
+    pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById("upload-zone").style.display = "none";
+      document.getElementById("pdf-pages").style.display = "flex";
+      document.getElementById("clear-pdf-btn").style.display = "block";
+      if(piece) {
+        (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
+        document.getElementById("measure-btn").style.display = "block";
+      }
+      renderAllPages();
+    }).catch(function(){ alert("Could not load PDF."); });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderAllPages() {
+  if (!pdfDoc) return;
+  var container = document.getElementById("pdf-pages");
+  container.innerHTML = "";
+  for(var i = 1; i <= pdfDoc.numPages; i++) renderPage(i, container);
+}
+
+function renderPage(num, container) {
+  var wrapper = document.createElement("div");
+  wrapper.className = "pdf-page-wrapper"; wrapper.id = "pw-" + num;
+  wrapper.style.position = "relative";
+  var canvas = document.createElement("canvas"); canvas.id = "pc-" + num;
+
+  // Draw canvas overlay
+  var drawCanvas = document.createElement("canvas");
+  drawCanvas.id = "dc-" + num;
+  drawCanvas.className = "draw-canvas";
+  if (drawMode) drawCanvas.classList.add("active");
+
+  wrapper.appendChild(canvas);
+  wrapper.appendChild(drawCanvas);
+  container.appendChild(wrapper);
+
+  pdfDoc.getPage(num).then(function(page) {
+    var cw = container.clientWidth - 32;
+    var scale = (cw / page.getViewport({scale:1}).width) * zoomLevel;
+    var vp = page.getViewport({scale:scale});
+    // PDF canvas: internal pixels = vp dimensions
+    canvas.width = vp.width; canvas.height = vp.height;
+    // Display size in CSS pixels = cw wide, proportional height
+    var displayW = cw;
+    var displayH = Math.round(vp.height * (cw / vp.width));
+    canvas.style.width = displayW + "px";
+    canvas.style.height = displayH + "px";
+    // Draw canvas: internal pixels = display pixels (1:1 mapping, no scale needed)
+    drawCanvas.width = displayW; drawCanvas.height = displayH;
+    drawCanvas.style.width = displayW + "px";
+    drawCanvas.style.height = displayH + "px";
+    wrapper.style.width = displayW + "px";
+    wrapper.style.height = displayH + "px";
+    wrapper.style.marginLeft = "auto";
+    wrapper.style.marginRight = "auto";
+    page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
+    canvas.style.cursor = "default";
+    canvas.style.display = "block";
+
+    // Wire up draw events
+    (function(n, dc, c) {
+      dc.addEventListener("mousedown", function(e) {
+        if (measureMode) { handleMeasureClick(e, n); return; }
+        if (drawMode) { startDraw(e, dc); return; }
+      });
+      dc.addEventListener("mousemove", function(e) { if (drawMode) continueDraw(e, dc); });
+      dc.addEventListener("mouseup", function() { stopDraw(); });
+      dc.addEventListener("mouseleave", function() { stopDraw(); });
+      c.onclick = function(e) {
+        if (measureMode) { handleMeasureClick(e, n); return; }
+        if (!drawMode) handleClick(e, n, c);
+      };
+      // Restore saved drawings and measure labels
+      restoreDrawing(n);
+      restoreMeasureLabels(n);
+    })(num, drawCanvas, canvas);
+  });
+}
+
+/* ANNOTATION */
+function toggleAnnotate() {
+  annotating = !annotating;
+  var btn = document.getElementById("annotate-btn"); if (!btn) return;
+  var banner = document.getElementById("annotate-banner");
+  btn.classList.toggle("toggled", annotating);
+  btn.textContent = annotating ? "Done annotating" : "Annotate score";
+  banner.style.display = annotating ? "flex" : "none";
+  document.querySelectorAll(".pdf-page-wrapper canvas").forEach(function(c){
+    c.style.cursor = annotating ? "crosshair" : "default";
+  });
+}
+
+function handleClick(e, pageNum, canvas) {
+  if(!annotating || !piece) return;
+  e.stopPropagation();
+  var rect = (canvas || e.currentTarget).getBoundingClientRect();
+  var xp = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+  var yp = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+  clickX = e.clientX; clickY = e.clientY; clickPage = pageNum;
+  showLoading(e.clientX, e.clientY, pageNum);
+  analyzeClick(pageNum, xp, yp);
+}
+
+function showLoading(x, y, page) {
+  var popup = document.getElementById("ann-popup");
+  document.getElementById("ann-popup-title").textContent = "Page " + page;
+  document.getElementById("ann-popup-loading").style.display = "flex";
+  document.getElementById("ann-popup-result").style.display = "none";
+  document.getElementById("ann-edit-input").value = "";
+  popup.style.display = "block";
+  popup.style.left = Math.min(x + 16, window.innerWidth - 320) + "px";
+  popup.style.top = Math.min(y - 10, window.innerHeight - 280) + "px";
+}
+
+function analyzeClick(page, xp, yp) {
+  var prompt = "I am looking at page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). I have clicked at approximately " + xp + "% from the left and " + yp + "% from the top of this page.\n\nLook at the score image. Find the notes at that location. Identify: (1) the bass note, (2) the upper voices, (3) the chord quality from the interval stack, (4) the inversion, (5) the Roman numeral in " + piece.key + ", (6) the harmonic function.\n\nRespond ONLY in this exact JSON format with no other text:\n{\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"2 sentences: what this chord is and what it demands from the performer.\"}.\n\nFunction must be exactly one of: tonic, dominant, predominant, chromatic.";
+  callAPIWithVision(prompt, function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var d = JSON.parse(clean);
+      pending = {roman:d.roman, fn:d.function, explanation:d.explanation, page:page, x:clickX, y:clickY};
+      showResult(d.roman, d.function, d.explanation);
+    } catch(err) {
+      pending = {roman:"?", fn:"chromatic", explanation:text, page:page, x:clickX, y:clickY};
+      showResult("?", "chromatic", text);
+    }
+  });
+}
+
+function showResult(roman, fn, explanation) {
+  document.getElementById("ann-popup-loading").style.display = "none";
+  var res = document.getElementById("ann-popup-result"); res.style.display = "block";
+  var r = document.getElementById("ann-popup-roman");
+  r.textContent = roman; r.className = fn;
+  document.getElementById("ann-popup-explanation").textContent = explanation;
+  document.getElementById("ann-popup-footer").style.display = "flex";
+}
+
+function applyOverride() {
+  var v = document.getElementById("ann-edit-input").value.trim();
+  if(!v || !pending) return;
+  pending.roman = v;
+  document.getElementById("ann-popup-roman").textContent = v;
+}
+
+function confirmAnnotation() {
+  if(!pending) return;
+  annotations.push(Object.assign({}, pending));
+  placeDot(pending);
+  updateBar();
+  updateContextBanner(pending);
+  loadAnalysisForAnnotation(pending);
+  closePopup();
+}
+
+function placeDot(ann) {
+  var wrapper = document.getElementById("pw-" + ann.page);
+  var canvas = document.getElementById("pc-" + ann.page);
+  if(!wrapper || !canvas) return;
+  var wRect = wrapper.getBoundingClientRect();
+  var xRel = (ann.x - wRect.left) / wRect.width * canvas.offsetWidth;
+  var yRel = (ann.y - wRect.top) / wRect.height * canvas.offsetHeight;
+  var dot = document.createElement("div");
+  dot.className = "ann-dot " + ann.fn;
+  dot.textContent = ann.roman;
+  dot.style.left = xRel + "px";
+  dot.style.top = yRel + "px";
+  dot.title = ann.explanation;
+  var a = ann;
+  dot.onclick = function(e){ e.stopPropagation(); loadAnalysisForAnnotation(a); };
+  wrapper.appendChild(dot);
+}
+
+function updateBar() {
+  var bar = document.getElementById("annotations-bar");
+  var chips = document.getElementById("annotations-chips");
+  if(!annotations.length){ bar.style.display="none"; return; }
+  bar.style.display = "block"; chips.innerHTML = "";
+  annotations.forEach(function(a){
+    var c = document.createElement("div");
+    c.className = "ann-chip " + a.fn;
+    c.innerHTML = a.roman + " <span class='ann-pos'>p." + a.page + "</span>";
+    c.onclick = function(){ loadAnalysisForAnnotation(a); };
+    chips.appendChild(c);
+  });
+}
+
+function clearAll() {
+  annotations = [];
+  document.querySelectorAll(".ann-dot").forEach(function(d){ d.remove(); });
+  document.getElementById("annotations-bar").style.display = "none";
+  document.getElementById("context-banner").style.display = "none";
+}
+
+function updateContextBanner(ann) {
+  var b = document.getElementById("context-banner");
+  b.innerHTML = "Analyzing <strong>" + ann.roman + "</strong>  --  page " + ann.page + " of " + (piece ? piece.full : "score");
+  b.style.display = "block";
+}
+
+function loadAnalysisForAnnotation(ann) {
+  updateContextBanner(ann);
+  var content = document.getElementById("analysis-content");
+  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+  var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific  --  talk to them like a friend who knows this piece cold, not like a theory teacher.";
+  callAPI([{role:"user",content:prompt}], function(text){
+    content.innerHTML = ""; content.textContent = text;
+  }, SYS_SCORE);
+}
+
+function closePopup() {
+  document.getElementById("ann-popup").style.display = "none";
+  pending = null;
+}
+
+/* ANALYSIS */
+function setTab(t) {
+  tab = t;
+  var ts = ["story","recording","practice"];
+  document.querySelectorAll(".analysis-tab").forEach(function(b,i){ b.classList.toggle("active",ts[i]===t); });
+  var searchWrap = document.getElementById("performer-search-wrap");
+  if (searchWrap) searchWrap.style.display = (t === "recording" && piece) ? "block" : "none";
+  if (t !== "recording") hideDropdown();
+  renderRecs(); loadAnalysis();
+}
+
+/* ===== CONTENT CACHE -- prefetch all tabs in parallel ===== */
+var contentCache = {}; // key: pieceId+tab, value: rendered HTML
+
+function cacheKey(pieceId, tabName, extra) {
+  return pieceId + ":" + tabName + (extra ? ":" + extra : "");
+}
+
+function prefetchAll(p) {
+  if (!p) return;
+  var pid = p.id;
+
+  var prompts = {
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive -- 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.",
+    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each priority: name the passage and measures, describe the specific texture or figuration that creates the challenge (e.g. 'rapid sixteenth-note thirds in the right hand over a sustained bass'), then give one precise actionable instruction -- a rhythmic subdivision, a specific fingering strategy, or a voicing technique. Do not label textures with character names (agitato, cantabile) -- describe what the notes are doing. No bold. No preamble.",
+    history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
+    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
+    interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
+  };
+
+  // Fire ALL content calls in parallel -- don't chain
+  Object.keys(prompts).forEach(function(key) {
+    var isStudy = (key === "history" || key === "scholarship" || key === "interviews");
+    var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
+    if (contentCache[cKey]) return; // already cached, skip
+    callAPI([{role:"user",content:prompts[key]}], function(text) {
+      contentCache[cKey] = renderSectioned(text);
+      // Render immediately if user is already on this tab
+      if (!piece || piece.id !== pid) return;
+      var el = document.getElementById("analysis-content");
+      if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
+      else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
+      var sc = document.getElementById("study-content");
+      if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
+    });
+  });
+
+  // Recordings fetch in parallel
+  fetchRecordings(p);
+}
+
+function fetchRecordings(p) {
+  var prompt = "List the 5 most celebrated pianists known for performing " + p.full + " by " + p.composer + ". Include studio recordings, live concert recordings, and YouTube performances -- not just commercial studio albums. Include a mix of historic and contemporary pianists. Respond ONLY as a JSON array with no other text: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 2010s\"}]. Only include pianists who have definitively performed this work.";
+  callAPIWithSearchAsync([{role:"user",content:prompt}]).then(function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      // Find JSON array in response
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) return;
+      var recs = JSON.parse(match[0]);
+      if (!Array.isArray(recs) || !recs.length) return;
+      // Save to piece and localStorage
+      var key = "live-recordings-" + p.id;
+      localStorage.setItem(key, JSON.stringify(recs));
+      // If currently viewing this piece's interpretations tab, re-render
+      if (piece && piece.id === p.id && tab === "recording") {
+        rec = recs[0];
+        renderRecs();
+        loadAnalysis();
+      }
+    } catch(e) {}
+  });
+}
+
+function getLiveRecordings(p) {
+  try {
+    var saved = localStorage.getItem("live-recordings-" + p.id);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+/* Async API wrappers returning Promises */
+function callAPIAsync(messages) {
+  return new Promise(function(resolve) {
+    callAPI(messages, resolve);
+  });
+}
+function callAPIWithSearchAsync(messages) {
+  return new Promise(function(resolve) {
+    callAPIWithSearch(messages, resolve);
+  });
+}
+
+function renderRecs() {
+  var sel = document.getElementById("recording-selector");
+  sel.innerHTML = "";
+  if(tab==="recording" && piece) {
+    sel.style.display = "flex";
+    var liveRecs = getLiveRecordings(piece);
+    var customKey = "custom-performers-" + piece.id;
+    var customPerformers = [];
+    try { customPerformers = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+
+    if (!liveRecs) {
+      var loading = document.createElement("span");
+      loading.style.cssText = "font-size:11px;color:var(--text3);padding:4px 8px;font-weight:300;";
+      loading.textContent = "Finding recordings…";
+      sel.appendChild(loading);
+      var poll = setInterval(function() {
+        var r = getLiveRecordings(piece);
+        if (r) { clearInterval(poll); renderRecs(); }
+      }, 800);
+    } else {
+      var allRecs = liveRecs.concat(customPerformers);
+      if (!rec || !allRecs.find(function(r){ return r.id===rec.id; })) rec = allRecs[0];
+      allRecs.forEach(function(r){
+        var b = document.createElement("button");
+        b.className = "rec-btn" + (rec && r.id===rec.id?" active":"");
+        // If this rec has a real YouTube videoId, add a tiny ▶ indicator
+        var ytBadge = r.videoId ? " <span style='font-size:9px;opacity:0.6;'>▶</span>" : "";
+        b.innerHTML = escHtml(r.label) + ytBadge;
+        b.title = r.videoId ? "YouTube recording -- " + (r.videoTitle || r.full) : r.full || r.label;
+        b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
+        sel.appendChild(b);
+      });
+    }
+  } else { sel.style.display = "none"; }
+}
+
+/* ===== YOUTUBE PERFORMER SEARCH ===== */
+var _ytDebounceTimer = null;
+var _ytSelectedVideoId = null;
+
+function initPerformerSearch() {
+  var input = document.getElementById("performer-search-input");
+  var dropdown = document.getElementById("performer-dropdown");
+  if (!input) return;
+
+  input.addEventListener("input", function() {
+    var val = input.value.trim();
+    clearTimeout(_ytDebounceTimer);
+
+    if (val.length < 2) {
+      hideDropdown();
+      return;
     }
 
-    const data = await response.json();
-    return res.status(200).json(data);
+    // Show searching status
+    showDropdownStatus("Searching YouTube…");
 
-  } catch (err) {
-    console.error("vision handler error:", err);
-    return res.status(500).json({ error: err.message });
+    _ytDebounceTimer = setTimeout(function() {
+      searchYouTubePerformers(val);
+    }, 400);
+  });
+
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") { clearPerformerSearch(); }
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener("click", function(e) {
+    if (!dropdown.contains(e.target) && e.target !== input) {
+      hideDropdown();
+    }
+  });
+}
+
+function searchYouTubePerformers(query) {
+  if (!piece) return;
+  var pieceHint = piece.composer + " " + piece.title;
+  var url = "/api/youtube?q=" + encodeURIComponent(query) + "&pieceHint=" + encodeURIComponent(pieceHint);
+
+  fetch(url)
+    .then(function(r) {
+      if (!r.ok) throw new Error("youtube api unavailable");
+      return r.json();
+    })
+    .then(function(data) {
+      if (data.results && data.results.length) {
+        renderDropdownResults(data.results);
+      } else {
+        // YouTube returned nothing -- fall back to Claude search
+        searchPerformerWithClaude(query);
+      }
+    })
+    .catch(function() {
+      // YouTube API not deployed yet -- use Claude+search fallback
+      searchPerformerWithClaude(query);
+    });
+}
+
+function searchPerformerWithClaude(query) {
+  if (!piece) return;
+  var prompt = "Find YouTube recordings of the pianist \"" + query + "\" performing " + piece.full + " by " + piece.composer + ". Search YouTube and return real results. Respond ONLY as JSON array, no other text: [{\"performerName\":\"Full Name\",\"videoTitle\":\"exact video title\",\"videoId\":\"youtube_video_id_if_known\",\"thumbnail\":\"\"}]. If you cannot find a specific videoId, leave it as empty string but still include the performer if they have performed this work. Max 4 results.";
+  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) { showDropdownStatus("Type a performer name to search"); return; }
+      var results = JSON.parse(match[0]);
+      if (!Array.isArray(results) || !results.length) {
+        showDropdownStatus("No recordings found -- try another spelling");
+        return;
+      }
+      renderDropdownResults(results);
+    } catch(e) {
+      showDropdownStatus("Search error -- try again");
+    }
+  });
+}
+
+function renderDropdownResults(results) {
+  var dropdown = document.getElementById("performer-dropdown");
+  dropdown.innerHTML = "";
+  dropdown.style.display = "block";
+
+  results.forEach(function(r) {
+    var item = document.createElement("div");
+    item.className = "performer-suggestion";
+
+    var thumb = "";
+    if (r.thumbnail) {
+      thumb = "<img class='ps-thumb' src='" + r.thumbnail + "' alt='' onerror=\"this.style.display='none'\">";
+    } else {
+      thumb = "<div class='ps-thumb-placeholder'>♪</div>";
+    }
+
+    var subtitle = r.videoTitle
+      ? truncate(r.videoTitle, 48)
+      : piece.title + " · YouTube";
+
+    item.innerHTML =
+      thumb +
+      "<div class='ps-info'>" +
+        "<div class='ps-name'>" + escHtml(r.performerName) + "</div>" +
+        "<div class='ps-subtitle'>" + escHtml(subtitle) + "</div>" +
+      "</div>" +
+      "<span class='ps-yt'>▶ YT</span>";
+
+    item.addEventListener("click", function() {
+      selectPerformerFromYT(r);
+    });
+
+    dropdown.appendChild(item);
+  });
+}
+
+function selectPerformerFromYT(result) {
+  var input = document.getElementById("performer-search-input");
+  _ytSelectedVideoId = result.videoId;
+  hideDropdown();
+
+  // Build rec object with YouTube video link
+  var id = "yt-" + result.videoId;
+  var newRec = {
+    id: id,
+    label: result.performerName,
+    full: result.performerName + " (YouTube)",
+    videoId: result.videoId,
+    videoTitle: result.videoTitle
+  };
+
+  // Save to custom performers
+  var customKey = "custom-performers-" + piece.id;
+  var existing = [];
+  try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+  if (!existing.find(function(r){ return r.id === id; })) {
+    existing.push(newRec);
+    localStorage.setItem(customKey, JSON.stringify(existing));
   }
-};
+
+  // Clear input but keep search bar visible for another search
+  if (input) input.value = "";
+
+  // Switch to this recording and load interpretation
+  rec = newRec;
+  renderRecs();
+  loadAnalysis();
+}
+
+function showDropdownStatus(msg) {
+  var dropdown = document.getElementById("performer-dropdown");
+  dropdown.style.display = "block";
+  dropdown.innerHTML = "<div id='performer-dropdown-status'>" + escHtml(msg) + "</div>";
+}
+
+function hideDropdown() {
+  var dropdown = document.getElementById("performer-dropdown");
+  if (dropdown) { dropdown.style.display = "none"; dropdown.innerHTML = ""; }
+}
+
+function clearPerformerSearch() {
+  var inp = document.getElementById("performer-search-input");
+  if (inp) inp.value = "";
+  hideDropdown();
+}
+
+function showPerformerSearch() {
+  var wrap = document.getElementById("performer-search-wrap");
+  if (wrap) {
+    wrap.style.display = "block";
+    setTimeout(function() {
+      var inp = document.getElementById("performer-search-input");
+      if (inp) { inp.value = ""; inp.focus(); }
+    }, 50);
+  }
+}
+
+function hidePerformerSearch() {
+  var wrap = document.getElementById("performer-search-wrap");
+  if (wrap) wrap.style.display = "none";
+  hideDropdown();
+}
+
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function showAddPerformerInput() {
+  showPerformerSearch();
+}
+
+function addCustomPerformer(pianistName) {
+  // Legacy fallback -- not called in new flow but kept for safety
+  showPerformerSearch();
+  var inp = document.getElementById("performer-search-input");
+  if (inp) { inp.value = pianistName; }
+}
+
+function loadAnalysis() {
+  if(!piece) return;
+  document.getElementById("context-banner").style.display = "none";
+  var content = document.getElementById("analysis-content");
+  var pid = piece.id;
+  var currentTab = tab;
+  var reqId = ++analysisReqId;
+
+  function tryFromCache() {
+    if (!piece || piece.id !== pid || tab !== currentTab || reqId !== analysisReqId) return;
+
+    if (tab === "story") {
+      var cached = contentCache[cacheKey(pid,"story")];
+      if (cached) { content.innerHTML = cached; return; }
+      // Not ready -- show spinner and poll
+      if (content.innerHTML.indexOf("ldots") === -1) {
+        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      }
+      setTimeout(tryFromCache, 350);
+
+    } else if (tab === "practice") {
+      var cached = contentCache[cacheKey(pid,"practice")];
+      if (cached) { content.innerHTML = cached; return; }
+      if (content.innerHTML.indexOf("ldots") === -1) {
+        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      }
+      setTimeout(tryFromCache, 350);
+
+    } else if (tab === "recording") {
+      var liveRecs = getLiveRecordings(piece);
+      var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
+      var recId = rec ? rec.id : "default";
+      var cached = contentCache[cacheKey(pid,"recording",recId)];
+      if (cached) { content.innerHTML = cached; return; }
+      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      var ytLink = (rec && rec.videoId)
+        ? "https://www.youtube.com/watch?v=" + rec.videoId
+        : "https://www.youtube.com/results?search_query=" + encodeURIComponent((recName || piece.composer) + " " + piece.title);
+      var recNameForPrompt = recName || piece.composer;
+      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence -- this pianist is known for performing this piece. Use ## for each section: ## Their Approach, ## Key Moments (2-3 passages with measure refs), ## What It Reveals, ## Essential or Skip?. Opinionated, specific, peer-level. 2-3 sentences each. End with: [Listen on YouTube](" + ytLink + "). No bold. No preamble.";
+      callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+        if (reqId !== analysisReqId || tab !== currentTab) return;
+        var html = renderSectioned(text);
+        contentCache[cacheKey(pid,"recording",recId)] = html;
+        var el = document.getElementById("analysis-content");
+        if (el) el.innerHTML = html;
+      });
+    }
+  }
+
+  tryFromCache();
+}
+
+function renderSectioned(text) {
+  // GPT wraps entire paragraphs in ** -- strip outer ** from each paragraph first
+  // Then split known header words from their body text
+  
+  // Step 1: Remove ** that wrap entire lines/paragraphs
+  text = text.replace(/^\*\*(.+)\*\*$/gm, "$1");
+  
+  // Step 2: Split "HeaderWord body..." into "## HeaderWord\n\nbody..."
+  var HEADERS = ["Overview","Introduction","Exposition","Development","Recapitulation","Coda","Origins","Composer at the Time","Cultural Moment","Reception and Legacy","Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice","The Composer's Voice","Contemporary Reactions","The Great Interpreters"];
+  HEADERS.forEach(function(h) {
+    var re = new RegExp("^(" + h + "(?:\\s*\\([^)]*\\))?(?:\\s*mm\\.\\s*[\\d-]+)?)\\s+([A-Z])", "gm");
+    text = text.replace(re, "## $1\n\n$2");
+  });
+  // Also split "SectionName (mm. X-Y) Body" for any capitalized section name
+  text = text.replace(/^([A-Z][a-z]+(?:\s+[A-Za-z]+)*\s+\(mm\.\s*[\d-]+\))\s+([A-Z])/gm, "## $1\n\n$2");
+
+  // Step 3: Handle "**Header**\nContent" or "**Header (mm.)**\nContent"  
+  text = text.replace(/\*\*([^*\n]+)\*\*\s*\n/g, "## $1\n");
+
+  // Step 4: Handle "I. Movement (mm. X-Y) Body..."
+  text = text.replace(/^([IVX]+\.\s+[A-Za-z: ,()-]+(?:\([^)]*\))?)\s+([A-Z])/gm, "## $1\n\n$2");
+
+  // Step 5: Strip any remaining **
+  text = text.replace(/\*\*/g, "");
+
+  // Strip preamble
+  var lines = text.split("\n");
+  var cleaned = [];
+  var started = false;
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i].trim();
+    if (!started) {
+      if (l.match(/^(I will|I am|I need|I should|Let me|Before|\[Search|Based on|Searching|Note:|Please note)/i)) continue;
+      if (l === "---" || l === "") continue;
+      started = true;
+    }
+    if (l === "---") continue;
+    cleaned.push(lines[i]);
+  }
+  text = cleaned.join("\n");
+
+  var blocks = text.split("\n\n");
+  var out = "";
+  var firstBlock = true;
+
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i].trim();
+    if (!block) continue;
+    var flat = block.replace(/\n/g, " ").trim();
+
+    if (flat.match(/^#{1,3}\s/)) {
+      var headText = flat.replace(/^#{1,3}\s*/, "").trim();
+      out += makeHeader(headText, firstBlock);
+      firstBlock = false;
+      continue;
+    }
+
+    var para = flat;
+    para = para.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
+      if (url.indexOf("youtube") !== -1) {
+        return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;margin:4px 0;vertical-align:middle;'>&#9654; " + linkText + "</a>";
+      }
+      return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
+    });
+    para = para.replace(/^\[\s*|\s*\]$/g, "");
+    if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
+    out += "<p style='margin-bottom:20px;line-height:1.9;font-size:13px;color:var(--text);font-weight:300;" + (firstBlock ? "margin-top:4px;" : "") + "'>" + para + "</p>";
+    firstBlock = false;
+  }
+  return out || "<p style='font-size:13px;color:var(--text2);'>" + text + "</p>";
+}
+
+function makeHeader(text, isFirst) {
+  return "<div style='font-family:\"Cormorant Garamond\",serif;font-size:16px;font-weight:500;color:var(--text);" +
+    "margin-top:" + (isFirst ? "2px" : "32px") + ";margin-bottom:10px;" +
+    "padding-bottom:8px;border-bottom:1px solid var(--border);" +
+    "letter-spacing:0.1px;line-height:1.35;'>" + text + "</div>";
+}
+
+function setStudyTab(t) {
+  studyTab = t;
+  var ts = ["history","scholarship","interviews"];
+  document.querySelectorAll(".study-tab").forEach(function(b,i){ b.classList.toggle("active",ts[i]===t); });
+  loadStudy();
+}
+
+function loadStudy() {
+  if(!piece) return;
+  var content = document.getElementById("study-content");
+  var pid = piece.id;
+  var currentStudyTab = studyTab;
+
+  function tryStudyCache() {
+    if (!piece || piece.id !== pid || studyTab !== currentStudyTab) return;
+    var cached = contentCache[cacheKey(pid,"study",studyTab)];
+    if (cached) { content.innerHTML = cached; return; }
+    if (content.innerHTML.indexOf("ldots") === -1) {
+      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    }
+    setTimeout(tryStudyCache, 350);
+  }
+
+  tryStudyCache();
+}
+
+/* CHAT */
+function sendChat() {
+  var input = document.getElementById("chat-input");
+  var msg = input.value.trim(); if(!msg||!piece) return;
+  input.value = "";
+  var msgs = document.getElementById("chat-messages");
+  var ud = document.createElement("div"); ud.className="chat-msg user"; ud.textContent=msg; msgs.appendChild(ud);
+  var btn = document.getElementById("send-btn"); btn.disabled=true;
+
+  // Thinking indicator
+  var thinking = document.createElement("div");
+  thinking.className = "chat-msg assistant thinking-msg";
+  thinking.innerHTML = "<div class='ldots'><span></span><span></span><span></span></div>";
+  msgs.appendChild(thinking);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  function onReply(reply) {
+    thinking.remove();
+    chatHistory.push({role:"assistant", content: reply});
+    var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.innerHTML=formatChatReply(reply);
+    msgs.appendChild(ad);
+    msgs.scrollTop = msgs.scrollHeight;
+    btn.disabled=false;
+  }
+
+  // Build context prefix
+  var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
+  if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
+  var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
+
+  // Always use vision path -- callAPIWithVision handles the async capture internally
+  // and falls back to text-only if no score is available
+  chatHistory.push({role:"user", content: msg});
+  callAPIWithVision(fullPrompt, onReply);
+}
+
+/* ===== CHAT REPLY FORMATTER ===== */
+function formatChatReply(text) {
+  // Strip any remaining markdown bold/italic
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+  text = text.replace(/\*([^*]+)\*/g, "$1");
+  // Strip ## headers -- convert to plain label
+  text = text.replace(/^#{1,3}\s+(.+)$/gm, "$1");
+
+  var lines = text.split("\n");
+  var html = "";
+  var i = 0;
+
+  while (i < lines.length) {
+    var line = lines[i].trim();
+
+    if (!line) { i++; continue; } // skip blank lines (spacing handled by CSS)
+
+    // Numbered step: "1." "2." etc
+    if (/^\d+\.\s/.test(line)) {
+      html += "<div class='chat-step'><span class='chat-step-num'>" +
+        line.match(/^(\d+)\./)[1] + "</span><span class='chat-step-body'>" +
+        escChat(line.replace(/^\d+\.\s+/, "")) + "</span></div>";
+      i++; continue;
+    }
+
+    // Bullet: "- " or "• "
+    if (/^[-•]\s/.test(line)) {
+      html += "<div class='chat-bullet'>" + escChat(line.replace(/^[-•]\s+/, "")) + "</div>";
+      i++; continue;
+    }
+
+    // Short line (≤50 chars, no period at end) = section label
+    if (line.length <= 60 && !/[.,:;!?]$/.test(line) && i < lines.length - 1) {
+      html += "<div class='chat-label'>" + escChat(line) + "</div>";
+      i++; continue;
+    }
+
+    // Regular paragraph
+    html += "<p class='chat-para'>" + escChat(line) + "</p>";
+    i++;
+  }
+
+  return html || escChat(text);
+}
+
+function escChat(str) {
+  return String(str)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+
+  mode = m;
+  document.querySelectorAll(".mode-btn").forEach(function(b){ b.classList.toggle("active",b.textContent.toLowerCase()===m); });
+  document.getElementById("score-panel").style.display = m==="score"?"flex":"none";
+  document.getElementById("analysis-panel").style.display = m==="score"?"flex":"none";
+  document.getElementById("study-panel").style.display = m==="study"?"flex":"none";
+  if(m==="study"&&piece) loadStudy();
+}
+
+/* API */
+/* ===== SCORE VISION ===== */
+
+/**
+ * Captures a high-resolution crop of the currently visible score.
+ * - Finds which PDF pages are visible in the scroll container
+ * - Re-renders them at 2x scale via PDF.js (not the display canvas)
+ * - Crops to only the visible vertical region
+ * - Returns a Promise resolving to base64 PNG, or null on failure
+ */
+function captureScoreImage() {
+  if (!pdfDoc) { console.log("[vision] no pdfDoc"); return Promise.resolve(null); }
+  var pdfPages = document.getElementById("pdf-pages");
+  if (!pdfPages || pdfPages.style.display === "none") { return Promise.resolve(null); }
+
+  var scoreDisplay = document.getElementById("score-display");
+  var containerRect = scoreDisplay.getBoundingClientRect();
+
+  // Find which page wrappers overlap the visible viewport
+  var visiblePageNums = [];
+  for (var i = 1; i <= pdfDoc.numPages; i++) {
+    var wrapper = document.getElementById("pw-" + i);
+    if (!wrapper) continue;
+    var r = wrapper.getBoundingClientRect();
+    if (r.bottom > containerRect.top && r.top < containerRect.bottom) {
+      visiblePageNums.push(i);
+    }
+  }
+  if (!visiblePageNums.length) visiblePageNums = [1];
+
+  // Limit to 2 pages -- enough context, keeps payload focused
+  visiblePageNums = visiblePageNums.slice(0, 2);
+  console.log("[vision] rendering pages at 2x:", visiblePageNums);
+
+  var SCALE = 2.0;
+
+  // Re-render each visible page at 2x using PDF.js
+  var pagePromises = visiblePageNums.map(function(pageNum) {
+    return pdfDoc.getPage(pageNum).then(function(page) {
+      var vp = page.getViewport({ scale: SCALE });
+      var c = document.createElement("canvas");
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      return page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise
+        .then(function() {
+          // Record how much of this page is actually visible (for cropping)
+          var wrapper = document.getElementById("pw-" + pageNum);
+          var wRect = wrapper ? wrapper.getBoundingClientRect() : null;
+          var visTop = 0, visBottom = c.height;
+          if (wRect) {
+            var pageDisplayH = wRect.height;
+            var overlapTop = Math.max(0, containerRect.top - wRect.top);
+            var overlapBottom = Math.min(pageDisplayH, containerRect.bottom - wRect.top);
+            // Convert display pixels -> canvas pixels (2x scale)
+            var scaleY = c.height / pageDisplayH;
+            visTop = Math.max(0, Math.round(overlapTop * scaleY) - 20); // small padding
+            visBottom = Math.min(c.height, Math.round(overlapBottom * scaleY) + 20);
+          }
+          return { canvas: c, visTop: visTop, visBottom: visBottom };
+        });
+    });
+  });
+
+  return Promise.all(pagePromises).then(function(results) {
+    if (!results.length) return null;
+
+    var W = results[0].canvas.width;
+    var totalH = results.reduce(function(h, r) { return h + (r.visBottom - r.visTop); }, 0);
+
+    var composite = document.createElement("canvas");
+    composite.width = W;
+    composite.height = totalH;
+    var ctx = composite.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, totalH);
+
+    var y = 0;
+    results.forEach(function(r) {
+      var cropH = r.visBottom - r.visTop;
+      ctx.drawImage(r.canvas, 0, r.visTop, W, cropH, 0, y, W, cropH);
+      y += cropH;
+    });
+
+    try {
+      // PNG for sharpness -- staff lines need crisp edges, not JPEG artifacts
+      var dataUrl = composite.toDataURL("image/png");
+      var b64 = dataUrl.split(",")[1];
+      console.log("[vision] captured " + W + "x" + totalH + " px, base64 length:", b64.length);
+      return b64 || null;
+    } catch(e) {
+      console.error("[vision] toDataURL failed:", e);
+      return null;
+    }
+  }).catch(function(e) {
+    console.error("[vision] page render failed:", e);
+    return null;
+  });
+}
+
+/**
+ * Calls Claude Sonnet with vision -- attaches score image + text message.
+ * Falls back to text-only callAPI if image capture fails.
+ */
+function callAPIWithVision(textPrompt, callback) {
+  var statusEl = document.getElementById("vision-status");
+
+  captureScoreImage().then(function(imageBase64) {
+    if (!imageBase64) {
+      if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured -- answering from knowledge"; }
+      callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
+      return;
+    }
+    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Reading from score"; }
+
+    var messages = [{
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: "image/png", data: imageBase64 } },
+        { type: "text", text: textPrompt }
+      ]
+    }];
+
+    fetch("/api/vision", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ messages: messages, system: SYS_SCORE })
+    }).then(function(r) { return r.json(); })
+      .then(function(data) {
+        var text = "";
+        if (data.content && Array.isArray(data.content)) {
+          data.content.forEach(function(b) { if (b.type === "text") text += b.text; });
+        }
+        if (!text && data.error) {
+          console.error("[vision] API error:", data.error);
+          if (statusEl) statusEl.textContent = "⚠ Vision error -- falling back";
+          callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
+          return;
+        }
+        callback(text || "Unable to analyze score.");
+      })
+      .catch(function(e) {
+        console.error("[vision] fetch failed:", e);
+        if (statusEl) statusEl.textContent = "⚠ Connection error -- falling back";
+        callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
+      });
+  });
+}
+
+function callAPI(messages, callback, sysOverride) {
+  var body = {
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 3000,
+    system: sysOverride || SYS_KNOWLEDGE,
+    messages: messages
+  };
+
+  fetch("/api/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    callback(text || "Unable to load.");
+  }).catch(function() { callback("Connection error."); });
+}
+
+// OpenAI GPT-4o-mini -- faster for Analysis, Practice, Study
+function callOpenAI(messages, callback) {
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 15000);
+  fetch("/api/openai", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ messages: messages, system: SYS_KNOWLEDGE }),
+    signal: controller.signal
+  }).then(function(r) {
+    clearTimeout(timeout);
+    return r.json();
+  }).then(function(data) {
+    console.log("OpenAI response:", data);
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    if (text) { callback(text); return; }
+    // If empty, fall back to Claude
+    console.warn("OpenAI empty response, falling back to Claude");
+    callAPI(messages, callback);
+  }).catch(function(err) {
+    clearTimeout(timeout);
+    console.warn("OpenAI failed:", err, "-- falling back to Claude");
+    callAPI(messages, callback);
+  });
+}
+
+function callOpenAIAsync(messages) {
+  return new Promise(function(resolve) { callAPI(messages, resolve); });
+}
+
+// Search-enabled version -- uses web_search tool
+function callAPIWithSearch(messages, callback) {
+  var body = {
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 3000,
+    system: SYS_KNOWLEDGE,
+    messages: messages,
+    tools: [{ type: "web_search_20250305", name: "web_search" }]
+  };
+  fetch("/api/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    if (text) { callback(text); return; }
+    callAPI(messages, callback, SYS_KNOWLEDGE);
+  }).catch(function() { callAPI(messages, callback, SYS_KNOWLEDGE); });
+}
+
+function triggerLoad() {
+  var input = document.getElementById("file-input");
+  if (!input.files || !input.files[0]) {
+    alert("Please select a PDF file first.");
+    return;
+  }
+  loadPDF(input);
+}
+
+/* DRAW TOOLBAR */
+var drawColor = "#e05050";
+var drawSize = 2;
+var eraseMode = false;
+
+function setDrawColor(btn, color) {
+  drawColor = color;
+  eraseMode = false;
+  document.querySelectorAll(".draw-tool-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("erase-btn").style.background = "var(--bg)";
+  document.getElementById("erase-btn").style.fontWeight = "normal";
+}
+
+function setDrawSize(btn, size) {
+  drawSize = size;
+  document.querySelectorAll(".draw-size-btn").forEach(function(b){ b.classList.remove("active"); });
+  btn.classList.add("active");
+}
+
+function setEraseMode() {
+  eraseMode = !eraseMode;
+  var btn = document.getElementById("erase-btn");
+  btn.style.background = eraseMode ? "var(--text)" : "var(--bg)";
+  btn.style.color = eraseMode ? "var(--bg)" : "var(--text2)";
+  btn.style.fontWeight = eraseMode ? "600" : "normal";
+}
+
+function clearDrawings() {
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.getContext("2d").clearRect(0, 0, dc.width, dc.height);
+  });
+}
+
+/* MEASURE NUMBERS */
+var measureMode = false;
+var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
+
+
+
+
+function closeMeasurePopup() {
+  document.getElementById("measure-popup").style.display = "none";
+  document.getElementById("measure-input").value = "";
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && document.getElementById("measure-popup").style.display === "block") {
+    placeMeasureLabel();
+  }
+  if (e.key === "Escape") {
+    closeMeasurePopup();
+    document.getElementById("ann-popup").style.display = "none";
+  }
+});
+
+/* CHORD STRIP */
+
+function renderChordStrip() {
+  if (!piece) { document.getElementById("chord-strip-container").style.display = "none"; return; }
+
+  // Check localStorage cache first
+  var cacheKey = "chord-sections-" + piece.id;
+  if (!piece.sections || !piece.sections.length) {
+    try {
+      var cached = localStorage.getItem(cacheKey);
+      if (cached) piece.sections = JSON.parse(cached);
+    } catch(e) {}
+  }
+
+  if (piece.sections && piece.sections.length) {
+    document.getElementById("chord-strip-container").style.display = "block";
+    renderSectionTabs();
+    renderChords();
+  } else {
+    // No sections -- generate dynamically
+    document.getElementById("chord-strip-container").style.display = "block";
+    document.getElementById("section-tabs").innerHTML = "";
+    document.getElementById("chord-row").innerHTML =
+      "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
+      "<div class='ldots'><span></span><span></span><span></span></div> Generating harmonic analysis...</div>";
+    generateChordSections(piece, function(sections) {
+      if (!sections || !sections.length) {
+        document.getElementById("chord-row").innerHTML =
+          "<div style='font-size:11px;color:var(--text3);padding:6px 4px;'>Could not generate analysis for this piece.</div>";
+        return;
+      }
+      piece.sections = sections;
+      try { localStorage.setItem(cacheKey, JSON.stringify(sections)); } catch(e) {}
+      currentSection = 0;
+      renderSectionTabs();
+      renderChords();
+    });
+  }
+}
+
+// Valid Roman numeral symbols -- used for validation
+var VALID_CHORD_SYMBOLS = /^(i|ii|iii|iv|v|vi|vii|I|II|III|IV|V|VI|VII)(°|ø|o|0|dim|aug|\+)?(7|9|13|6|64|43|42|2|65)?(\/[IVivi]+)?(\([^)]*\))?$|^(N|N6|Ger|Fr|It)(6)?$|^(\+6|bII|bVI|bVII|#IV)$/;
+
+function validateChordSymbol(sym) {
+  if (!sym || typeof sym !== "string") return false;
+  var s = sym.trim().replace(/\s+/g, ""); // strip spaces like "A I"
+  return VALID_CHORD_SYMBOLS.test(s);
+}
+
+function generateChordSections(p, callback) {
+  var prompt = "You are generating a harmonic analysis for " + p.full + " by " + p.composer + ".\n\n" +
+    "RULES -- follow exactly:\n" +
+    "1. Only include a chord if you are confident it appears in the score. If uncertain, omit it -- do not fill space.\n" +
+    "2. Use ONLY standard Roman numeral symbols. Allowed: I ii III iv V vi vii° with optional 7/6/64/65/43/42 suffixes, /V secondary dominants, N6, Ger6, Fr6, It6, bVI, bVII. No other symbols.\n" +
+    "3. Do NOT invent labels like 'AI', 'A I', 'Eb I', or key-name prefixes. If you want to show a key area, use a section label.\n" +
+    "4. fn must be exactly one of: tonic, dominant, predominant, chromatic.\n" +
+    "5. Include 4-6 sections covering distinct formal areas. Each section needs 5-10 chords -- fewer confident chords is better than more uncertain ones.\n" +
+    "6. note must start with 'm.X -- ' where X is the measure number, followed by one sentence on performance implication.\n\n" +
+    "Return ONLY a JSON array, no markdown, no explanation:\n" +
+    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 -- the dominant seventh arrives without preparation; give the bass D full weight.\"}]}]";
+
+  callAPI([{role:"user",content:prompt}], function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) { callback(null); return; }
+      var sections = JSON.parse(match[0]);
+      if (!Array.isArray(sections) || !sections.length) { callback(null); return; }
+
+      // Validate and filter each section
+      sections = sections
+        .filter(function(s) { return s.label && s.chords && Array.isArray(s.chords); })
+        .map(function(s) {
+          // Strip invalid chord symbols
+          s.chords = s.chords.filter(function(c) {
+            if (!c.symbol || !c.fn) return false;
+            var sym = c.symbol.trim().replace(/\s+/g,"");
+            if (!validateChordSymbol(sym)) {
+              console.warn("[harmony] rejected symbol:", c.symbol);
+              return false;
+            }
+            c.symbol = sym; // normalised
+            return true;
+          });
+          return s;
+        })
+        .filter(function(s) { return s.chords.length >= 2; }); // need at least 2 valid chords
+
+      if (!sections.length) { callback(null); return; }
+      callback(sections);
+    } catch(e) { console.error("[harmony] parse error:", e); callback(null); }
+  }, SYS_KNOWLEDGE);
+}
+
+function renderSectionTabs() {
+  var tabs = document.getElementById("section-tabs");
+  tabs.innerHTML = "";
+  piece.sections.forEach(function(s, i) {
+    var tab = document.createElement("button");
+    tab.className = "section-tab" + (i === currentSection ? " active" : "");
+    tab.textContent = s.label + "  ·  " + s.measures;
+    tab.onclick = (function(idx) { return function() {
+      currentSection = idx;
+      renderSectionTabs();
+      renderChords();
+    }; })(i);
+    tabs.appendChild(tab);
+  });
+}
+
+function renderChords() {
+  var row = document.getElementById("chord-row");
+  row.innerHTML = "";
+  var section = piece.sections[currentSection];
+  if (!section) return;
+
+  // If section has fewer than 5 chords, auto-generate more
+  if (section.chords.length < 5 && !section._generating) {
+    section._generating = true;
+    row.innerHTML = "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
+      "<div class='ldots'><span></span><span></span><span></span></div> Filling in analysis...</div>";
+    var prompt = "Harmonic analysis for the " + section.label + " section (" + section.measures + ") of " + piece.full + " by " + piece.composer + ".\n\n" +
+      "Return ONLY a JSON array of chord objects. Only include chords you are confident about -- fewer correct chords is better than more uncertain ones.\n" +
+      "Use ONLY standard Roman numeral symbols (I ii III IV V vi vii° with 7/6/64 suffixes, N6, Ger6, bVI, bVII, secondary dominants like V7/IV). No key-name prefixes, no invented labels.\n" +
+      "Format: [{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.X -- one sentence on performance implication\"}]\n" +
+      "fn must be one of: tonic, dominant, predominant, chromatic. Include 5-10 chords. No markdown.";
+    var idx = currentSection;
+    callAPI([{role:"user",content:prompt}], function(text) {
+      try {
+        var clean = text.replace(/```json|```/g,"").trim();
+        var match = clean.match(/\[[\s\S]*\]/);
+        if (match) {
+          var chords = JSON.parse(match[0]);
+          if (Array.isArray(chords) && chords.length > 0) {
+            // Validate symbols before saving
+            chords = chords.filter(function(c) {
+              if (!c.symbol || !c.fn) return false;
+              var sym = c.symbol.trim().replace(/\s+/g,"");
+              if (!validateChordSymbol(sym)) { console.warn("[harmony] fill rejected:", c.symbol); return false; }
+              c.symbol = sym;
+              return true;
+            });
+            if (chords.length > 0) {
+              piece.sections[idx].chords = chords;
+              try { localStorage.setItem("chord-sections-" + piece.id, JSON.stringify(piece.sections)); } catch(e) {}
+            }
+          }
+        }
+      } catch(e) {}
+      piece.sections[idx]._generating = false;
+      if (currentSection === idx) renderChords();
+    });
+    return;
+  }
+
+  section.chords.forEach(function(c) {
+    var chip = document.createElement("div");
+    chip.className = "chord-chip " + c.fn;
+    chip.textContent = c.symbol;
+    chip.onclick = (function(chord) { return function(e) {
+      showChordPopup(e, chord);
+    }; })(c);
+    row.appendChild(chip);
+  });
+}
+
+function showChordPopup(e, chord) {
+  // Reuse the annotation popup for chord chip clicks
+  var popup = document.getElementById("ann-popup");
+  document.getElementById("ann-popup-title").textContent = chord.symbol + "   --   " + chord.fn;
+  document.getElementById("ann-popup-loading").style.display = "none";
+  var result = document.getElementById("ann-popup-result");
+  result.style.display = "block";
+  var romanEl = document.getElementById("ann-popup-roman");
+  romanEl.textContent = chord.symbol;
+  romanEl.className = chord.fn;
+  document.getElementById("ann-popup-explanation").textContent = chord.note;
+  document.getElementById("ann-edit-input").value = "";
+  // Hide add/dismiss buttons for chord strip clicks
+  document.getElementById("ann-popup-footer").style.display = "none";
+  popup.style.display = "block";
+  var x = Math.min(e.clientX + 14, window.innerWidth - 320);
+  var y = Math.min(e.clientY - 10, window.innerHeight - 200);
+  popup.style.left = x + "px";
+  popup.style.top = y + "px";
+  // Load deeper analysis in right panel
+  loadChordAnalysis(chord);
+}
+
+function loadChordAnalysis(chord) {
+  if (!piece) return;
+  var section = piece.sections[currentSection];
+  var banner = document.getElementById("context-banner");
+  banner.innerHTML = "Analyzing <strong>" + chord.symbol + "</strong> in " + section.label + " of " + piece.full;
+  banner.style.display = "block";
+  var content = document.getElementById("analysis-content");
+  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+  var chordContext = chord.note.split(" -- ");
+  var location = chordContext[0].trim();
+  var existingNote = chordContext[1] || "";
+  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer + ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" + existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, (2) explain what this harmony is doing structurally in this passage, (3) explain what it demands from the performer -- voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
+  var snapReqId = analysisReqId;
+  callAPIWithVision(prompt, function(text) {
+    if (analysisReqId !== snapReqId) return;
+    var el = document.getElementById("analysis-content");
+    if (el) el.innerHTML = renderSectioned(text);
+  });
+}
+
+/* SAVE/RESTORE ANNOTATIONS */
+function annotationKey(pageNum) {
+  var pid = piece ? piece.id : "default";
+  return "arioso-annot-" + pid + "-p" + pageNum;
+}
+
+function measureKey(pageNum) {
+  var pid = piece ? piece.id : "default";
+  return "arioso-meas-" + pid + "-p" + pageNum;
+}
+
+function saveDrawing(pageNum) {
+  var dc = document.getElementById("dc-" + pageNum);
+  if (!dc) return;
+  try {
+    localStorage.setItem(annotationKey(pageNum), dc.toDataURL());
+  } catch(e) {}
+}
+
+function restoreDrawing(pageNum) {
+  var dc = document.getElementById("dc-" + pageNum);
+  if (!dc) return;
+  var saved = localStorage.getItem(annotationKey(pageNum));
+  if (!saved) return;
+  var img = new Image();
+  img.onload = function() {
+    dc.getContext("2d").drawImage(img, 0, 0);
+  };
+  img.src = saved;
+}
+
+function saveMeasureLabels(pageNum) {
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var labels = wrapper.querySelectorAll(".measure-label");
+  var data = [];
+  labels.forEach(function(l) {
+    data.push({ left: l.style.left, top: l.style.top, text: l.textContent });
+  });
+  try {
+    localStorage.setItem(measureKey(pageNum), JSON.stringify(data));
+  } catch(e) {}
+}
+
+function restoreMeasureLabels(pageNum) {
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var saved = localStorage.getItem(measureKey(pageNum));
+  if (!saved) return;
+  var data = [];
+  try { data = JSON.parse(saved); } catch(e) { return; }
+  data.forEach(function(d) {
+    var label = document.createElement("div");
+    label.className = "measure-label";
+    label.textContent = d.text;
+    label.style.left = d.left;
+    label.style.top = d.top;
+    label.title = "Click to delete";
+    label.addEventListener("click", function(e) {
+      e.stopPropagation();
+      if (measureMode) { label.remove(); saveMeasureLabels(pageNum); }
+    });
+    wrapper.appendChild(label);
+  });
+}
+
+function clearAnnotationsForPiece() {
+  if (!piece) return;
+  var pid = piece.id;
+  var keys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && (k.startsWith("arioso-annot-" + pid) || k.startsWith("arioso-meas-" + pid))) {
+      keys.push(k);
+    }
+  }
+  keys.forEach(function(k) { localStorage.removeItem(k); });
+}
+
+/* ZOOM */
+function zoomIn() {
+  zoomLevel = Math.min(zoomLevel + 0.25, 3.0);
+  document.getElementById("zoom-label").textContent = Math.round(zoomLevel * 100) + "%";
+  applyZoom();
+}
+function zoomOut() {
+  zoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+  document.getElementById("zoom-label").textContent = Math.round(zoomLevel * 100) + "%";
+  applyZoom();
+}
+function applyZoom() {
+  if (!pdfDoc) return;
+  for (var i = 1; i <= pdfDoc.numPages; i++) {
+    (function(pageNum) {
+      pdfDoc.getPage(pageNum).then(function(page) {
+        var canvas = document.getElementById("pc-" + pageNum);
+        var drawCanvas = document.getElementById("dc-" + pageNum);
+        var wrapper = document.getElementById("pw-" + pageNum);
+        if (!canvas || !wrapper) return;
+        var container = document.getElementById("pdf-pages");
+        var baseWidth = container.clientWidth - 32;
+        var naturalW = page.getViewport({scale: 1}).width;
+        var scale = (baseWidth / naturalW) * zoomLevel;
+        var vp = page.getViewport({scale: scale});
+        // Internal canvas pixels
+        canvas.width = vp.width; canvas.height = vp.height;
+        // CSS display size -- zoom changes actual rendered width
+        var displayW = Math.round(baseWidth * zoomLevel);
+        var displayH = Math.round(vp.height * (displayW / vp.width));
+        canvas.style.width = displayW + "px";
+        canvas.style.height = displayH + "px";
+        if (drawCanvas) {
+          drawCanvas.width = displayW; drawCanvas.height = displayH;
+          drawCanvas.style.width = displayW + "px";
+          drawCanvas.style.height = displayH + "px";
+        }
+        wrapper.style.width = displayW + "px";
+        wrapper.style.height = displayH + "px";
+        wrapper.style.marginLeft = "auto";
+        wrapper.style.marginRight = "auto";
+        page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
+      });
+    })(i);
+  }
+}
+
+/* DRAW MODE */
+function toggleDraw() {
+  drawMode = !drawMode;
+  eraseMode = false;
+  if (drawMode && annotating) toggleAnnotate();
+  if (drawMode && measureMode) toggleMeasureMode();
+  var btn = document.getElementById("draw-btn");
+  btn.classList.toggle("toggled", drawMode);
+  btn.textContent = drawMode ? "Stop drawing" : "Annotate Score";
+  document.getElementById("draw-toolbar").style.display = drawMode ? "flex" : "none";
+  document.querySelectorAll(".draw-canvas").forEach(function(dc) {
+    dc.classList.toggle("active", drawMode);
+    if (drawMode) dc.style.cssText += "; cursor: crosshair !important;"; else dc.style.cursor = "default";
+  });
+  document.querySelectorAll(".pdf-page-wrapper canvas:not(.draw-canvas)").forEach(function(c) {
+    c.style.cursor = drawMode ? "crosshair" : "default";
+  });
+  document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
+    w.style.cursor = drawMode ? "crosshair" : "default";
+  });
+}
+
+function getCanvasPos(e, dc) {
+  var rect = dc.getBoundingClientRect();
+  // Scale from display pixels to canvas pixels
+  var scaleX = dc.width / rect.width;
+  var scaleY = dc.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+function startDraw(e, dc) {
+  if (!drawMode) return;
+  isDrawing = true;
+  currentDrawCanvas = dc;
+  currentDrawCtx = dc.getContext("2d");
+  var pos = getCanvasPos(e, dc);
+  currentDrawCtx.beginPath();
+  currentDrawCtx.moveTo(pos.x, pos.y);
+  if (eraseMode) {
+    currentDrawCtx.globalCompositeOperation = "destination-out";
+    currentDrawCtx.lineWidth = drawSize * 6;
+  } else {
+    currentDrawCtx.globalCompositeOperation = "source-over";
+    currentDrawCtx.strokeStyle = drawColor;
+    currentDrawCtx.lineWidth = drawSize;
+  }
+  currentDrawCtx.lineCap = "round";
+  currentDrawCtx.lineJoin = "round";
+}
+
+function continueDraw(e, dc) {
+  if (!isDrawing || !currentDrawCtx || currentDrawCanvas !== dc) return;
+  var pos = getCanvasPos(e, dc);
+  if (eraseMode) {
+    currentDrawCtx.globalCompositeOperation = "destination-out";
+    currentDrawCtx.lineWidth = drawSize * 6;
+  }
+  currentDrawCtx.lineTo(pos.x, pos.y);
+  currentDrawCtx.stroke();
+}
+
+function stopDraw() {
+  isDrawing = false;
+  if (currentDrawCtx) currentDrawCtx.beginPath();
+  if (currentDrawCanvas) {
+    // Find page number from canvas id (dc-N)
+    var id = currentDrawCanvas.id;
+    var pageNum = parseInt(id.replace("dc-", ""));
+    if (!isNaN(pageNum)) saveDrawing(pageNum);
+  }
+}
+
+
+
+
+
+
+function savePDFtoDB(arrayBuffer) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(arrayBuffer, "current-pdf");
+  });
+}
+
+function loadPDFfromDB(callback) {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readonly");
+    var req = tx.objectStore(STORE_NAME).get("current-pdf");
+    req.onsuccess = function(e) {
+      if (e.target.result) callback(e.target.result);
+    };
+    req.onerror = function() { /* no saved PDF */ };
+  });
+}
+
+function clearSavedPDF() {
+  openDB(function(db) {
+    var tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete("current-pdf");
+    pdfDoc = null;
+    document.getElementById("pdf-pages").innerHTML = "";
+    document.getElementById("pdf-pages").style.display = "none";
+    document.getElementById("upload-zone").style.display = "block";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
+    document.getElementById("measure-btn").style.display = "none";
+    document.getElementById("clear-pdf-btn").style.display = "none";
+    annotations = [];
+    document.getElementById("annotations-bar").style.display = "none";
+  });
+}
+
+
+function goToLibrary() {
+  // Reset score state
+  pdfDoc = null;
+  piece = null;
+  document.getElementById("pdf-pages").innerHTML = "";
+  document.getElementById("pdf-pages").style.display = "none";
+  document.getElementById("upload-zone").style.display = "block";
+  (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
+  document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
+  document.getElementById("clear-pdf-btn").style.display = "none";
+  document.getElementById("annotations-bar").style.display = "none";
+  annotations = [];
+  document.querySelectorAll(".piece-btn").forEach(function(b){ b.classList.remove("active"); });
+  document.getElementById("score-title").textContent = "Select a piece to begin";
+  document.getElementById("score-title").classList.add("empty");
+  document.getElementById("score-subtitle").textContent = "";
+  document.getElementById("analysis-content").innerHTML = "<span class='empty'>Select a piece to begin.</span>";
+  if (annotating) toggleAnnotate();
+  if (drawMode) toggleDraw();
+  setMode("score");
+  showScreen("library");
+  renderLibrary();
+}
+
+/* DRAG RESIZE */
+(function() {
+  var divider = document.getElementById("drag-divider");
+  var scorePanel = document.getElementById("score-panel");
+  var dragging = false;
+  var startX = 0;
+  var startWidth = 0;
+
+  divider.addEventListener("mousedown", function(e) {
+    dragging = true;
+    startX = e.clientX;
+    startWidth = scorePanel.getBoundingClientRect().width;
+    divider.classList.add("dragging");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", function(e) {
+    if (!dragging) return;
+    var main = document.getElementById("main");
+    var mainWidth = main.getBoundingClientRect().width;
+    var delta = e.clientX - startX;
+    var newWidth = startWidth + delta;
+    var minWidth = mainWidth * 0.3;
+    var maxWidth = mainWidth * 0.8;
+    newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    var pct = (newWidth / mainWidth * 100).toFixed(2);
+    scorePanel.style.flex = "0 0 " + pct + "%";
+  });
+
+  document.addEventListener("mouseup", function() {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove("dragging");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  });
+})();
+
+init();
+</script>
+</body>
+</html>
