@@ -74,11 +74,11 @@ body {
   display: none; flex-direction: column; height: 100vh; background: var(--bg3);
 }
 #library-header {
-  padding: 40px 56px 0; background: var(--bg);
+  background: var(--bg);
   border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 #library-header-top {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
 }
 #library-greeting {
   font-family: 'Cormorant Garamond', serif;
@@ -704,14 +704,22 @@ function clearDrawings() {
 <!-- LIBRARY SCREEN -->
 <div id="library-screen">
   <div id="library-header">
-    <div id="library-header-top">
+    <!-- Branding bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 56px;height:52px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;">
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;color:var(--text);letter-spacing:0.3px;">Arioso</span>
+        <span style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;font-weight:400;font-family:'DM Sans',sans-serif;">AI Score Companion</span>
+      </div>
+      <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
+    </div>
+    <!-- Greeting row -->
+    <div id="library-header-top" style="padding:32px 56px 0;">
       <div>
         <div id="library-greeting">Good evening, <span id="greeting-name"></span></div>
         <div id="library-subtitle">Your practice studio</div>
       </div>
-      <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
     </div>
-    <div id="library-tabs">
+    <div id="library-tabs" style="padding:0 56px;">
       <button class="lib-tab active">My library</button>
     </div>
   </div>
