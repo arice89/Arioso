@@ -24,9 +24,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 2000,
+        max_tokens: 800,
         messages: [
-          { role: "system", content: system },
+          { role: "system", content: system + " CRITICAL FORMATTING RULES: Use ## for section headings. Never use **bold** for section headers. Keep each section to 2-3 sentences maximum. No walls of text." },
           ...messages
         ]
       })
