@@ -93,8 +93,8 @@ body {
 
 /* Greeting section */
 #library-header-top {
-  padding: 32px 56px 0;
-  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px;
+  padding: 24px 56px 0;
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px;
 }
 #library-greeting {
   font-family: 'Cormorant Garamond', serif;
@@ -159,7 +159,7 @@ body {
 .piece-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: linear-gradient(180deg, var(--accent), var(--accent2));
-  opacity: 0; transition: opacity 0.3s;
+  opacity: 0.18; transition: opacity 0.3s;
 }
 .piece-card:hover {
   border-color: rgba(139,94,60,0.2); transform: translateY(-2px);
@@ -1265,22 +1265,22 @@ function renderLibrary() {
   var greetEl = document.getElementById("library-greeting");
   if (greetEl) greetEl.innerHTML = tod + ", <span>" + userName + "</span>";
 
-  // Update section label
+  // Section label
   var labelEl = document.getElementById("library-section-label");
   if (labelEl) {
-    var hasCurated = libraryPieces.some(function(p) { return p.curated; });
-    var hasCustom = libraryPieces.some(function(p) { return !p.curated; });
-    labelEl.textContent = libraryPieces.length === 0 ? "" :
-      hasCurated && !hasCustom ? "Curated pieces" :
-      !hasCurated && hasCustom ? "My scores" : "My library";
-    labelEl.style.display = libraryPieces.length === 0 ? "none" : "block";
+    if (libraryPieces.length === 0) {
+      labelEl.style.display = "none";
+    } else {
+      labelEl.style.display = "block";
+      var hasCurated = libraryPieces.some(function(p){ return p.curated; });
+      var hasCustom = libraryPieces.some(function(p){ return !p.curated; });
+      labelEl.textContent = (hasCurated && !hasCustom) ? "Curated pieces" : (!hasCurated && hasCustom) ? "My scores" : "My library";
+    }
   }
 
   libraryPieces.forEach(function(p, i) {
     var card = document.createElement("div");
     card.className = "piece-card";
-    // Accent bar only on the last-opened piece (first in list)
-    if (i === 0) card.style.borderLeft = "3px solid var(--accent)";
     card.innerHTML =
       "<div class='piece-card-composer'>" + p.composer + "</div>" +
       "<div class='piece-card-title'>" + p.title + "</div>" +
