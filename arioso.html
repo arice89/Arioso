@@ -590,6 +590,35 @@ function clearDrawings() {
 #analysis-content::-webkit-scrollbar-track { background: transparent; }
 #analysis-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+/* Chord explanation — secondary panel below full analysis */
+#chord-explanation {
+  border-top: 1px solid var(--border2);
+  margin: 0 0 0 0;
+  padding: 16px 40px 20px;
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+#chord-explanation-label {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--accent); font-weight: 500; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+#chord-explanation-label .chord-badge {
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600;
+  color: var(--accent); background: rgba(139,94,60,0.1);
+  padding: 1px 8px; border-radius: 3px;
+}
+#chord-explanation-body {
+  font-size: 12px; line-height: 1.75; color: var(--text2); font-weight: 300;
+  max-width: 620px;
+}
+#chord-explanation-close {
+  float: right; font-size: 11px; color: var(--text3); cursor: pointer;
+  background: none; border: none; padding: 0; font-family: inherit;
+  margin-top: -2px;
+}
+#chord-explanation-close:hover { color: var(--text); }
+
 /* CHAT -- integrated pill design */
 #chat-section {
   border-top: 2px solid var(--border2);
@@ -923,7 +952,10 @@ function clearDrawings() {
       </div>
     </div>
     <div id="context-banner"></div>
-    <div id="analysis-content"><span class="empty">Select a piece to begin.</span></div>
+    <div id="analysis-content">
+      <div id="full-analysis"><span class="empty">Select a piece to begin.</span></div>
+      <div id="chord-explanation" style="display:none;"></div>
+    </div>
     <div id="chat-section">
       <div id="vision-status" style="font-size:10px;color:var(--text3);padding:4px 2px 6px;display:none;"></div>
       <div id="chat-messages"></div>
@@ -2079,11 +2111,12 @@ function updateContextBanner(ann) {
 
 function loadAnalysisForAnnotation(ann) {
   updateContextBanner(ann);
-  var content = document.getElementById("analysis-content");
-  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific  --  talk to them like a friend who knows this piece cold, not like a theory teacher.";
+  showChordExplanation(ann.roman, ann.fn,
+    "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>");
+  var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific -- talk to them like a friend who knows this piece cold, not like a theory teacher.";
   callAPI([{role:"user",content:prompt}], function(text){
-    content.innerHTML = ""; content.textContent = text;
+    var body = document.getElementById("chord-explanation-body");
+    if(body) body.textContent = text;
   }, SYS_SCORE);
 }
 
@@ -2100,6 +2133,10 @@ function setTab(t) {
   var searchWrap = document.getElementById("performer-search-wrap");
   if (searchWrap) searchWrap.style.display = (t === "recording" && piece) ? "block" : "none";
   if (t !== "recording") hideDropdown();
+  // Hide chord explanation when switching tabs
+  var ce = document.getElementById("chord-explanation");
+  if (ce) ce.style.display = "none";
+  document.getElementById("context-banner").style.display = "none";
   renderRecs(); loadAnalysis();
 }
 
@@ -2131,7 +2168,7 @@ function prefetchAll(p) {
       contentCache[cKey] = renderSectioned(text);
       // Render immediately if user is already on this tab
       if (!piece || piece.id !== pid) return;
-      var el = document.getElementById("analysis-content");
+      var el = document.getElementById("full-analysis");
       if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
       else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
       var sc = document.getElementById("study-content");
@@ -2428,7 +2465,7 @@ function addCustomPerformer(pianistName) {
 function loadAnalysis() {
   if(!piece) return;
   document.getElementById("context-banner").style.display = "none";
-  var content = document.getElementById("analysis-content");
+  var content = document.getElementById("full-analysis"); var chordExp = document.getElementById("chord-explanation"); if(chordExp) chordExp.style.display = "none";
   var pid = piece.id;
   var currentTab = tab;
   var reqId = ++analysisReqId;
@@ -2469,7 +2506,7 @@ function loadAnalysis() {
         if (reqId !== analysisReqId || tab !== currentTab) return;
         var html = renderSectioned(text);
         contentCache[cacheKey(pid,"recording",recId)] = html;
-        var el = document.getElementById("analysis-content");
+        var el = document.getElementById("full-analysis");
         if (el) el.innerHTML = html;
       });
     }
@@ -2605,8 +2642,7 @@ function highlightMusicalTerms(text) {
     "secondary dominant","modal mixture","chromatic mediant","enharmonic"
   ];
 
-  // Color 2: muted accent2 (--accent2) — key/tonal area names
-  // Matches: "G minor", "E-flat major", "B-flat major", "F# minor", "Ab major" etc.
+  // Color 2: deeper warm brown for key/tonal area names — readable, distinct from terracotta
   var KEY_PATTERN = /\b([A-G][#b]?(?:-(?:flat|sharp))?\s*(?:major|minor|Major|Minor))\b/g;
 
   // Color 3: text2 (darker neutral) — structural terms
@@ -2623,7 +2659,7 @@ function highlightMusicalTerms(text) {
   });
 
   // Apply key names (warm gold, weight 400)
-  text = text.replace(KEY_PATTERN, "<span style='color:var(--accent2);font-weight:400;'>$1</span>");
+  text = text.replace(KEY_PATTERN, "<span style='color:#7a5230;font-weight:400;'>$1</span>");
 
   // Apply structural terms (slightly darker than body, weight 400)
   STRUCTURAL.forEach(function(term) {
@@ -3395,14 +3431,33 @@ function showChordPopup(e, chord) {
   loadChordAnalysis(chord);
 }
 
+/**
+ * Shows the chord explanation panel below the full analysis.
+ * The full analysis content remains untouched.
+ */
+function showChordExplanation(symbol, fn, bodyHtml) {
+  var panel = document.getElementById("chord-explanation");
+  if (!panel) return;
+  panel.style.display = "block";
+  panel.innerHTML =
+    "<div id='chord-explanation-label'>" +
+      "<span class='chord-badge " + fn + "'>" + symbol + "</span>" +
+      "<span style='color:var(--text3);font-size:9px;letter-spacing:1px;text-transform:uppercase;'>Chord analysis</span>" +
+      "<button id='chord-explanation-close' onclick='document.getElementById(\"chord-explanation\").style.display=\"none\";document.getElementById(\"context-banner\").style.display=\"none\";'>&#x2715;</button>" +
+    "</div>" +
+    "<div id='chord-explanation-body'>" + bodyHtml + "</div>";
+}
+
 function loadChordAnalysis(chord) {
   if (!piece) return;
   var section = piece.sections[currentSection];
   var banner = document.getElementById("context-banner");
   banner.innerHTML = "Analyzing <strong>" + chord.symbol + "</strong> in " + section.label + " of " + piece.full;
   banner.style.display = "block";
-  var content = document.getElementById("analysis-content");
-  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+
+  // Show loading state in chord explanation panel (leave full analysis intact)
+  showChordExplanation(chord.symbol, chord.fn,
+    "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>");
 
   var chordContext = (chord.note || "").split(" -- ");
   var location = chordContext[0].trim();
@@ -3433,8 +3488,8 @@ function loadChordAnalysis(chord) {
 
   function onResult(text) {
     if (analysisReqId !== snapReqId) return;
-    var el = document.getElementById("analysis-content");
-    if (el) el.innerHTML = renderSectioned(text);
+    var body = document.getElementById("chord-explanation-body");
+    if (body) body.innerHTML = renderSectioned(text);
   }
 
   if (targetPages && pdfDoc) {
@@ -3723,7 +3778,7 @@ function goToLibrary() {
   document.getElementById("score-title").textContent = "Select a piece to begin";
   document.getElementById("score-title").classList.add("empty");
   document.getElementById("score-subtitle").textContent = "";
-  document.getElementById("analysis-content").innerHTML = "<span class='empty'>Select a piece to begin.</span>";
+  document.getElementById("full-analysis").innerHTML = "<span class='empty'>Select a piece to begin.</span>"; var ce = document.getElementById("chord-explanation"); if(ce) ce.style.display = "none";
   if (annotating) toggleAnnotate();
   if (drawMode) toggleDraw();
   setMode("score");
