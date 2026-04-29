@@ -2359,6 +2359,11 @@ function prefetchAll(p) {
     var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
     if (contentCache[cKey]) return; // already cached, skip
     callAPI([{role:"user",content:prompts[key]}], function(text) {
+      if (!text || text.length < 50) {
+        // Empty or error response -- don't cache, will retry on next tab visit
+        console.warn("[prefetch] empty response for", key, "-- not caching");
+        return;
+      }
       contentCache[cKey] = renderSectioned(text);
       // Render immediately if user is already on this tab
       if (!piece || piece.id !== pid) return;
@@ -2664,13 +2669,18 @@ function loadAnalysis() {
   var currentTab = tab;
   var reqId = ++analysisReqId;
 
+  var tryCount = 0;
   function tryFromCache() {
     if (!piece || piece.id !== pid || tab !== currentTab || reqId !== analysisReqId) return;
+    tryCount++;
 
     if (tab === "story") {
       var cached = contentCache[cacheKey(pid,"story")];
       if (cached) { content.innerHTML = cached; return; }
-      // Not ready -- show spinner and poll
+      if (tryCount > 40) { // ~14 seconds
+        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
+        return;
+      }
       if (content.innerHTML.indexOf("ldots") === -1) {
         content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       }
@@ -2679,6 +2689,10 @@ function loadAnalysis() {
     } else if (tab === "practice") {
       var cached = contentCache[cacheKey(pid,"practice")];
       if (cached) { content.innerHTML = cached; return; }
+      if (tryCount > 40) {
+        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
+        return;
+      }
       if (content.innerHTML.indexOf("ldots") === -1) {
         content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       }
@@ -3294,8 +3308,12 @@ function callAPI(messages, callback, sysOverride) {
         if (block.type === "text") text += block.text;
       });
     }
-    callback(text || "Unable to load.");
-  }).catch(function() { callback("Connection error."); });
+    if (!text && data.error) {
+      console.error("[callAPI] error:", JSON.stringify(data.error));
+      callback(""); return;
+    }
+    callback(text || "");
+  }).catch(function(e) { console.error("[callAPI] fetch failed:", e); callback(""); });
 }
 
 // OpenAI GPT-4o-mini -- faster for Analysis, Practice, Study
