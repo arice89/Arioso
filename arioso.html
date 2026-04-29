@@ -236,21 +236,21 @@ body {
 
 #top-bar {
   display: flex; align-items: center; gap: 12px; padding: 0 20px;
-  background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0; height: 48px;
+  background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0; height: 52px;
 }
 #logo {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 20px; font-weight: 400; letter-spacing: 0.3px; flex-shrink: 0; color: var(--text);
+  font-size: 26px; font-weight: 400; letter-spacing: 0.3px; flex-shrink: 0; color: var(--text);
 }
 #logo em {
-  font-style: normal; font-weight: 300; font-size: 10px; margin-left: 8px;
+  font-style: normal; font-weight: 300; font-size: 11px; margin-left: 10px;
   letter-spacing: 1.5px; text-transform: uppercase;
   font-family: 'DM Sans', sans-serif; color: var(--text3);
 }
 #piece-selector { display: none; }
 #mode-toggle { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }
 .mode-btn {
-  padding: 5px 14px; border-radius: 4px; font-size: 10px;
+  padding: 6px 16px; border-radius: 4px; font-size: 11px;
   font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase;
   border: none; cursor: pointer; font-family: inherit;
   background: transparent; color: var(--text3); transition: all 0.15s;
@@ -269,9 +269,9 @@ body {
 }
 #score-header-info h2 {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 15px; font-weight: 500; letter-spacing: 0.1px; color: var(--text);
+  font-size: 18px; font-weight: 500; letter-spacing: 0.1px; color: var(--text);
 }
-#score-header-info p { font-size: 10px; color: var(--text3); margin-top: 2px; letter-spacing: 0.3px; }
+#score-header-info p { font-size: 11px; color: var(--text3); margin-top: 3px; letter-spacing: 0.3px; }
 #score-header-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
 
 .hdr-btn {
@@ -347,15 +347,15 @@ body {
   display: flex; gap: 10px; align-items: center;
   padding: 6px 16px 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border);
 }
-.strip-label { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-right: 4px; }
-.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); font-weight: 300; }
-.legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+.strip-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-right: 6px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); font-weight: 300; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; }
 #section-tabs { display: flex; overflow-x: auto; background: var(--bg2); }
 #section-tabs::-webkit-scrollbar { display: none; }
 .section-tab {
-  padding: 5px 14px; font-size: 9px; cursor: pointer; white-space: nowrap;
+  padding: 7px 16px; font-size: 11px; cursor: pointer; white-space: nowrap;
   color: var(--text3); border-bottom: 2px solid transparent; border-right: 1px solid var(--border);
-  transition: all 0.15s; background: transparent; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500;
+  transition: all 0.15s; background: transparent; letter-spacing: 0.3px; font-weight: 400;
   border-top: none; border-left: none; font-family: inherit;
 }
 .section-tab:hover { color: var(--text2); background: var(--bg); }
@@ -516,8 +516,8 @@ function clearDrawings() {
 #analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
 #analysis-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
 .analysis-tab {
-  padding: 14px 18px; font-size: 10px; cursor: pointer; color: var(--text3);
-  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;
+  padding: 15px 20px; font-size: 11px; cursor: pointer; color: var(--text3);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
   background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
 }
 .analysis-tab:hover { color: var(--text2); }
@@ -611,8 +611,8 @@ function clearDrawings() {
 #study-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; background: var(--panel); }
 #study-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
 .study-tab {
-  padding: 14px 18px; font-size: 10px; cursor: pointer; color: var(--text3);
-  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;
+  padding: 15px 20px; font-size: 11px; cursor: pointer; color: var(--text3);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
   background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
 }
 .study-tab:hover { color: var(--text2); }
@@ -744,7 +744,7 @@ function clearDrawings() {
 </div>
 
 <div id="top-bar">
-  <button id="back-btn" onclick="goToLibrary()" style="padding:4px 10px;border-radius:var(--radius);font-size:11px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;color:var(--text2);font-family:inherit;margin-right:4px;">&#8592; Library</button>
+  <button id="back-btn" onclick="goToLibrary()" style="padding:6px 12px;border-radius:var(--radius);font-size:11px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;color:var(--text2);font-family:inherit;margin-right:4px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">&#8592; Library</button>
   <div id="logo">Arioso <em>AI Score Companion</em></div>
   <div id="piece-selector"></div>
   <div id="mode-toggle">
@@ -818,7 +818,7 @@ function clearDrawings() {
       </div>
       <div id="section-tabs"></div>
       <div id="chord-row"></div>
-      <div style="padding:3px 16px 7px;font-size:10px;color:var(--text3);">AI-generated analysis  --  click any chord to see reasoning. Override if incorrect.</div>
+      <div style="padding:4px 16px 8px;font-size:11px;color:var(--text3);font-weight:300;">AI-generated analysis — click any chord to see reasoning. Override if incorrect.</div>
     </div>
 
     <div id="annotations-bar">
