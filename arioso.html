@@ -2052,7 +2052,7 @@ function selectPiece(i) {
   t.textContent = piece.full; t.classList.remove("empty");
   document.getElementById("score-subtitle").textContent = piece.composer + "   .   " + piece.year + "   .   " + piece.key;
   document.getElementById("chat-messages").innerHTML = "";
-  prefetchAll(piece); // kick off all parallel fetches
+  prefetchAll(piece); // kick off all fetches immediately
   renderRecs(); loadAnalysis();
   renderChordStrip();
   if(mode==="study") loadStudy();
@@ -2347,7 +2347,6 @@ function prefetchAll(p, force) {
   if (!p) return;
   var pid = p.id;
   var now = Date.now();
-  // Normal: 30s debounce. Force: 5s debounce (prevents double-fire but allows measure-aware refresh)
   var debounceMs = force ? 5000 : 30000;
   if (prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < debounceMs) {
     console.log("[prefetch] skipping -- ran", Math.round((now - prefetchLastRun[pid])/1000), "s ago");
@@ -2373,7 +2372,7 @@ function prefetchAll(p, force) {
     story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix,
     practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix,
     history:  "Historical overview of " + p.full + " by " + p.composer + " (" + p.year + ") like serious program notes. Every sentence must refer specifically to " + p.composer + " and this work. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
-    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to this work. Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble." + mPrefix,
+    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to this work. Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No links, no URLs, no bold. No preamble." + mPrefix,
     interviews: "Documented statements and critical reception for " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to " + p.composer + " and this work — not any other composer or piece. Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
   };
 
@@ -2406,8 +2405,14 @@ function prefetchAll(p, force) {
         contentCache[cKey] = renderSectioned(text);
         if (!piece || piece.id !== pid) return;
         var el = document.getElementById("full-analysis");
-        if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
-        else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
+        // For story/practice: silently replace if currently displayed AND content lacks measure numbers
+        if (key === "story" && tab === "story" && el) {
+          var hasMeasures = el.innerHTML.indexOf("mm.") !== -1 || el.innerHTML.indexOf("m. ") !== -1;
+          if (!hasMeasures || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = contentCache[cKey];
+        } else if (key === "practice" && tab === "practice" && el) {
+          var hasMeasures2 = el.innerHTML.indexOf("mm.") !== -1 || el.innerHTML.indexOf("m. ") !== -1;
+          if (!hasMeasures2 || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = contentCache[cKey];
+        }
         var sc = document.getElementById("study-content");
         if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
       });
@@ -2834,10 +2839,10 @@ function renderSectioned(text) {
     return "\n\n__YTBLOCK_" + (ytLinks.length - 1) + "__\n\n";
   });
 
-  // Strip ALL ## occurrences — inline or standalone — and treat what follows as a label
-  // Convert "text ## Label" -> "text\n\nLabel"
+  // Convert ## headers to a sentinel that survives block splitting
+  // "## Label" → "\n\n__HDR__Label__HDR__\n\n"
   text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
-    return "\n\n" + label.trim();
+    return "\n\n__HDR__" + label.trim() + "__HDR__\n\n";
   });
 
   // Convert ## headers explicitly marked
@@ -2909,6 +2914,14 @@ function renderSectioned(text) {
     if (!block) continue;
 
     var flat = block.replace(/\n/g, " ").trim();
+
+    // Explicit header sentinel from ## processing
+    var hdrMatch = flat.match(/^__HDR__(.+)__HDR__$/);
+    if (hdrMatch) {
+      out += makeHeader(hdrMatch[1].trim(), firstBlock);
+      firstBlock = false;
+      continue;
+    }
 
     // YouTube link placeholder (both old YTLINK: format and new __YTBLOCK_N__ format)
     var ytBlockMatch = flat.match(/^__YTBLOCK_(\d+)__$/);
@@ -2988,6 +3001,8 @@ function renderSectioned(text) {
     firstBlock = false;
   }
   if (!out) out = "<p style='font-size:13px;color:var(--text);'>" + text + "</p>";
+  // Strip any unresolved YTBLOCK placeholders
+  out = out.replace(/__YTBLOCK_\d+__/g, "");
   return '<div class="analysis-inner">' + out + '</div>';
 }
 
