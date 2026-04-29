@@ -3099,7 +3099,30 @@ function sendChat() {
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
   ctx += (getMeasureContext() || getNoMeasureContext()) + " ";
-  var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
+  // Detect if this is an emotional/interpretive question — skip notation description
+  var EMOTIONAL_PATTERNS = [
+    "emotional","emotion","feel","feeling","mood","character","express","expression",
+    "story","narrative","imagine","imagin","what is it about","what's it about",
+    "what should i think","what should i feel","how do i convey","how should i play it emotionally",
+    "sad","happy","tragic","joyful","dark","light","heavy","tender","fierce","longing",
+    "what to think","playing attitude","interpretive","interpretation","musically mean",
+    "inner voice","character of","spirit of","atmosphere","poetic","meaning behind"
+  ];
+  var q = msg.toLowerCase();
+  var isEmotionalQuery = EMOTIONAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
+
+  var fullPrompt;
+  if (isEmotionalQuery) {
+    fullPrompt = ctx + "The performer is asking an emotional and interpretive question about this passage. " +
+      "Skip notation description entirely. Answer directly with: " +
+      "(1) What emotional world this passage lives in -- give it a specific feeling, not a vague label. Use metaphor, analogy, a human situation. " +
+      "(2) How that translates into physical playing choices -- tempo character, weight of touch, pedal feel, balance between hands, where to lean in and where to hold back. Be specific: 'keep the left hand heavy on beat one, like footsteps', not 'play expressively'. " +
+      "(3) What the performer should be imagining or telling themselves while playing -- one sentence they can actually hold in their head at the piano. " +
+      "Speak like a brilliant colleague who performs this repertoire, not a theory teacher. Direct and vivid. 150-250 words. " +
+      "Question: " + msg;
+  } else {
+    fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
+  }
 
   chatHistory.push({role:"user", content: msg});
 
