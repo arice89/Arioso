@@ -2337,6 +2337,7 @@ function setTab(t) {
 
 /* ===== CONTENT CACHE -- prefetch all tabs in parallel ===== */
 var contentCache = {}; // key: pieceId+tab, value: rendered HTML
+var contentCacheGen = {}; // key: pieceId, value: measure count when cached
 
 function cacheKey(pieceId, tabName, extra) {
   return pieceId + ":" + tabName + (extra ? ":" + extra : "");
@@ -2345,6 +2346,16 @@ function cacheKey(pieceId, tabName, extra) {
 function prefetchAll(p) {
   if (!p) return;
   var pid = p.id;
+
+  // Record how many measure labels exist right now so we can detect changes later
+  var measureCount = 0;
+  if (pdfDoc) {
+    for (var pi = 1; pi <= pdfDoc.numPages; pi++) {
+      var pw = document.getElementById("pw-" + pi);
+      if (pw) measureCount += pw.querySelectorAll(".measure-label").length;
+    }
+  }
+  contentCacheGen[pid] = measureCount;
 
   var mCtx = getMeasureContext();
   var mPrefix = mCtx
@@ -2753,6 +2764,34 @@ function renderSectioned(text) {
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
   text = text.replace(/\*([^*\n]+)\*/g, "$1");
 
+  // Convert ## headers explicitly marked
+  // Also detect freeform section headers: short line (≤80 chars), no trailing period,
+  // followed by a blank line or content — treat as section header
+  var lines = text.split("\n");
+  var processed = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var trimmed = line.trim();
+    // Already a ## header
+    if (trimmed.match(/^#{1,3}\s/)) {
+      processed.push(line);
+      continue;
+    }
+    // Detect freeform header: non-empty, ≤80 chars, no trailing period/comma/semicolon,
+    // not a bullet or number, followed by blank line or end
+    var nextLine = (i + 1 < lines.length) ? lines[i + 1].trim() : "";
+    var isShort = trimmed.length > 0 && trimmed.length <= 80;
+    var noTrailingPunct = !/[.,;:!?]$/.test(trimmed);
+    var notBullet = !/^[-•\d]/.test(trimmed);
+    var followedByBlank = nextLine === "";
+    if (isShort && noTrailingPunct && notBullet && followedByBlank && trimmed.length > 8) {
+      processed.push("## " + trimmed);
+    } else {
+      processed.push(line);
+    }
+  }
+  text = processed.join("\n");
+
   // Normalize practice section labels to ## headers
   var PRACTICE_LABELS = ["What's hard","What is hard","What to do","What to listen for","What to listen","Key focus","Priority \\d+[:\\.]?[^\\n]*"];
   PRACTICE_LABELS.forEach(function(h) {
@@ -2760,30 +2799,19 @@ function renderSectioned(text) {
     text = text.replace(re, "## $1\n\n");
   });
 
-  // Known analysis headers
-  var HEADERS = ["Overview","Introduction","Exposition","Development","Recapitulation","Coda","Origins","Composer at the Time","Cultural Moment","Reception and Legacy","Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice","The Composer's Voice","Contemporary Reactions","The Great Interpreters","Key harmonic idea","What to listen for","How to practice"];
-  HEADERS.forEach(function(h) {
-    var re = new RegExp("^(" + h + "(?:\\s*\\([^)]*\\))?(?:\\s*mm\\.\\s*[\\d-]+)?)[:\\s]+([A-Z])", "gm");
-    text = text.replace(re, "## $1\n\n$2");
-  });
-
-  text = text.replace(/^([A-Z][a-z]+(?:\s+[A-Za-z]+)*\s+\(mm\.\s*[\d-]+\))\s+([A-Z])/gm, "## $1\n\n$2");
-  text = text.replace(/\*\*([^*\n]+)\*\*\s*\n/g, "## $1\n");
-  text = text.replace(/^([IVX]+\.\s+[A-Za-z: ,()-]+(?:\([^)]*\))?)\s+([A-Z])/gm, "## $1\n\n$2");
-
   // Strip preamble lines
-  var lines = text.split("\n");
+  var lines2 = text.split("\n");
   var cleaned = [];
   var started = false;
-  for (var i = 0; i < lines.length; i++) {
-    var l = lines[i].trim();
+  for (var j = 0; j < lines2.length; j++) {
+    var l = lines2[j].trim();
     if (!started) {
       if (l.match(/^(I will|I am|I need|I should|Let me|Before|\[Search|Based on|Searching|Note:|Please note)/i)) continue;
       if (l === "---" || l === "") continue;
       started = true;
     }
     if (l === "---") continue;
-    cleaned.push(lines[i]);
+    cleaned.push(lines2[j]);
   }
   text = cleaned.join("\n");
 
@@ -2795,8 +2823,9 @@ function renderSectioned(text) {
     var block = blocks[i].trim();
     if (!block) continue;
 
-    // Section header
     var flat = block.replace(/\n/g, " ").trim();
+
+    // Section header
     if (flat.match(/^#{1,3}\s/)) {
       var headText = flat.replace(/^#{1,3}\s*/, "").trim();
       out += makeHeader(headText, firstBlock);
@@ -2804,7 +2833,7 @@ function renderSectioned(text) {
       continue;
     }
 
-    // Numbered steps block — render each line as a step
+    // Numbered steps block
     if (block.match(/^\d+\.\s/m)) {
       var stepLines = block.split("\n");
       stepLines.forEach(function(sl) {
