@@ -18,8 +18,8 @@
   --bg4:      #e2ddd3;
   --panel:    #f7f4ef;
   --text:     #18120e;   /* deep warm black */
-  --text2:    #3a3530;   /* dark warm brown — was #6b6560, now much darker */
-  --text3:    #7a746e;   /* mid warm grey — was #a8a29d, now clearly readable */
+  --text2:    #3a3530;   /* dark warm brown -- was #6b6560, now much darker */
+  --text3:    #7a746e;   /* mid warm grey -- was #a8a29d, now clearly readable */
   --accent:   #8b5e3c;
   --accent2:  #c4a882;
   --border:   rgba(28,25,23,0.08);
@@ -149,7 +149,7 @@ body {
   position: absolute; width: 1px; background: var(--text3);
 }
 
-/* Piece cards — resume-focused */
+/* Piece cards -- resume-focused */
 .piece-card {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -195,7 +195,7 @@ body {
 }
 .piece-card:hover .resume-cta { opacity: 1; transform: translateY(0); }
 
-/* Add card — refined, no dashes */
+/* Add card -- refined, no dashes */
 .add-card {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 8px; padding: 22px 22px 18px; cursor: pointer;
@@ -565,7 +565,7 @@ function clearDrawings() {
 }
 #context-banner strong { color: var(--accent); font-weight: 500; }
 
-/* ANALYSIS CONTENT — typography is everything here */
+/* ANALYSIS CONTENT -- typography is everything here */
 #analysis-content {
   flex: 1; overflow-y: auto; padding: 28px 28px 16px;
   font-family: 'DM Sans', sans-serif;
@@ -587,7 +587,7 @@ function clearDrawings() {
 #analysis-content::-webkit-scrollbar-track { background: transparent; }
 #analysis-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-/* CHAT — integrated pill design */
+/* CHAT -- integrated pill design */
 #chat-section {
   border-top: 2px solid var(--border2);
   padding: 14px 18px 16px;
@@ -636,13 +636,13 @@ function clearDrawings() {
   font-size: 12px; color: var(--text); font-weight: 300; line-height: 1.65; flex: 1;
 }
 .chat-msg.thinking-msg { opacity: 0.7; }
-.chat-msg.thinking-msg::before { content: "Arioso  —  "; font-weight: 600; color: var(--accent); font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; font-family: 'DM Sans', sans-serif; }
+.chat-msg.thinking-msg::before { content: "Arioso  --  "; font-weight: 600; color: var(--accent); font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; font-family: 'DM Sans', sans-serif; }
 .chat-msg.thinking-msg .ldots { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 2px; }
 .chat-msg.thinking-msg .ldots span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; opacity: 0.6; }
 .chat-msg.thinking-msg .ldots span:nth-child(2) { animation-delay: 0.2s; }
 .chat-msg.thinking-msg .ldots span:nth-child(3) { animation-delay: 0.4s; }
 .chat-msg.assistant:not(.thinking-msg)::before {
-  content: "Arioso  —  "; font-weight: 600; color: var(--accent);
+  content: "Arioso  --  "; font-weight: 600; color: var(--accent);
   font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
   font-family: 'DM Sans', sans-serif;
 }
@@ -686,7 +686,7 @@ function clearDrawings() {
 .loading-wrap { display: flex; align-items: center; justify-content: center; padding: 52px; }
 .empty { color: var(--text3); font-size: 13px; font-weight: 300; letter-spacing: 0.3px; }
 
-/* PERFORMER SEARCH — YouTube autocomplete */
+/* PERFORMER SEARCH -- YouTube autocomplete */
 #performer-search-wrap {
   width: 100%; padding: 8px 16px 10px; border-top: 1px solid var(--border);
   background: var(--bg2); display: none;
@@ -883,7 +883,7 @@ function clearDrawings() {
       </div>
       <div id="section-tabs"></div>
       <div id="chord-row"></div>
-      <div style="padding:4px 16px 8px;font-size:11px;color:var(--text3);font-weight:300;">AI-generated analysis — click any chord to see reasoning. Override if incorrect.</div>
+      <div style="padding:4px 16px 8px;font-size:11px;color:var(--text3);font-weight:300;">AI-generated analysis -- click any chord to see reasoning. Override if incorrect.</div>
     </div>
 
     <div id="annotations-bar">
@@ -905,7 +905,7 @@ function clearDrawings() {
       <button class="analysis-tab" onclick="setTab('practice')">Practice</button>
     </div>
     <div id="recording-selector"></div>
-    <!-- PERFORMER SEARCH — shown only on Interpretations tab -->
+    <!-- PERFORMER SEARCH -- shown only on Interpretations tab -->
     <div id="performer-search-wrap">
       <div id="performer-search-label">Search for a performer</div>
       <div id="performer-search-row">
@@ -1272,7 +1272,7 @@ function makeScorePreview() {
   var lines = staffLines.map(function(y) {
     return '<line x1="4" y1="' + y + '" x2="' + (w-4) + '" y2="' + y + '" stroke="#b8b0a8" stroke-width="0.7"/>';
   }).join('');
-  // Clef indicator — simple vertical line at left
+  // Clef indicator -- simple vertical line at left
   var clef = '<line x1="10" y1="10" x2="10" y2="46" stroke="#b8b0a8" stroke-width="1.2"/>';
   // Bar line in middle
   var barline = '<line x1="112" y1="12" x2="112" y2="44" stroke="#b8b0a8" stroke-width="0.8"/>';
@@ -1374,7 +1374,7 @@ function openPiece(libIdx) {
     loadAnalysis();
   }
 
-  // Load PDF — for curated pieces, auto-fetch from GitHub if not cached
+  // Load PDF -- for curated pieces, auto-fetch from GitHub if not cached
   var pdfKey = libPiece.pdfKey || libPiece.id;
   var loadBuffer = function(buffer) {
     pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
@@ -1527,7 +1527,7 @@ var PIECES = [
         {symbol:"I",fn:"tonic",note:"m.47  --  Eb, confirmed. The melody floats above a deep, resonant bass."},
         {symbol:"ii",fn:"predominant",note:"m.49  --  F minor. The first shadow at the edge of paradise."},
         {symbol:"V7/V",fn:"chromatic",note:"m.50  --  Bb7 as dominant of the dominant. A gentle intensification."},
-        {symbol:"V",fn:"dominant",note:"m.51  --  Bb major. The first real dominant — resolution comes, but feels earned."},
+        {symbol:"V",fn:"dominant",note:"m.51  --  Bb major. The first real dominant -- resolution comes, but feels earned."},
         {symbol:"I",fn:"tonic",note:"m.52  --  Eb returns. But the inner voices are beginning to move chromatically."},
         {symbol:"V7/IV",fn:"chromatic",note:"m.54  --  The color deepens again. The idyll is starting to feel fragile."},
         {symbol:"IV",fn:"predominant",note:"m.55  --  Ab. Still warm but less certain than before."},
@@ -1565,44 +1565,44 @@ var PIECES = [
   { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
     recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"},{id:"af22",label:"Afanassiev 2022",full:"Valery Afanassiev, 2022"}],
     sections:[
-      {label:"Mvt I — Vivace",measures:"Vivace ma non troppo",chords:[
-        {symbol:"I",fn:"tonic",note:"m.1  --  E major, but the meter is ambiguous — compound duple disguised as simple. The opening is a question, not a statement."},
+      {label:"Mvt I -- Vivace",measures:"Vivace ma non troppo",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  E major, but the meter is ambiguous -- compound duple disguised as simple. The opening is a question, not a statement."},
         {symbol:"V7",fn:"dominant",note:"m.3  --  B dominant seventh. Beethoven establishes the dominant before the tonic is even settled."},
         {symbol:"I",fn:"tonic",note:"m.5  --  E major returns, but with added inner voices. The texture is filling in."},
-        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. The subdominant world enters early — Beethoven is not interested in diatonic simplicity."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. The subdominant world enters early -- Beethoven is not interested in diatonic simplicity."},
         {symbol:"V7",fn:"dominant",note:"m.11  --  Dominant seventh, driving toward the half cadence."},
         {symbol:"I",fn:"tonic",note:"m.13  --  E major, more assertive. The first theme completes its arc."},
-        {symbol:"vi",fn:"tonic",note:"m.17  --  C# minor. The submediant — a darkening of the tonic that foreshadows the Adagio."},
+        {symbol:"vi",fn:"tonic",note:"m.17  --  C# minor. The submediant -- a darkening of the tonic that foreshadows the Adagio."},
         {symbol:"IV",fn:"predominant",note:"m.21  --  A major. The subdominant is warm here, not tragic."},
-        {symbol:"V",fn:"dominant",note:"m.24  --  B major. Clean, structural — Beethoven clears the air for the Adagio transition."},
+        {symbol:"V",fn:"dominant",note:"m.24  --  B major. Clean, structural -- Beethoven clears the air for the Adagio transition."},
         {symbol:"I",fn:"tonic",note:"m.28  --  E major, closing the Vivace. But the transition to Adagio is immediate and shocking."}
       ]},
-      {label:"Mvt I — Adagio",measures:"Adagio espressivo",chords:[
-        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor. The parallel minor — the first dark shadow in the sonata. This is not the same E as before."},
+      {label:"Mvt I -- Adagio",measures:"Adagio espressivo",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor. The parallel minor -- the first dark shadow in the sonata. This is not the same E as before."},
         {symbol:"iv",fn:"predominant",note:"m.2  --  A minor. The subdominant in minor deepens the tragedy."},
         {symbol:"V7",fn:"dominant",note:"m.4  --  B dominant seventh. The Adagio's harmonic language is simpler but more concentrated."},
-        {symbol:"i",fn:"tonic",note:"m.6  --  E minor again. The resolution is no comfort — it is resignation."},
+        {symbol:"i",fn:"tonic",note:"m.6  --  E minor again. The resolution is no comfort -- it is resignation."},
         {symbol:"VI",fn:"tonic",note:"m.7  --  C major. The submediant in minor is here a moment of warmth before the final cadence."},
-        {symbol:"V7",fn:"dominant",note:"m.8  --  B7. The final dominant — the Adagio will close, and the Vivace will return."},
+        {symbol:"V7",fn:"dominant",note:"m.8  --  B7. The final dominant -- the Adagio will close, and the Vivace will return."},
         {symbol:"I",fn:"tonic",note:"m.9  --  E major, the Vivace returns. Beethoven's tempo alternation is a formal innovation with no precedent."}
       ]},
-      {label:"Mvt II — Prestissimo",measures:"Prestissimo",chords:[
-        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor, presto. This movement is an eruption — the darkness hinted at in the Adagio now unleashed."},
+      {label:"Mvt II -- Prestissimo",measures:"Prestissimo",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor, presto. This movement is an eruption -- the darkness hinted at in the Adagio now unleashed."},
         {symbol:"III",fn:"tonic",note:"m.8  --  G major, the relative major. Brief warmth immediately extinguished."},
         {symbol:"V7",fn:"dominant",note:"m.16  --  B7, relentless. The dominant hammering is characteristic of Beethoven's late style."},
-        {symbol:"iv",fn:"predominant",note:"m.24  --  A minor. Subdominant darkening — the movement refuses any comfort."},
-        {symbol:"N6",fn:"chromatic",note:"m.36  --  F major in first inversion. The Neapolitan — borrowed from the Romantic future. Maximum tension."},
+        {symbol:"iv",fn:"predominant",note:"m.24  --  A minor. Subdominant darkening -- the movement refuses any comfort."},
+        {symbol:"N6",fn:"chromatic",note:"m.36  --  F major in first inversion. The Neapolitan -- borrowed from the Romantic future. Maximum tension."},
         {symbol:"V7",fn:"dominant",note:"m.44  --  B dominant seventh. Everything has been leading to this point."},
-        {symbol:"i",fn:"tonic",note:"m.52  --  E minor. The recapitulation — but compressed and intensified."},
+        {symbol:"i",fn:"tonic",note:"m.52  --  E minor. The recapitulation -- but compressed and intensified."},
         {symbol:"V7",fn:"dominant",note:"m.72  --  Final dominant preparation. The Prestissimo is about to close."},
-        {symbol:"I",fn:"tonic",note:"m.98  --  E major, the parallel major. The ending is not tragic but transcendent — a Beethoven speciality."}
+        {symbol:"I",fn:"tonic",note:"m.98  --  E major, the parallel major. The ending is not tragic but transcendent -- a Beethoven speciality."}
       ]},
-      {label:"Mvt III — Theme & Vars",measures:"Gesangvoll",chords:[
+      {label:"Mvt III -- Theme & Vars",measures:"Gesangvoll",chords:[
         {symbol:"I",fn:"tonic",note:"m.1  --  E major, Gesangvoll. The most sustained, singing theme Beethoven ever wrote for piano. Every note matters."},
-        {symbol:"V7",fn:"dominant",note:"m.3  --  B7. The dominant is gentle here — no urgency, only inevitability."},
+        {symbol:"V7",fn:"dominant",note:"m.3  --  B7. The dominant is gentle here -- no urgency, only inevitability."},
         {symbol:"I",fn:"tonic",note:"m.5  --  E major. The theme unfolds like a slow exhalation."},
         {symbol:"IV",fn:"predominant",note:"m.7  --  A major. The subdominant is warm, hymn-like. Beethoven is writing spiritual music."},
-        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. A shadow — brief but telling."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. A shadow -- brief but telling."},
         {symbol:"V7",fn:"dominant",note:"m.11  --  B7. The dominant, inevitable. The variations will depart from this center and return."},
         {symbol:"vi",fn:"tonic",note:"m.13  --  C# minor. Beethoven's characteristic submediant color."},
         {symbol:"I",fn:"tonic",note:"m.16  --  E major. The theme closes. Six variations will follow, each a different world."}
@@ -1611,93 +1611,93 @@ var PIECES = [
   { id:"schubert-d960", composer:"Schubert", title:"Sonata D. 960", full:"Piano Sonata in Bb major, D. 960", year:"1828", key:"Bb major",
     recordings:[{id:"s37",label:"Schnabel 1937",full:"Artur Schnabel, 1937"},{id:"b88",label:"Brendel 1988",full:"Alfred Brendel, 1988"},{id:"p03",label:"Perahia 2003",full:"Murray Perahia, 2003"},{id:"im19",label:"Imogen Cooper 2019",full:"Imogen Cooper, 2019"}],
     sections:[
-      {label:"Mvt I — Exposition",measures:"mm. 1-80",chords:[
+      {label:"Mvt I -- Exposition",measures:"mm. 1-80",chords:[
         {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, serene and vast. No urgency. Schubert wrote this three months before he died."},
-        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. Flat-VI, otherworldly, unrepeated. The most analyzed moment in the sonata — it appears without preparation and resolves as if always there."},
-        {symbol:"I",fn:"tonic",note:"m.9  --  Bb returns. But the listener has been displaced — the tonic now has a shadow."},
+        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. Flat-VI, otherworldly, unrepeated. The most analyzed moment in the sonata -- it appears without preparation and resolves as if always there."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  Bb returns. But the listener has been displaced -- the tonic now has a shadow."},
         {symbol:"V",fn:"dominant",note:"m.18  --  F major, delayed unusually long. The first theme has been floating, harmonically uncommitted."},
         {symbol:"IV",fn:"predominant",note:"m.20  --  Eb major. The subdominant broadens the phrase before the transition."},
         {symbol:"ii",fn:"predominant",note:"m.24  --  C minor. Transition darkens toward the second theme."},
-        {symbol:"V7/V",fn:"chromatic",note:"m.28  --  C7. Points toward F major — but Schubert refuses the expected arrival."},
-        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Deliberate estrangement — listener expected F major warmth, received shadow instead."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.28  --  C7. Points toward F major -- but Schubert refuses the expected arrival."},
+        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Deliberate estrangement -- listener expected F major warmth, received shadow instead."},
         {symbol:"A I",fn:"tonic",note:"m.48  --  A major. The relative major appears late and in the wrong place."},
-        {symbol:"E I",fn:"chromatic",note:"m.52  --  E major. A third below A — Schubert moves by thirds, not fifths."},
+        {symbol:"E I",fn:"chromatic",note:"m.52  --  E major. A third below A -- Schubert moves by thirds, not fifths."},
         {symbol:"V7",fn:"dominant",note:"m.72  --  F7. Final dominant push toward the double bar."},
         {symbol:"I",fn:"tonic",note:"m.80  --  Bb major. End of exposition. Schubert has undermined confidence in Bb throughout."}
       ]},
-      {label:"Mvt I — Development",measures:"mm. 81-212",chords:[
-        {symbol:"Bb I",fn:"tonic",note:"m.81  --  Development begins on the tonic — unexpected. Schubert refuses the conventional dominant move."},
+      {label:"Mvt I -- Development",measures:"mm. 81-212",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.81  --  Development begins on the tonic -- unexpected. Schubert refuses the conventional dominant move."},
         {symbol:"b i",fn:"chromatic",note:"m.96  --  Bb minor, the parallel minor. The home key becomes its own shadow."},
-        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant — Schubert's world operates by thirds, not fifths."},
+        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant -- Schubert's world operates by thirds, not fifths."},
         {symbol:"Ab I",fn:"chromatic",note:"m.116  --  Ab major. Another third down. The flat-key journey continues."},
-        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb — the harmonic antipode of home."},
+        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb -- the harmonic antipode of home."},
         {symbol:"Db I",fn:"chromatic",note:"m.132  --  Db major. Beginning the long return journey."},
         {symbol:"Ab I",fn:"chromatic",note:"m.136  --  Ab major. Return through thirds, in reverse."},
         {symbol:"V7",fn:"dominant",note:"m.148  --  F7. The journey home begins. But the recapitulation will not bring comfort."},
-        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. Recapitulation — but the Gb trill now appears over an unexpected harmony."},
-        {symbol:"f# i",fn:"chromatic",note:"m.192  --  F# minor returns. The second theme now in the tonic minor — even darker than before."},
-        {symbol:"I",fn:"tonic",note:"m.212  --  Bb major. The movement ends — not resolved, only exhausted."}
+        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. Recapitulation -- but the Gb trill now appears over an unexpected harmony."},
+        {symbol:"f# i",fn:"chromatic",note:"m.192  --  F# minor returns. The second theme now in the tonic minor -- even darker than before."},
+        {symbol:"I",fn:"tonic",note:"m.212  --  Bb major. The movement ends -- not resolved, only exhausted."}
       ]},
-      {label:"Mvt II — Andante",measures:"mm. 1-50",chords:[
-        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. Remote from Bb by a major third — Schubert's characteristic third-relation between movements."},
+      {label:"Mvt II -- Andante",measures:"mm. 1-50",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. Remote from Bb by a major third -- Schubert's characteristic third-relation between movements."},
         {symbol:"iv",fn:"predominant",note:"m.3  --  F# minor. The subdominant deepens the opening darkness."},
         {symbol:"V",fn:"dominant",note:"m.6  --  G# major. The dominant in minor is desolate here."},
         {symbol:"i",fn:"tonic",note:"m.8  --  C# minor. The melody is a lament."},
         {symbol:"VI",fn:"tonic",note:"m.10  --  A major. A moment of warmth, immediately extinguished."},
-        {symbol:"iv",fn:"predominant",note:"m.14  --  F# minor. The subdominant returns — the lament deepens."},
+        {symbol:"iv",fn:"predominant",note:"m.14  --  F# minor. The subdominant returns -- the lament deepens."},
         {symbol:"A I",fn:"chromatic",note:"m.20  --  A major, the relative major. A middle section of comparative serenity."},
-        {symbol:"E I",fn:"chromatic",note:"m.24  --  E major. Another third away — Schubert never stays in one harmonic world."},
+        {symbol:"E I",fn:"chromatic",note:"m.24  --  E major. Another third away -- Schubert never stays in one harmonic world."},
         {symbol:"V7",fn:"dominant",note:"m.32  --  G#7. Preparing the return of C# minor."},
         {symbol:"i",fn:"tonic",note:"m.36  --  C# minor. The lament returns with inner-voice chromaticism."},
-        {symbol:"N6",fn:"chromatic",note:"m.40  --  D major in first inversion. The Neapolitan — maximum harmonic pressure at the emotional peak."},
+        {symbol:"N6",fn:"chromatic",note:"m.40  --  D major in first inversion. The Neapolitan -- maximum harmonic pressure at the emotional peak."},
         {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with unresolved longing."},
-        {symbol:"i",fn:"tonic",note:"m.50  --  C# minor. The final cadence — not resolution, only settling."}
+        {symbol:"i",fn:"tonic",note:"m.50  --  C# minor. The final cadence -- not resolution, only settling."}
       ]},
-      {label:"III — Scherzo",measures:"mm. 1-68",chords:[
-        {symbol:"Bb I",fn:"tonic",note:"m.1  --  Bb major, Allegro vivace. The Scherzo erupts after the slow movement's C# minor — the return to Bb is a relief, but Schubert makes it rough and angular, not warm."},
-        {symbol:"v",fn:"tonic",note:"m.8  --  F minor. The parallel minor intrudes immediately — Schubert refuses to let Bb be simple."},
+      {label:"III -- Scherzo",measures:"mm. 1-68",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.1  --  Bb major, Allegro vivace. The Scherzo erupts after the slow movement's C# minor -- the return to Bb is a relief, but Schubert makes it rough and angular, not warm."},
+        {symbol:"v",fn:"tonic",note:"m.8  --  F minor. The parallel minor intrudes immediately -- Schubert refuses to let Bb be simple."},
         {symbol:"IV",fn:"predominant",note:"m.16  --  Eb major. The subdominant broadens the phrase."},
         {symbol:"V",fn:"dominant",note:"m.24  --  F major. The dominant prepares the repeat."},
-        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The Scherzo section closes — the Trio follows."},
-        {symbol:"Gb I",fn:"chromatic",note:"m.36  --  Gb major, the Trio. The same flat-VI from the first movement opening trill — now a full section. Schubert is obsessed with this relationship."},
-        {symbol:"Db I",fn:"chromatic",note:"m.44  --  Db major. A third below Gb — Schubert's third-chain harmonic world again."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The Scherzo section closes -- the Trio follows."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.36  --  Gb major, the Trio. The same flat-VI from the first movement opening trill -- now a full section. Schubert is obsessed with this relationship."},
+        {symbol:"Db I",fn:"chromatic",note:"m.44  --  Db major. A third below Gb -- Schubert's third-chain harmonic world again."},
         {symbol:"Gb I",fn:"chromatic",note:"m.52  --  Gb major returns. The Trio breathes in these remote flat keys."},
         {symbol:"V",fn:"dominant",note:"m.60  --  F major. The dominant prepares the Scherzo da capo."},
         {symbol:"I",fn:"tonic",note:"m.68  --  Bb major. Scherzo returns. D.C. al Fine."}
       ]},
-      {label:"IV — Allegro",measures:"mm. 1-360",chords:[
-        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, the Rondo theme. Gentle, song-like — almost too simple after everything that came before. Schubert is lulling the listener."},
+      {label:"IV -- Allegro",measures:"mm. 1-360",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, the Rondo theme. Gentle, song-like -- almost too simple after everything that came before. Schubert is lulling the listener."},
         {symbol:"V",fn:"dominant",note:"m.16  --  F major. The dominant, perfectly placed. The Rondo has classical clarity Schubert allows himself rarely."},
-        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The theme returns — the first rondo refrain."},
-        {symbol:"f i",fn:"chromatic",note:"m.48  --  F minor. The first episode — the parallel minor darkens the texture without warning."},
-        {symbol:"Db I",fn:"chromatic",note:"m.64  --  Db major. The third-relation again. Schubert cannot help himself — the flat mediant appears in every movement."},
-        {symbol:"I",fn:"tonic",note:"m.96  --  Bb major. The Rondo theme returns — but something has shifted."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The theme returns -- the first rondo refrain."},
+        {symbol:"f i",fn:"chromatic",note:"m.48  --  F minor. The first episode -- the parallel minor darkens the texture without warning."},
+        {symbol:"Db I",fn:"chromatic",note:"m.64  --  Db major. The third-relation again. Schubert cannot help himself -- the flat mediant appears in every movement."},
+        {symbol:"I",fn:"tonic",note:"m.96  --  Bb major. The Rondo theme returns -- but something has shifted."},
         {symbol:"b i",fn:"chromatic",note:"m.128  --  Bb minor. The parallel minor, this time sustained. The darkness that has been circling since the first movement finally arrives in the home key."},
-        {symbol:"Gb I",fn:"chromatic",note:"m.160  --  Gb major. The flat-VI trill pitch from the opening — now a full harmonic area in the final movement. The circle closes."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.160  --  Gb major. The flat-VI trill pitch from the opening -- now a full harmonic area in the final movement. The circle closes."},
         {symbol:"V7",fn:"dominant",note:"m.280  --  F7. The long dominant preparation for the final return. Schubert extends it mercilessly."},
-        {symbol:"I",fn:"tonic",note:"m.320  --  Bb major. The final Rondo statement — but played as if returning from very far away. The coda is not triumphant. It is acceptance."}
+        {symbol:"I",fn:"tonic",note:"m.320  --  Bb major. The final Rondo statement -- but played as if returning from very far away. The coda is not triumphant. It is acceptance."}
       ]}
     ]},
   { id:"ravel-gaspard", composer:"Ravel", title:"Gaspard de la Nuit", full:"Gaspard de la Nuit", year:"1908", key:"C# (Ondine)",
     recordings:[{id:"a78",label:"Argerich 1978",full:"Martha Argerich, 1978"},{id:"pg81",label:"Pogorelich 1981",full:"Ivo Pogorelich, 1981"},{id:"t98",label:"Thibaudet 1998",full:"Jean-Yves Thibaudet, 1998"},{id:"yw19",label:"Yuja Wang 2019",full:"Yuja Wang, 2019"}],
     sections:[
       {label:"Ondine",measures:"mm. 1-80",page:"pp. 1-5",chords:[
-        {symbol:"I",fn:"tonic",note:"m.1  --  C# major, the water music begins. The repeated C# in the right hand is the surface of the lake — it never changes, it shimmers."},
-        {symbol:"V9",fn:"dominant",note:"m.8  --  G# with added ninth. Ravel's dominants are always enriched with color tones — never bare."},
-        {symbol:"I",fn:"tonic",note:"m.12  --  C# returns. The tonic is not a resolution here but a stasis — the water has no intention of moving."},
+        {symbol:"I",fn:"tonic",note:"m.1  --  C# major, the water music begins. The repeated C# in the right hand is the surface of the lake -- it never changes, it shimmers."},
+        {symbol:"V9",fn:"dominant",note:"m.8  --  G# with added ninth. Ravel's dominants are always enriched with color tones -- never bare."},
+        {symbol:"I",fn:"tonic",note:"m.12  --  C# returns. The tonic is not a resolution here but a stasis -- the water has no intention of moving."},
         {symbol:"bVI",fn:"chromatic",note:"m.20  --  A major, flat-VI. Impressionist harmonic color borrowed from the modal world. The water becomes opaque."},
         {symbol:"V7",fn:"dominant",note:"m.28  --  G# dominant seventh. A rare moment of traditional harmonic function in a work that largely suspends it."},
         {symbol:"I",fn:"tonic",note:"m.32  --  C# major. The melody of Ondine's song."},
-        {symbol:"bVII",fn:"chromatic",note:"m.40  --  B major, the subtonic. Modal borrowing — Ravel is thinking in Dorian and Mixolydian as much as major."},
+        {symbol:"bVII",fn:"chromatic",note:"m.40  --  B major, the subtonic. Modal borrowing -- Ravel is thinking in Dorian and Mixolydian as much as major."},
         {symbol:"V7/IV",fn:"chromatic",note:"m.48  --  F#7, secondary dominant of the subdominant. The harmonic color deepens."},
         {symbol:"IV",fn:"predominant",note:"m.52  --  F# major. The subdominant is warm here, a moment of lyrical expansion."},
-        {symbol:"I",fn:"tonic",note:"m.60  --  C# major. Ondine's song reaches its apex — the texture thickens before the final dissolution."},
-        {symbol:"V7",fn:"dominant",note:"m.68  --  G#7. The dominant approaches — but Ondine will reject the human, and the cadence will not resolve conventionally."},
+        {symbol:"I",fn:"tonic",note:"m.60  --  C# major. Ondine's song reaches its apex -- the texture thickens before the final dissolution."},
+        {symbol:"V7",fn:"dominant",note:"m.68  --  G#7. The dominant approaches -- but Ondine will reject the human, and the cadence will not resolve conventionally."},
         {symbol:"I",fn:"tonic",note:"m.80  --  C# major, but the texture evaporates. The water closes. Nothing remains."}
       ]},
       {label:"Le Gibet",measures:"mm. 1-67",page:"pp. 6-10",chords:[
-        {symbol:"Bb ostinato",fn:"tonic",note:"m.1  --  Bb, the tolling bell. It never moves. It is the most famous pedal point in piano music — 67 measures, not one deviation."},
-        {symbol:"bii",fn:"chromatic",note:"m.4  --  Cb minor. A flat-two minor — the Phrygian inflection. The harmonic language of death and the gallows."},
+        {symbol:"Bb ostinato",fn:"tonic",note:"m.1  --  Bb, the tolling bell. It never moves. It is the most famous pedal point in piano music -- 67 measures, not one deviation."},
+        {symbol:"bii",fn:"chromatic",note:"m.4  --  Cb minor. A flat-two minor -- the Phrygian inflection. The harmonic language of death and the gallows."},
         {symbol:"V7",fn:"dominant",note:"m.8  --  F dominant seventh, above the Bb pedal. The tension between the pedal and the moving harmonies is the entire drama."},
         {symbol:"bVI",fn:"chromatic",note:"m.12  --  Gb major. Modal color, cold, distant."},
         {symbol:"i",fn:"tonic",note:"m.16  --  Bb minor. The tolling bell continues, indifferent."},
@@ -1707,24 +1707,24 @@ var PIECES = [
         {symbol:"Bb",fn:"tonic",note:"m.67  --  The final toll. The bell stops. The piece does not end so much as cease."}
       ]},
       {label:"Scarbo",measures:"mm. 1-115",page:"pp. 11-17",chords:[
-        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor, presto. The demon appears — a single note repeated at impossible speed. The technical demand is inseparable from the harmonic meaning: instability made physical."},
-        {symbol:"V7",fn:"dominant",note:"m.12  --  G#7. The dominant arrives before the tonic is established — Scarbo refuses to be contained."},
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor, presto. The demon appears -- a single note repeated at impossible speed. The technical demand is inseparable from the harmonic meaning: instability made physical."},
+        {symbol:"V7",fn:"dominant",note:"m.12  --  G#7. The dominant arrives before the tonic is established -- Scarbo refuses to be contained."},
         {symbol:"i",fn:"tonic",note:"m.20  --  C# minor. The demon dances."},
-        {symbol:"bVI",fn:"chromatic",note:"m.32  --  A major. Grotesque warmth — Scarbo's parody of beauty."},
-        {symbol:"N6",fn:"chromatic",note:"m.48  --  D major in first inversion. The Neapolitan — maximum harmonic pressure. Ravel uses this at the climax."},
-        {symbol:"V7",fn:"dominant",note:"m.56  --  G#7. Relentless dominant — Scarbo never lets the tonic breathe."},
-        {symbol:"i",fn:"tonic",note:"m.68  --  C# minor. A false repose — the demon is merely gathering speed."},
+        {symbol:"bVI",fn:"chromatic",note:"m.32  --  A major. Grotesque warmth -- Scarbo's parody of beauty."},
+        {symbol:"N6",fn:"chromatic",note:"m.48  --  D major in first inversion. The Neapolitan -- maximum harmonic pressure. Ravel uses this at the climax."},
+        {symbol:"V7",fn:"dominant",note:"m.56  --  G#7. Relentless dominant -- Scarbo never lets the tonic breathe."},
+        {symbol:"i",fn:"tonic",note:"m.68  --  C# minor. A false repose -- the demon is merely gathering speed."},
         {symbol:"bVII",fn:"chromatic",note:"m.80  --  B major. The harmonic language becomes increasingly chromatic as Scarbo nears his vanishing point."},
         {symbol:"V7",fn:"dominant",note:"m.96  --  G#7 one final time. Everything has been preparation for the evaporation."},
-        {symbol:"i",fn:"tonic",note:"m.115  --  C# minor — and Scarbo disappears. The last note is a single C#, pianissimo. The silence after it is the piece."}
+        {symbol:"i",fn:"tonic",note:"m.115  --  C# minor -- and Scarbo disappears. The last note is a single C#, pianissimo. The silence after it is the piece."}
       ]}
     ]},
   { id:"scriabin-op53", composer:"Scriabin", title:"Sonata No. 5", full:"Piano Sonata No. 5, Op. 53", year:"1907", key:"F# mystic chord",
     recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"},{id:"dt21",label:"Trifonov 2021",full:"Daniil Trifonov, 2021"}],
     sections:[
-      {label:"Intro — Impetuoso",measures:"mm. 1-24",page:"p. 1",chords:[
-        {symbol:"F#7(#11)",fn:"tonic",note:"m.1  --  The mystic chord: F#-A#-C#-E#-G#-B. Not a dominant seventh but a synthetic sonority — Scriabin's musical cosmos in a single chord. It neither resolves nor requires resolution."},
-        {symbol:"C#7(#11)",fn:"dominant",note:"m.4  --  The chord transposed to C#. In the mystic chord world, 'dominant' means something different — this is not a B7 resolving to E, but a color relationship."},
+      {label:"Intro -- Impetuoso",measures:"mm. 1-24",page:"p. 1",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.1  --  The mystic chord: F#-A#-C#-E#-G#-B. Not a dominant seventh but a synthetic sonority -- Scriabin's musical cosmos in a single chord. It neither resolves nor requires resolution."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.4  --  The chord transposed to C#. In the mystic chord world, 'dominant' means something different -- this is not a B7 resolving to E, but a color relationship."},
         {symbol:"F#7(#11)",fn:"tonic",note:"m.6  --  The home sonority returns. The Introduction establishes the harmonic universe: suspended, floating, non-teleological."},
         {symbol:"E7(#11)",fn:"chromatic",note:"m.10  --  A tritone away from the home. Scriabin structures by tritone symmetry, not by fifth."},
         {symbol:"Bb7(#11)",fn:"chromatic",note:"m.14  --  The enharmonic equivalent of A#7. The tritone axis is the structural principle."},
@@ -1733,7 +1733,7 @@ var PIECES = [
         {symbol:"I",fn:"tonic",note:"m.24  --  F# area, momentarily settled. The main body of the sonata begins."}
       ]},
       {label:"First Theme",measures:"mm. 25-80",page:"pp. 1-3",chords:[
-        {symbol:"F#7(#11)",fn:"tonic",note:"m.25  --  The presto begins. The flying theme — Scriabin's most physically demanding passage — is built on the mystic chord in motion."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.25  --  The presto begins. The flying theme -- Scriabin's most physically demanding passage -- is built on the mystic chord in motion."},
         {symbol:"D7(#11)",fn:"chromatic",note:"m.32  --  A third away. Scriabin's third-related harmonic moves give the music its characteristic hovering quality."},
         {symbol:"F#7(#11)",fn:"tonic",note:"m.36  --  Home sonority, briefly confirmed."},
         {symbol:"A7(#11)",fn:"chromatic",note:"m.40  --  The augmented triad relationship: F#-A-C# generates a chain of thirds."},
@@ -1741,7 +1741,7 @@ var PIECES = [
         {symbol:"F#7(#11)",fn:"tonic",note:"m.56  --  Return. The first theme recapitulates its opening figure."},
         {symbol:"Eb7(#11)",fn:"chromatic",note:"m.64  --  Tritone of A: maximum harmonic distance from F#. The texture is at its most dense."},
         {symbol:"C#7(#11)",fn:"dominant",note:"m.72  --  The dominant prepares the transition."},
-        {symbol:"F#7(#11)",fn:"tonic",note:"m.80  --  The first theme closes. The mystic chord is both home and elsewhere — simultaneously resolved and unresolved."}
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.80  --  The first theme closes. The mystic chord is both home and elsewhere -- simultaneously resolved and unresolved."}
       ]},
       {label:"Second Theme",measures:"mm. 81-140",page:"pp. 3-5",chords:[
         {symbol:"A7(#11)",fn:"tonic",note:"m.81  --  A major-ish. The second theme is more lyrical, but Scriabin's 'lyrical' still dissolves traditional tonality. The melody floats above the mystic chord."},
@@ -1750,7 +1750,7 @@ var PIECES = [
         {symbol:"A7(#11)",fn:"tonic",note:"m.104  --  Return to the second theme's area."},
         {symbol:"Bb7(#11)",fn:"chromatic",note:"m.112  --  Semitone above A: maximum tension in the second theme."},
         {symbol:"C#7(#11)",fn:"dominant",note:"m.124  --  The dominant of F#, preparing the development."},
-        {symbol:"F#7(#11)",fn:"tonic",note:"m.140  --  The development begins. The mystic chord is its own development — it never truly changes."}
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.140  --  The development begins. The mystic chord is its own development -- it never truly changes."}
       ]},
       {label:"Dev & Coda",measures:"mm. 141-235",page:"pp. 5-8",chords:[
         {symbol:"F#7(#11)",fn:"tonic",note:"m.141  --  The development compresses the first theme material. At this speed, the mystic chord becomes a blur of color rather than a harmony."},
@@ -1760,21 +1760,19 @@ var PIECES = [
         {symbol:"V7",fn:"dominant",note:"m.196  --  C#7, the most traditional-sounding moment in the entire sonata. Scriabin allows one moment of conventional harmonic function at the peak."},
         {symbol:"F#7(#11)",fn:"tonic",note:"m.208  --  The coda begins. The sonata is contracting back to its opening materials."},
         {symbol:"C#7(#11)",fn:"dominant",note:"m.220  --  The final dominant preparation."},
-        {symbol:"F#7(#11)",fn:"tonic",note:"m.235  --  The final mystic chord, fortissimo. The sonata ends not with resolution but with affirmation — the mystic chord is all there is, and it is enough."}
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.235  --  The final mystic chord, fortissimo. The sonata ends not with resolution but with affirmation -- the mystic chord is all there is, and it is enough."}
       ]}
     ]}
 ];
 
-/* ===== SYSTEM PROMPTS — two modes ===== */
+/* ===== SYSTEM PROMPTS -- two modes ===== */
 
-// MODE 1: Score-grounded — used for chord clicks, chord popup, chat, practice tab
-var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Your job is to describe and analyze what the notation shows, not what you know about the music.\n\nSTEP 1 — OBSERVE LITERALLY (do this first, always):\nLook at the image and answer these questions from what you can see:\n- Right hand: are the notes single-line, chords, or rapid figuration? How many notes per beat?\n- Left hand: are the notes single-line, chords, octaves, or a repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value visible? Is the rhythm even, syncopated, or mixed?\n- Markings: list any dynamic markings, tempo words, articulation, or pedal marks that are literally printed in this image.\n\nSTEP 2 — DESCRIBE WITHOUT NAMING:\nDescribe the texture using only what you observed. Do not use any of these words unless they are printed in the score:\nwaltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy\n\nInstead, say what the notes are doing:\n- 'The right hand has a single line of eighth notes'\n- 'The left hand repeats a three-note pattern on each beat'\n- 'Both hands play chords simultaneously'\n\nSTEP 3 — PRACTICE ADVICE:\nGive 2-3 practice points. Each must:\n- Reference a specific observable feature from Step 1\n- State a concrete physical action (finger independence, wrist rotation, subdivision, voicing weight)\n- NOT assume what the passage 'should' sound like based on the piece's reputation\n\nABSOLUTE PROHIBITIONS:\n- Do not call anything a 'theme', 'subject', 'episode', or 'section' unless labeled in the score\n- Do not assume which hand has the melody — describe both hands neutrally\n- Do not reference dynamics unless the marking is visible\n- Do not say 'typical Chopin' or reference any stylistic expectation\n- No preamble, no disclaimers\n\nIf you cannot clearly read a feature, say: 'This area of the image is unclear — I can see [what you can see].'\n\nFor harmony: identify bass note → upper voices → interval stack → chord quality → Roman numeral → function → one performance implication.\n\nFORMATTING RULES — mandatory:\n- Never use ** for bold or ## for headers. Never output raw markdown.\n- Use plain section labels on their own line, followed by a blank line: e.g. 'What I see' then a blank line then the content.\n- Keep paragraphs to 2-3 sentences. Use a blank line between sections.\n- For practice steps, use: '1.' '2.' '3.' on separate lines.\n- For observations, use: '-' bullet points on separate lines.\n- No walls of text. Responses must be visually scannable.";
+// MODE 1: Score-grounded -- used for chord clicks, chord popup, chat, practice tab
+var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Your job is to describe and analyze what the notation shows, not what you know about the music.\n\nSTEP 1 -- OBSERVE LITERALLY (do this first, always):\nLook at the image and answer these questions from what you can see:\n- Right hand: are the notes single-line, chords, or rapid figuration? How many notes per beat?\n- Left hand: are the notes single-line, chords, octaves, or a repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value visible? Is the rhythm even, syncopated, or mixed?\n- Markings: list any dynamic markings, tempo words, articulation, or pedal marks literally printed in this image.\n\nSTEP 2 -- DESCRIBE WITHOUT NAMING:\nDo not use these words unless printed in the score: waltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy. Instead say what the notes are doing: The right hand has a single line of eighth notes. The left hand repeats a three-note pattern on each beat.\n\nSTEP 3 -- PRACTICE ADVICE:\nGive 2-3 practice points each referencing a specific visible feature and stating a concrete physical action. Do not assume what the passage should sound like.\n\nPROHIBITIONS: No theme/section labels unless in score. Do not assume melody hand. No dynamics unless visible. No preamble, no disclaimers.\n\nIf unclear: This area is unclear -- I can see [what you can see].\n\nFor harmony: bass note -> upper voices -> interval stack -> chord quality -> Roman numeral -> function -> one performance implication.\n\nRESPONSE LENGTH: 200-350 words. Complete every sentence. Drop the last point rather than truncating.\n\nFORMATTING: No ** bold, no ## headers. Plain section labels on their own line. Short paragraphs. Numbered steps 1. 2. 3. for practice. Dash bullets for observations.";
 
-// MODE 2: Knowledge-driven — used for Analysis tab, Interpretations tab, Study tabs
-// The model draws on deep musical knowledge of the piece. No score image attached.
-var SYS_KNOWLEDGE = "You are Arioso, a musical analyst and score companion for advanced pianists — conservatory-trained or equivalent. You know this repertoire cold. You speak like the best professor a pianist has ever had: direct, opinionated, precise, always in service of the performer.\n\nFor ANALYSIS: Write like a rigorous musicologist-performer. Describe formal structures and tonal motion with confidence, but calibrate your harmonic language to your certainty:\n- For broad tonal areas and key relationships, speak with authority: 'the second theme moves into E-flat major', 'Chopin returns to G minor here'\n- For specific chord function, prefer directional language over exact Roman numerals unless you are certain: say 'moves toward the dominant' rather than 'V7/IV' when in doubt; say 'a chromatic chord that destabilizes the tonic' rather than 'bVI'\n- Avoid pinning exact Roman numerals to specific measure numbers unless you are confident — a wrong label destroys trust more than a general description\n- For Chopin: the central interpretive lens is tonal ambiguity — delayed resolution, floating between relative keys, the Neapolitan as structural rival. You can describe this compellingly without requiring measure-precise labeling\n- Always connect tonal observations to what the performer must do: timing, voicing, pedaling, phrasing\n\nFor INTERPRETATIONS: Discuss specific named recordings — pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube link formatted as: [Listen: Name](https://www.youtube.com/results?search_query=Name+Piece). Always include at least one contemporary pianist (Trifonov, Yuja Wang, Abduraimov, Cho, Debargue). Be opinionated about which recordings are essential.\n\nFor HISTORY and CONTEXT: Write like serious program notes — LA Phil register. Specific, biographical, culturally grounded.\n\nFORMATTING RULES — mandatory:\n- Never use ** for bold or ## for headers. Never output raw markdown syntax.\n- Use plain section labels on their own line followed by a blank line. Example: 'What is happening' then blank line then content.\n- Keep paragraphs to 2-3 sentences max. Blank line between each paragraph or section.\n- For practice steps or lists: use '1.' '2.' '3.' or '-' on separate lines.\n- No walls of unbroken text. Every response must be visually scannable.\n\nOTHER RULES:\n- Never say you cannot find a source, cannot verify, or need more context.\n- Never ask the user for information. Deliver the analysis directly.\n- Uncertainty is always framed musically: 'this can be heard as...' or 'the harmony suggests...' rather than 'I am not sure.'";
+// MODE 2: Knowledge-driven -- used for Analysis tab, Interpretations tab, Study tabs
+var SYS_KNOWLEDGE = "You are Arioso, a musical analyst and score companion for advanced pianists -- conservatory-trained or equivalent. You know this repertoire cold. Direct, opinionated, precise, always in service of the performer.\n\nFor ANALYSIS: Calibrate harmonic language to certainty. For broad tonal areas speak with authority: the second theme moves into E-flat major. For specific chord function prefer directional language: moves toward the dominant. Do not pin Roman numerals to measure numbers unless confident. For Chopin: tonal ambiguity, delayed resolution, floating between relative keys, Neapolitan as structural rival. Connect tonal observations to performer action: timing, voicing, pedaling, phrasing.\n\nFor INTERPRETATIONS: Specific named recordings, interpretive choices at key passages, YouTube link as [Listen: Name](URL). Include a contemporary pianist. Be opinionated.\n\nFor HISTORY: Serious program notes register. Specific, biographical, culturally grounded.\n\nRESPONSE STRUCTURE (400-600 words):\n1. Overview -- 2-3 sentences on tonal language, form, character\n2. Key harmonic idea -- most important harmonic event and what it means for the performer\n3. What to listen for / how to practice -- specific actionable guidance\nDo not begin a section you cannot finish. Summarize rather than expand if running long. Always end on a complete sentence.\n\nFORMATTING: No ** bold, no ## headers. Plain section labels on their own line. 2-3 sentence paragraphs. Numbered steps for practice, dash bullets for lists.\n\nRULES: Never say cannot verify or need more context. Never ask user for information. Frame uncertainty musically: this can be heard as... or the harmony suggests...";
 
-// Active system prompt — resolved per call
 var SYS = SYS_KNOWLEDGE; // default; overridden per-call below
 
 
@@ -2098,7 +2096,7 @@ function setTab(t) {
   renderRecs(); loadAnalysis();
 }
 
-/* ===== CONTENT CACHE — prefetch all tabs in parallel ===== */
+/* ===== CONTENT CACHE -- prefetch all tabs in parallel ===== */
 var contentCache = {}; // key: pieceId+tab, value: rendered HTML
 
 function cacheKey(pieceId, tabName, extra) {
@@ -2110,14 +2108,14 @@ function prefetchAll(p) {
   var pid = p.id;
 
   var prompts = {
-    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive — 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.",
-    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each priority: name the passage and measures, describe the specific texture or figuration that creates the challenge (e.g. 'rapid sixteenth-note thirds in the right hand over a sustained bass'), then give one precise actionable instruction — a rhythmic subdivision, a specific fingering strategy, or a voicing technique. Do not label textures with character names (agitato, cantabile) — describe what the notes are doing. No bold. No preamble.",
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive -- 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.",
+    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each priority: name the passage and measures, describe the specific texture or figuration that creates the challenge (e.g. 'rapid sixteenth-note thirds in the right hand over a sustained bass'), then give one precise actionable instruction -- a rhythmic subdivision, a specific fingering strategy, or a voicing technique. Do not label textures with character names (agitato, cantabile) -- describe what the notes are doing. No bold. No preamble.",
     history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
     interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
   };
 
-  // Fire ALL content calls in parallel — don't chain
+  // Fire ALL content calls in parallel -- don't chain
   Object.keys(prompts).forEach(function(key) {
     var isStudy = (key === "history" || key === "scholarship" || key === "interviews");
     var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
@@ -2139,7 +2137,7 @@ function prefetchAll(p) {
 }
 
 function fetchRecordings(p) {
-  var prompt = "List the 5 most celebrated pianists known for performing " + p.full + " by " + p.composer + ". Include studio recordings, live concert recordings, and YouTube performances — not just commercial studio albums. Include a mix of historic and contemporary pianists. Respond ONLY as a JSON array with no other text: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 2010s\"}]. Only include pianists who have definitively performed this work.";
+  var prompt = "List the 5 most celebrated pianists known for performing " + p.full + " by " + p.composer + ". Include studio recordings, live concert recordings, and YouTube performances -- not just commercial studio albums. Include a mix of historic and contemporary pianists. Respond ONLY as a JSON array with no other text: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 2010s\"}]. Only include pianists who have definitively performed this work.";
   callAPIWithSearchAsync([{role:"user",content:prompt}]).then(function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -2209,7 +2207,7 @@ function renderRecs() {
         // If this rec has a real YouTube videoId, add a tiny ▶ indicator
         var ytBadge = r.videoId ? " <span style='font-size:9px;opacity:0.6;'>▶</span>" : "";
         b.innerHTML = escHtml(r.label) + ytBadge;
-        b.title = r.videoId ? "YouTube recording — " + (r.videoTitle || r.full) : r.full || r.label;
+        b.title = r.videoId ? "YouTube recording -- " + (r.videoTitle || r.full) : r.full || r.label;
         b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
         sel.appendChild(b);
       });
@@ -2269,12 +2267,12 @@ function searchYouTubePerformers(query) {
       if (data.results && data.results.length) {
         renderDropdownResults(data.results);
       } else {
-        // YouTube returned nothing — fall back to Claude search
+        // YouTube returned nothing -- fall back to Claude search
         searchPerformerWithClaude(query);
       }
     })
     .catch(function() {
-      // YouTube API not deployed yet — use Claude+search fallback
+      // YouTube API not deployed yet -- use Claude+search fallback
       searchPerformerWithClaude(query);
     });
 }
@@ -2289,12 +2287,12 @@ function searchPerformerWithClaude(query) {
       if (!match) { showDropdownStatus("Type a performer name to search"); return; }
       var results = JSON.parse(match[0]);
       if (!Array.isArray(results) || !results.length) {
-        showDropdownStatus("No recordings found — try another spelling");
+        showDropdownStatus("No recordings found -- try another spelling");
         return;
       }
       renderDropdownResults(results);
     } catch(e) {
-      showDropdownStatus("Search error — try again");
+      showDropdownStatus("Search error -- try again");
     }
   });
 }
@@ -2414,7 +2412,7 @@ function showAddPerformerInput() {
 }
 
 function addCustomPerformer(pianistName) {
-  // Legacy fallback — not called in new flow but kept for safety
+  // Legacy fallback -- not called in new flow but kept for safety
   showPerformerSearch();
   var inp = document.getElementById("performer-search-input");
   if (inp) { inp.value = pianistName; }
@@ -2434,7 +2432,7 @@ function loadAnalysis() {
     if (tab === "story") {
       var cached = contentCache[cacheKey(pid,"story")];
       if (cached) { content.innerHTML = cached; return; }
-      // Not ready — show spinner and poll
+      // Not ready -- show spinner and poll
       if (content.innerHTML.indexOf("ldots") === -1) {
         content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       }
@@ -2459,7 +2457,7 @@ function loadAnalysis() {
         ? "https://www.youtube.com/watch?v=" + rec.videoId
         : "https://www.youtube.com/results?search_query=" + encodeURIComponent((recName || piece.composer) + " " + piece.title);
       var recNameForPrompt = recName || piece.composer;
-      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence — this pianist is known for performing this piece. Use ## for each section: ## Their Approach, ## Key Moments (2-3 passages with measure refs), ## What It Reveals, ## Essential or Skip?. Opinionated, specific, peer-level. 2-3 sentences each. End with: [Listen on YouTube](" + ytLink + "). No bold. No preamble.";
+      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence -- this pianist is known for performing this piece. Use ## for each section: ## Their Approach, ## Key Moments (2-3 passages with measure refs), ## What It Reveals, ## Essential or Skip?. Opinionated, specific, peer-level. 2-3 sentences each. End with: [Listen on YouTube](" + ytLink + "). No bold. No preamble.";
       callAPIWithSearch([{role:"user",content:prompt}], function(text) {
         if (reqId !== analysisReqId || tab !== currentTab) return;
         var html = renderSectioned(text);
@@ -2474,7 +2472,7 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
-  // GPT wraps entire paragraphs in ** — strip outer ** from each paragraph first
+  // GPT wraps entire paragraphs in ** -- strip outer ** from each paragraph first
   // Then split known header words from their body text
   
   // Step 1: Remove ** that wrap entire lines/paragraphs
@@ -2606,9 +2604,9 @@ function sendChat() {
   // Build context prefix
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
-  var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows — do not name textures or patterns from memory. Then answer: " + msg;
+  var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
 
-  // Always use vision path — callAPIWithVision handles the async capture internally
+  // Always use vision path -- callAPIWithVision handles the async capture internally
   // and falls back to text-only if no score is available
   chatHistory.push({role:"user", content: msg});
   callAPIWithVision(fullPrompt, onReply);
@@ -2619,7 +2617,7 @@ function formatChatReply(text) {
   // Strip any remaining markdown bold/italic
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
   text = text.replace(/\*([^*]+)\*/g, "$1");
-  // Strip ## headers — convert to plain label
+  // Strip ## headers -- convert to plain label
   text = text.replace(/^#{1,3}\s+(.+)$/gm, "$1");
 
   var lines = text.split("\n");
@@ -2665,7 +2663,8 @@ function escChat(str) {
     .replace(/"/g,"&quot;");
 }
 
-
+/* MODE */
+function setMode(m) {
   mode = m;
   document.querySelectorAll(".mode-btn").forEach(function(b){ b.classList.toggle("active",b.textContent.toLowerCase()===m); });
   document.getElementById("score-panel").style.display = m==="score"?"flex":"none";
@@ -2704,7 +2703,7 @@ function captureScoreImage() {
   }
   if (!visiblePageNums.length) visiblePageNums = [1];
 
-  // Limit to 2 pages — enough context, keeps payload focused
+  // Limit to 2 pages -- enough context, keeps payload focused
   visiblePageNums = visiblePageNums.slice(0, 2);
   console.log("[vision] rendering pages at 2x:", visiblePageNums);
 
@@ -2727,7 +2726,7 @@ function captureScoreImage() {
             var pageDisplayH = wRect.height;
             var overlapTop = Math.max(0, containerRect.top - wRect.top);
             var overlapBottom = Math.min(pageDisplayH, containerRect.bottom - wRect.top);
-            // Convert display pixels → canvas pixels (2x scale)
+            // Convert display pixels -> canvas pixels (2x scale)
             var scaleY = c.height / pageDisplayH;
             visTop = Math.max(0, Math.round(overlapTop * scaleY) - 20); // small padding
             visBottom = Math.min(c.height, Math.round(overlapBottom * scaleY) + 20);
@@ -2758,7 +2757,7 @@ function captureScoreImage() {
     });
 
     try {
-      // PNG for sharpness — staff lines need crisp edges, not JPEG artifacts
+      // PNG for sharpness -- staff lines need crisp edges, not JPEG artifacts
       var dataUrl = composite.toDataURL("image/png");
       var b64 = dataUrl.split(",")[1];
       console.log("[vision] captured " + W + "x" + totalH + " px, base64 length:", b64.length);
@@ -2774,7 +2773,7 @@ function captureScoreImage() {
 }
 
 /**
- * Calls Claude Sonnet with vision — attaches score image + text message.
+ * Calls Claude Sonnet with vision -- attaches score image + text message.
  * Falls back to text-only callAPI if image capture fails.
  */
 function callAPIWithVision(textPrompt, callback) {
@@ -2782,7 +2781,7 @@ function callAPIWithVision(textPrompt, callback) {
 
   captureScoreImage().then(function(imageBase64) {
     if (!imageBase64) {
-      if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured — answering from knowledge"; }
+      if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured -- answering from knowledge"; }
       callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
       return;
     }
@@ -2808,7 +2807,7 @@ function callAPIWithVision(textPrompt, callback) {
         }
         if (!text && data.error) {
           console.error("[vision] API error:", data.error);
-          if (statusEl) statusEl.textContent = "⚠ Vision error — falling back";
+          if (statusEl) statusEl.textContent = "⚠ Vision error -- falling back";
           callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
           return;
         }
@@ -2816,7 +2815,7 @@ function callAPIWithVision(textPrompt, callback) {
       })
       .catch(function(e) {
         console.error("[vision] fetch failed:", e);
-        if (statusEl) statusEl.textContent = "⚠ Connection error — falling back";
+        if (statusEl) statusEl.textContent = "⚠ Connection error -- falling back";
         callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
       });
   });
@@ -2825,7 +2824,7 @@ function callAPIWithVision(textPrompt, callback) {
 function callAPI(messages, callback, sysOverride) {
   var body = {
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 3000,
     system: sysOverride || SYS_KNOWLEDGE,
     messages: messages
   };
@@ -2845,7 +2844,7 @@ function callAPI(messages, callback, sysOverride) {
   }).catch(function() { callback("Connection error."); });
 }
 
-// OpenAI GPT-4o-mini — faster for Analysis, Practice, Study
+// OpenAI GPT-4o-mini -- faster for Analysis, Practice, Study
 function callOpenAI(messages, callback) {
   var controller = new AbortController();
   var timeout = setTimeout(function() { controller.abort(); }, 15000);
@@ -2871,7 +2870,7 @@ function callOpenAI(messages, callback) {
     callAPI(messages, callback);
   }).catch(function(err) {
     clearTimeout(timeout);
-    console.warn("OpenAI failed:", err, "— falling back to Claude");
+    console.warn("OpenAI failed:", err, "-- falling back to Claude");
     callAPI(messages, callback);
   });
 }
@@ -2880,11 +2879,11 @@ function callOpenAIAsync(messages) {
   return new Promise(function(resolve) { callAPI(messages, resolve); });
 }
 
-// Search-enabled version — uses web_search tool
+// Search-enabled version -- uses web_search tool
 function callAPIWithSearch(messages, callback) {
   var body = {
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 3000,
     system: SYS_KNOWLEDGE,
     messages: messages,
     tools: [{ type: "web_search_20250305", name: "web_search" }]
@@ -2989,7 +2988,7 @@ function renderChordStrip() {
     renderSectionTabs();
     renderChords();
   } else {
-    // No sections — generate dynamically
+    // No sections -- generate dynamically
     document.getElementById("chord-strip-container").style.display = "block";
     document.getElementById("section-tabs").innerHTML = "";
     document.getElementById("chord-row").innerHTML =
@@ -3010,7 +3009,7 @@ function renderChordStrip() {
   }
 }
 
-// Valid Roman numeral symbols — used for validation
+// Valid Roman numeral symbols -- used for validation
 var VALID_CHORD_SYMBOLS = /^(i|ii|iii|iv|v|vi|vii|I|II|III|IV|V|VI|VII)(°|ø|o|0|dim|aug|\+)?(7|9|13|6|64|43|42|2|65)?(\/[IVivi]+)?(\([^)]*\))?$|^(N|N6|Ger|Fr|It)(6)?$|^(\+6|bII|bVI|bVII|#IV)$/;
 
 function validateChordSymbol(sym) {
@@ -3021,15 +3020,15 @@ function validateChordSymbol(sym) {
 
 function generateChordSections(p, callback) {
   var prompt = "You are generating a harmonic analysis for " + p.full + " by " + p.composer + ".\n\n" +
-    "RULES — follow exactly:\n" +
-    "1. Only include a chord if you are confident it appears in the score. If uncertain, omit it — do not fill space.\n" +
+    "RULES -- follow exactly:\n" +
+    "1. Only include a chord if you are confident it appears in the score. If uncertain, omit it -- do not fill space.\n" +
     "2. Use ONLY standard Roman numeral symbols. Allowed: I ii III iv V vi vii° with optional 7/6/64/65/43/42 suffixes, /V secondary dominants, N6, Ger6, Fr6, It6, bVI, bVII. No other symbols.\n" +
     "3. Do NOT invent labels like 'AI', 'A I', 'Eb I', or key-name prefixes. If you want to show a key area, use a section label.\n" +
     "4. fn must be exactly one of: tonic, dominant, predominant, chromatic.\n" +
-    "5. Include 4-6 sections covering distinct formal areas. Each section needs 5-10 chords — fewer confident chords is better than more uncertain ones.\n" +
-    "6. note must start with 'm.X — ' where X is the measure number, followed by one sentence on performance implication.\n\n" +
+    "5. Include 4-6 sections covering distinct formal areas. Each section needs 5-10 chords -- fewer confident chords is better than more uncertain ones.\n" +
+    "6. note must start with 'm.X -- ' where X is the measure number, followed by one sentence on performance implication.\n\n" +
     "Return ONLY a JSON array, no markdown, no explanation:\n" +
-    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 — the dominant seventh arrives without preparation; give the bass D full weight.\"}]}]";
+    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 -- the dominant seventh arrives without preparation; give the bass D full weight.\"}]}]";
 
   callAPI([{role:"user",content:prompt}], function(text) {
     try {
@@ -3092,9 +3091,9 @@ function renderChords() {
     row.innerHTML = "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
       "<div class='ldots'><span></span><span></span><span></span></div> Filling in analysis...</div>";
     var prompt = "Harmonic analysis for the " + section.label + " section (" + section.measures + ") of " + piece.full + " by " + piece.composer + ".\n\n" +
-      "Return ONLY a JSON array of chord objects. Only include chords you are confident about — fewer correct chords is better than more uncertain ones.\n" +
+      "Return ONLY a JSON array of chord objects. Only include chords you are confident about -- fewer correct chords is better than more uncertain ones.\n" +
       "Use ONLY standard Roman numeral symbols (I ii III IV V vi vii° with 7/6/64 suffixes, N6, Ger6, bVI, bVII, secondary dominants like V7/IV). No key-name prefixes, no invented labels.\n" +
-      "Format: [{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.X — one sentence on performance implication\"}]\n" +
+      "Format: [{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.X -- one sentence on performance implication\"}]\n" +
       "fn must be one of: tonic, dominant, predominant, chromatic. Include 5-10 chords. No markdown.";
     var idx = currentSection;
     callAPI([{role:"user",content:prompt}], function(text) {
@@ -3170,7 +3169,7 @@ function loadChordAnalysis(chord) {
   var chordContext = chord.note.split(" -- ");
   var location = chordContext[0].trim();
   var existingNote = chordContext[1] || "";
-  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer + ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" + existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, (2) explain what this harmony is doing structurally in this passage, (3) explain what it demands from the performer — voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
+  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer + ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" + existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, (2) explain what this harmony is doing structurally in this passage, (3) explain what it demands from the performer -- voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
   var snapReqId = analysisReqId;
   callAPIWithVision(prompt, function(text) {
     if (analysisReqId !== snapReqId) return;
@@ -3285,7 +3284,7 @@ function applyZoom() {
         var vp = page.getViewport({scale: scale});
         // Internal canvas pixels
         canvas.width = vp.width; canvas.height = vp.height;
-        // CSS display size — zoom changes actual rendered width
+        // CSS display size -- zoom changes actual rendered width
         var displayW = Math.round(baseWidth * zoomLevel);
         var displayH = Math.round(vp.height * (displayW / vp.width));
         canvas.style.width = displayW + "px";
