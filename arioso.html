@@ -879,6 +879,46 @@ function showUploadSuccess(msg) {
   setTimeout(function() { banner.style.display = "none"; }, 3000);
 }
 
+/* ===== CURATED PDF AUTO-LOAD ===== */
+// IMSLP public domain PDFs hosted on GitHub. Replace these URLs with your own repo raw URLs.
+var CURATED_PDFS = {
+  "chopin-ballade-1":  "https://raw.githubusercontent.com/arioso-app/scores/main/chopin-ballade-1.pdf",
+  "beethoven-op109":   "https://raw.githubusercontent.com/arioso-app/scores/main/beethoven-op109.pdf",
+  "schubert-d960":     "https://raw.githubusercontent.com/arioso-app/scores/main/schubert-d960.pdf",
+  "ravel-gaspard":     "https://raw.githubusercontent.com/arioso-app/scores/main/ravel-gaspard.pdf",
+  "scriabin-op53":     "https://raw.githubusercontent.com/arioso-app/scores/main/scriabin-op53.pdf"
+};
+
+function fetchCuratedPDF(pieceId, callback) {
+  var url = CURATED_PDFS[pieceId];
+  if (!url) { callback(null); return; }
+  fetch(url).then(function(r) {
+    if (!r.ok) { callback(null); return; }
+    return r.arrayBuffer();
+  }).then(function(buf) {
+    if (buf) {
+      savePDFtoDBKey(pieceId, buf.slice(0));
+      callback(buf);
+    } else { callback(null); }
+  }).catch(function() { callback(null); });
+}
+
+function loadOrFetchCuratedPDF(pieceId, onLoaded, onMissing) {
+  loadPDFfromDBKey(pieceId, function(buf) {
+    if (buf) { onLoaded(buf); return; }
+    var uploadZone = document.getElementById("upload-zone");
+    if (uploadZone) {
+      uploadZone.innerHTML = "<div id='uz-icon' style='font-size:28px;font-weight:300;color:var(--text2);'>↓</div>" +
+        "<div id='uz-title'>Loading score...</div>" +
+        "<div id='uz-sub'>Fetching curated edition</div>";
+    }
+    fetchCuratedPDF(pieceId, function(fetched) {
+      if (fetched) { onLoaded(fetched); }
+      else { onMissing(); }
+    });
+  });
+}
+
 /* ===== SCREEN MANAGEMENT ===== */
 var userName = "";
 var libraryPieces = []; // {id, composer, title, opus, curated, pdfKey}
@@ -978,18 +1018,9 @@ function openPiece(libIdx) {
     loadAnalysis();
   }
 
-  // Load PDF from IndexedDB using piece-specific key
+  // Load PDF — for curated pieces, auto-fetch from GitHub if not cached
   var pdfKey = libPiece.pdfKey || libPiece.id;
-  loadPDFfromDBKey(pdfKey, function(buffer) {
-    if (!buffer) {
-      // No PDF saved yet  --  show upload zone
-      document.getElementById("upload-zone").style.display = "block";
-      document.getElementById("pdf-pages").style.display = "none";
-      (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-      document.getElementById("draw-btn").style.display = "none";
-      document.getElementById("clear-pdf-btn").style.display = "none";
-      return;
-    }
+  var loadBuffer = function(buffer) {
     pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
       pdfDoc = pdf;
       document.getElementById("upload-zone").style.display = "none";
@@ -1002,7 +1033,27 @@ function openPiece(libIdx) {
       }
       renderAllPages();
     });
-  });
+  };
+  var showUploadZone = function() {
+    var uz = document.getElementById("upload-zone");
+    uz.style.display = "block";
+    uz.innerHTML = "<div id='uz-icon' style='font-size:36px;font-weight:300;color:var(--text2);'>+</div>" +
+      "<div id='uz-title'>Upload your score PDF</div>" +
+      "<div id='uz-sub'>Henle, Peters, IMSLP \u2014 any edition works</div>" +
+      "<input type='file' id='file-input' accept='.pdf' onchange='loadPDF(this)' style='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;'>";
+    document.getElementById("pdf-pages").style.display = "none";
+    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
+    document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("clear-pdf-btn").style.display = "none";
+  };
+  if (libPiece.curated && CURATED_PDFS[libPiece.id]) {
+    loadOrFetchCuratedPDF(libPiece.id, loadBuffer, showUploadZone);
+  } else {
+    loadPDFfromDBKey(pdfKey, function(buffer) {
+      if (!buffer) { showUploadZone(); return; }
+      loadBuffer(buffer);
+    });
+  }
 }
 
 /* ===== ADD MODAL ===== */
@@ -1112,16 +1163,24 @@ var PIECES = [
       ]},
       {label:"Second theme",measures:"mm. 37-67",page:"pp. 3-5",chords:[
         {symbol:"Eb I",fn:"tonic",note:"m.37  --  Eb major arrives like sunlight. One of the most radiant moments in all of Chopin. The shift from G minor is a harmonic miracle  --  play it as one."},
-        {symbol:"V7/IV",fn:"chromatic",note:"m.41  --  Secondary dominant of Ab. Chopin immediately enriches the new key with color. The paradise is not simple."},
-        {symbol:"IV",fn:"predominant",note:"m.43  --  Ab major, subdominant of Eb. The harmony expands outward, warm and unhurried."},
-        {symbol:"I",fn:"tonic",note:"m.45  --  Eb major, confirmed and singing. Let the melody float above a deep, resonant bass."},
-        {symbol:"V7/V",fn:"chromatic",note:"m.50  --  Secondary dominant of the dominant. A brief intensification before settling back."},
-        {symbol:"V7",fn:"dominant",note:"m.52  --  Dominant of Eb. The first hint of restlessness in this paradise. Resolution comes, but feels earned."},
-        {symbol:"I",fn:"tonic",note:"m.54  --  Eb major returns. But listen: the inner voices have chromatic motion now. Something is darkening."},
-        {symbol:"ii",fn:"predominant",note:"m.58  --  F minor. The shadows have arrived at the edge of the garden. The tone changes perceptibly."},
-        {symbol:"V7",fn:"dominant",note:"m.60  --  Dominant of Eb, but the resolution no longer feels certain. The harmonic ground is shifting."},
-        {symbol:"I",fn:"tonic",note:"m.62  --  Eb major, but fragile now. Chopin is already preparing the listener for the destruction to come."},
-        {symbol:"V7/i",fn:"chromatic",note:"m.65  --  Dominant seventh pulling back toward G minor. The second theme is being reclaimed by darkness."},
+        {symbol:"V/IV",fn:"chromatic",note:"m.39  --  Bb7 as secondary dominant of Ab. Chopin enriches the new key immediately  --  the paradise is not simple."},
+        {symbol:"IV",fn:"predominant",note:"m.40  --  Ab major, subdominant of Eb. The harmony opens outward, warm and unhurried."},
+        {symbol:"I",fn:"tonic",note:"m.42  --  Eb returns, singing. Settle into this  --  long bow, deep resonance in the left hand."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.44  --  Eb7 pointing toward Ab. Chopin keeps enriching the harmonic palette."},
+        {symbol:"IV",fn:"predominant",note:"m.45  --  Ab major again. The phrase breathes here."},
+        {symbol:"I",fn:"tonic",note:"m.47  --  Eb, confirmed. The melody floats above a deep, resonant bass."},
+        {symbol:"ii",fn:"predominant",note:"m.49  --  F minor. The first shadow at the edge of paradise."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.50  --  Bb7 as dominant of the dominant. A gentle intensification."},
+        {symbol:"V",fn:"dominant",note:"m.51  --  Bb major. The first real dominant — resolution comes, but feels earned."},
+        {symbol:"I",fn:"tonic",note:"m.52  --  Eb returns. But the inner voices are beginning to move chromatically."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.54  --  The color deepens again. The idyll is starting to feel fragile."},
+        {symbol:"IV",fn:"predominant",note:"m.55  --  Ab. Still warm but less certain than before."},
+        {symbol:"I",fn:"tonic",note:"m.57  --  Eb, but listen: the bass is beginning to destabilize."},
+        {symbol:"ii°",fn:"predominant",note:"m.58  --  F half-diminished. The shadows have reached the heart of the melody."},
+        {symbol:"V7",fn:"dominant",note:"m.60  --  Bb7. The dominant no longer feels reassuring  --  resolution is becoming uncertain."},
+        {symbol:"I",fn:"tonic",note:"m.62  --  Eb major, but fragile now. Chopin is preparing the listener for destruction."},
+        {symbol:"viio/i",fn:"chromatic",note:"m.63  --  Diminished seventh pulling toward G minor. The second theme is being reclaimed by darkness."},
+        {symbol:"V7/i",fn:"chromatic",note:"m.65  --  D7, dominant of G minor. The Eb paradise is dissolving."},
         {symbol:"i",fn:"tonic",note:"m.67  --  G minor returns. The second theme is over. The development will not be gentle."}
       ]},
       {label:"Development",measures:"mm. 68-166",page:"pp. 5-9",chords:[
@@ -1148,13 +1207,171 @@ var PIECES = [
       ]}
     ]},
   { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
-    recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"}]},
+    recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"},{id:"af22",label:"Afanassiev 2022",full:"Valery Afanassiev, 2022"}],
+    sections:[
+      {label:"Mvt I — Vivace",measures:"mm. 1-66",page:"pp. 1-3",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  E major, but the meter is ambiguous — compound duple disguised as simple. The opening is a question, not a statement."},
+        {symbol:"V7",fn:"dominant",note:"m.3  --  B dominant seventh. Beethoven establishes the dominant before the tonic is even settled."},
+        {symbol:"I",fn:"tonic",note:"m.5  --  E major returns, but with added inner voices. The texture is filling in."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. The subdominant world enters early — Beethoven is not interested in diatonic simplicity."},
+        {symbol:"V7",fn:"dominant",note:"m.11  --  Dominant seventh, driving toward the half cadence."},
+        {symbol:"I",fn:"tonic",note:"m.13  --  E major, more assertive. The first theme completes its arc."},
+        {symbol:"vi",fn:"tonic",note:"m.17  --  C# minor. The submediant — a darkening of the tonic that foreshadows the Adagio."},
+        {symbol:"IV",fn:"predominant",note:"m.21  --  A major. The subdominant is warm here, not tragic."},
+        {symbol:"V",fn:"dominant",note:"m.24  --  B major. Clean, structural — Beethoven clears the air for the Adagio transition."},
+        {symbol:"I",fn:"tonic",note:"m.28  --  E major, closing the Vivace. But the transition to Adagio is immediate and shocking."}
+      ]},
+      {label:"Mvt I — Adagio",measures:"mm. 1-9",page:"p. 3",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor. The parallel minor — the first dark shadow in the sonata. This is not the same E as before."},
+        {symbol:"iv",fn:"predominant",note:"m.2  --  A minor. The subdominant in minor deepens the tragedy."},
+        {symbol:"V7",fn:"dominant",note:"m.4  --  B dominant seventh. The Adagio's harmonic language is simpler but more concentrated."},
+        {symbol:"i",fn:"tonic",note:"m.6  --  E minor again. The resolution is no comfort — it is resignation."},
+        {symbol:"VI",fn:"tonic",note:"m.7  --  C major. The submediant in minor is here a moment of warmth before the final cadence."},
+        {symbol:"V7",fn:"dominant",note:"m.8  --  B7. The final dominant — the Adagio will close, and the Vivace will return."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  E major, the Vivace returns. Beethoven's tempo alternation is a formal innovation with no precedent."}
+      ]},
+      {label:"Mvt II — Prestissimo",measures:"mm. 1-98",page:"pp. 4-6",chords:[
+        {symbol:"e i",fn:"tonic",note:"m.1  --  E minor, presto. This movement is an eruption — the darkness hinted at in the Adagio now unleashed."},
+        {symbol:"III",fn:"tonic",note:"m.8  --  G major, the relative major. Brief warmth immediately extinguished."},
+        {symbol:"V7",fn:"dominant",note:"m.16  --  B7, relentless. The dominant hammering is characteristic of Beethoven's late style."},
+        {symbol:"iv",fn:"predominant",note:"m.24  --  A minor. Subdominant darkening — the movement refuses any comfort."},
+        {symbol:"N6",fn:"chromatic",note:"m.36  --  F major in first inversion. The Neapolitan — borrowed from the Romantic future. Maximum tension."},
+        {symbol:"V7",fn:"dominant",note:"m.44  --  B dominant seventh. Everything has been leading to this point."},
+        {symbol:"i",fn:"tonic",note:"m.52  --  E minor. The recapitulation — but compressed and intensified."},
+        {symbol:"V7",fn:"dominant",note:"m.72  --  Final dominant preparation. The Prestissimo is about to close."},
+        {symbol:"I",fn:"tonic",note:"m.98  --  E major, the parallel major. The ending is not tragic but transcendent — a Beethoven speciality."}
+      ]},
+      {label:"Mvt III — Theme",measures:"mm. 1-16",page:"pp. 6-7",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  E major, Gesangvoll. The most sustained, singing theme Beethoven ever wrote for piano. Every note matters."},
+        {symbol:"V7",fn:"dominant",note:"m.3  --  B7. The dominant is gentle here — no urgency, only inevitability."},
+        {symbol:"I",fn:"tonic",note:"m.5  --  E major. The theme unfolds like a slow exhalation."},
+        {symbol:"IV",fn:"predominant",note:"m.7  --  A major. The subdominant is warm, hymn-like. Beethoven is writing spiritual music."},
+        {symbol:"ii",fn:"predominant",note:"m.9  --  F# minor. A shadow — brief but telling."},
+        {symbol:"V7",fn:"dominant",note:"m.11  --  B7. The dominant, inevitable. The variations will depart from this center and return."},
+        {symbol:"vi",fn:"tonic",note:"m.13  --  C# minor. Beethoven's characteristic submediant color."},
+        {symbol:"I",fn:"tonic",note:"m.16  --  E major. The theme closes. Six variations will follow, each a different world."}
+      ]}
+    ]},
   { id:"schubert-d960", composer:"Schubert", title:"Sonata D. 960", full:"Piano Sonata in Bb major, D. 960", year:"1828", key:"Bb major",
-    recordings:[{id:"s37",label:"Schnabel 1937",full:"Artur Schnabel, 1937"},{id:"b88",label:"Brendel 1988",full:"Alfred Brendel, 1988"},{id:"p03",label:"Perahia 2003",full:"Murray Perahia, 2003"}]},
+    recordings:[{id:"s37",label:"Schnabel 1937",full:"Artur Schnabel, 1937"},{id:"b88",label:"Brendel 1988",full:"Alfred Brendel, 1988"},{id:"p03",label:"Perahia 2003",full:"Murray Perahia, 2003"},{id:"im19",label:"Imogen Cooper 2019",full:"Imogen Cooper, 2019"}],
+    sections:[
+      {label:"Mvt I — Exposition",measures:"mm. 1-80",page:"pp. 1-5",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, serene and vast. The opening melody has no urgency — it exists in geological time. Schubert wrote this three months before he died."},
+        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. The most analyzed moment in the sonata: a flat-VI intrusion, chromatic, otherworldly. It appears without preparation and resolves as if it were always there. This is Schubert's harmonic signature."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  Bb major returns after the Gb trill. But the listener has been subtly displaced — the tonic now sounds like it has a shadow."},
+        {symbol:"V",fn:"dominant",note:"m.18  --  F major. The dominant — but Schubert delays it unusually long. The first theme has been floating, harmonically uncommitted."},
+        {symbol:"ii",fn:"predominant",note:"m.24  --  C minor. The transition begins — a darkening before the second theme."},
+        {symbol:"V7",fn:"dominant",note:"m.32  --  C7, dominant of F. The second theme will arrive in F# minor — a shocking choice instead of the expected F major."},
+        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Schubert chooses the enharmonic minor instead of the expected relative major. This is deliberate estrangement — the listener expected warmth and received shadow."},
+        {symbol:"A I",fn:"tonic",note:"m.48  --  A major. The relative major finally appears, but late and in the wrong place — Schubert's formal ambiguity is structural, not accidental."},
+        {symbol:"V",fn:"dominant",note:"m.60  --  F major. The exposition closes with the dominant, but the closing theme is curiously resigned."},
+        {symbol:"I",fn:"tonic",note:"m.80  --  Bb major. End of exposition. But what key are we in? Schubert has systematically undermined our confidence in Bb throughout."}
+      ]},
+      {label:"Mvt I — Development",measures:"mm. 81-160",page:"pp. 5-9",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.81  --  The development begins on the tonic — unexpected. Schubert refuses the conventional move to the dominant."},
+        {symbol:"b i",fn:"chromatic",note:"m.96  --  Bb minor, the parallel minor. A devastating move — the home key becomes its own shadow."},
+        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant — Schubert's harmonic world operates by thirds, not fifths. This is the dark heart of the development."},
+        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb. Schubert has traveled through thirds to the harmonic antipode of home."},
+        {symbol:"V7",fn:"dominant",note:"m.148  --  F7, the dominant of Bb. The long journey home begins. But the recapitulation will not bring comfort."},
+        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. The recapitulation — but the Gb trill now appears over an unexpected harmony. Nothing has been resolved."}
+      ]},
+      {label:"Mvt II — Andante",measures:"mm. 1-48",page:"pp. 9-12",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. The slow movement — remote from the Bb of the first movement, accessed by a shift of a major third. Schubert's third-related keys are his most characteristic harmonic fingerprint."},
+        {symbol:"V",fn:"dominant",note:"m.6  --  G# major. The dominant in minor is particularly desolate here."},
+        {symbol:"i",fn:"tonic",note:"m.10  --  C# minor returns. The melody is a lament — one of Schubert's most sustained."},
+        {symbol:"VI",fn:"tonic",note:"m.16  --  A major. The submediant in minor — a moment of warmth, immediately extinguished."},
+        {symbol:"A I",fn:"chromatic",note:"m.20  --  A major, the relative major. A middle section of comparative serenity."},
+        {symbol:"V7",fn:"dominant",note:"m.32  --  G#7. The dominant seventh, preparing the return of C# minor."},
+        {symbol:"i",fn:"tonic",note:"m.36  --  C# minor. The lament returns, now accompanied by inner-voice chromaticism."},
+        {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with an unresolved sense of longing."},
+        {symbol:"i",fn:"tonic",note:"m.48  --  C# minor. The final cadence — but not a resolution. A settling."}
+      ]}
+    ]},
   { id:"ravel-gaspard", composer:"Ravel", title:"Gaspard de la Nuit", full:"Gaspard de la Nuit", year:"1908", key:"C# (Ondine)",
-    recordings:[{id:"a78",label:"Argerich 1978",full:"Martha Argerich, 1978"},{id:"pg81",label:"Pogorelich 1981",full:"Ivo Pogorelich, 1981"},{id:"t98",label:"Thibaudet 1998",full:"Jean-Yves Thibaudet, 1998"}]},
+    recordings:[{id:"a78",label:"Argerich 1978",full:"Martha Argerich, 1978"},{id:"pg81",label:"Pogorelich 1981",full:"Ivo Pogorelich, 1981"},{id:"t98",label:"Thibaudet 1998",full:"Jean-Yves Thibaudet, 1998"},{id:"yw19",label:"Yuja Wang 2019",full:"Yuja Wang, 2019"}],
+    sections:[
+      {label:"Ondine",measures:"mm. 1-80",page:"pp. 1-5",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  C# major, the water music begins. The repeated C# in the right hand is the surface of the lake — it never changes, it shimmers."},
+        {symbol:"V9",fn:"dominant",note:"m.8  --  G# with added ninth. Ravel's dominants are always enriched with color tones — never bare."},
+        {symbol:"I",fn:"tonic",note:"m.12  --  C# returns. The tonic is not a resolution here but a stasis — the water has no intention of moving."},
+        {symbol:"bVI",fn:"chromatic",note:"m.20  --  A major, flat-VI. Impressionist harmonic color borrowed from the modal world. The water becomes opaque."},
+        {symbol:"V7",fn:"dominant",note:"m.28  --  G# dominant seventh. A rare moment of traditional harmonic function in a work that largely suspends it."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  C# major. The melody of Ondine's song."},
+        {symbol:"bVII",fn:"chromatic",note:"m.40  --  B major, the subtonic. Modal borrowing — Ravel is thinking in Dorian and Mixolydian as much as major."},
+        {symbol:"V7/IV",fn:"chromatic",note:"m.48  --  F#7, secondary dominant of the subdominant. The harmonic color deepens."},
+        {symbol:"IV",fn:"predominant",note:"m.52  --  F# major. The subdominant is warm here, a moment of lyrical expansion."},
+        {symbol:"I",fn:"tonic",note:"m.60  --  C# major. Ondine's song reaches its apex — the texture thickens before the final dissolution."},
+        {symbol:"V7",fn:"dominant",note:"m.68  --  G#7. The dominant approaches — but Ondine will reject the human, and the cadence will not resolve conventionally."},
+        {symbol:"I",fn:"tonic",note:"m.80  --  C# major, but the texture evaporates. The water closes. Nothing remains."}
+      ]},
+      {label:"Le Gibet",measures:"mm. 1-67",page:"pp. 6-10",chords:[
+        {symbol:"Bb ostinato",fn:"tonic",note:"m.1  --  Bb, the tolling bell. It never moves. It is the most famous pedal point in piano music — 67 measures, not one deviation."},
+        {symbol:"bii",fn:"chromatic",note:"m.4  --  Cb minor. A flat-two minor — the Phrygian inflection. The harmonic language of death and the gallows."},
+        {symbol:"V7",fn:"dominant",note:"m.8  --  F dominant seventh, above the Bb pedal. The tension between the pedal and the moving harmonies is the entire drama."},
+        {symbol:"bVI",fn:"chromatic",note:"m.12  --  Gb major. Modal color, cold, distant."},
+        {symbol:"i",fn:"tonic",note:"m.16  --  Bb minor. The tolling bell continues, indifferent."},
+        {symbol:"bVII",fn:"chromatic",note:"m.24  --  Ab major. The harmonies drift above the pedal like clouds over a corpse."},
+        {symbol:"V",fn:"dominant",note:"m.36  --  F major. The dominant over the Bb pedal creates maximum harmonic tension."},
+        {symbol:"bii",fn:"chromatic",note:"m.44  --  Cb minor again. The Phrygian darkness returns."},
+        {symbol:"Bb",fn:"tonic",note:"m.67  --  The final toll. The bell stops. The piece does not end so much as cease."}
+      ]},
+      {label:"Scarbo",measures:"mm. 1-115",page:"pp. 11-17",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor, presto. The demon appears — a single note repeated at impossible speed. The technical demand is inseparable from the harmonic meaning: instability made physical."},
+        {symbol:"V7",fn:"dominant",note:"m.12  --  G#7. The dominant arrives before the tonic is established — Scarbo refuses to be contained."},
+        {symbol:"i",fn:"tonic",note:"m.20  --  C# minor. The demon dances."},
+        {symbol:"bVI",fn:"chromatic",note:"m.32  --  A major. Grotesque warmth — Scarbo's parody of beauty."},
+        {symbol:"N6",fn:"chromatic",note:"m.48  --  D major in first inversion. The Neapolitan — maximum harmonic pressure. Ravel uses this at the climax."},
+        {symbol:"V7",fn:"dominant",note:"m.56  --  G#7. Relentless dominant — Scarbo never lets the tonic breathe."},
+        {symbol:"i",fn:"tonic",note:"m.68  --  C# minor. A false repose — the demon is merely gathering speed."},
+        {symbol:"bVII",fn:"chromatic",note:"m.80  --  B major. The harmonic language becomes increasingly chromatic as Scarbo nears his vanishing point."},
+        {symbol:"V7",fn:"dominant",note:"m.96  --  G#7 one final time. Everything has been preparation for the evaporation."},
+        {symbol:"i",fn:"tonic",note:"m.115  --  C# minor — and Scarbo disappears. The last note is a single C#, pianissimo. The silence after it is the piece."}
+      ]}
+    ]},
   { id:"scriabin-op53", composer:"Scriabin", title:"Sonata No. 5", full:"Piano Sonata No. 5, Op. 53", year:"1907", key:"F# mystic chord",
-    recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"}]}
+    recordings:[{id:"h76",label:"Horowitz 1976",full:"Vladimir Horowitz, 1976"},{id:"sf60",label:"Sofronitsky 1960",full:"Vladimir Sofronitsky, 1960"},{id:"ham00",label:"Hamelin 2000",full:"Marc-Andre Hamelin, 2000"},{id:"dt21",label:"Trifonov 2021",full:"Daniil Trifonov, 2021"}],
+    sections:[
+      {label:"Introduction — Impetuoso",measures:"mm. 1-24",page:"p. 1",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.1  --  The mystic chord: F#-A#-C#-E#-G#-B. Not a dominant seventh but a synthetic sonority — Scriabin's musical cosmos in a single chord. It neither resolves nor requires resolution."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.4  --  The chord transposed to C#. In the mystic chord world, 'dominant' means something different — this is not a B7 resolving to E, but a color relationship."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.6  --  The home sonority returns. The Introduction establishes the harmonic universe: suspended, floating, non-teleological."},
+        {symbol:"E7(#11)",fn:"chromatic",note:"m.10  --  A tritone away from the home. Scriabin structures by tritone symmetry, not by fifth."},
+        {symbol:"Bb7(#11)",fn:"chromatic",note:"m.14  --  The enharmonic equivalent of A#7. The tritone axis is the structural principle."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.18  --  Home chord, more insistent. The Introduction is building harmonic pressure."},
+        {symbol:"V7",fn:"dominant",note:"m.22  --  C#7, the closest thing to a traditional dominant. The flying theme is about to appear."},
+        {symbol:"I",fn:"tonic",note:"m.24  --  F# area, momentarily settled. The main body of the sonata begins."}
+      ]},
+      {label:"First Theme — Presto",measures:"mm. 25-80",page:"pp. 1-3",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.25  --  The presto begins. The flying theme — Scriabin's most physically demanding passage — is built on the mystic chord in motion."},
+        {symbol:"D7(#11)",fn:"chromatic",note:"m.32  --  A third away. Scriabin's third-related harmonic moves give the music its characteristic hovering quality."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.36  --  Home sonority, briefly confirmed."},
+        {symbol:"A7(#11)",fn:"chromatic",note:"m.40  --  The augmented triad relationship: F#-A-C# generates a chain of thirds."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.48  --  The dominant chord, building tension toward the lyrical second theme."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.56  --  Return. The first theme recapitulates its opening figure."},
+        {symbol:"Eb7(#11)",fn:"chromatic",note:"m.64  --  Tritone of A: maximum harmonic distance from F#. The texture is at its most dense."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.72  --  The dominant prepares the transition."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.80  --  The first theme closes. The mystic chord is both home and elsewhere — simultaneously resolved and unresolved."}
+      ]},
+      {label:"Second Theme — Languido",measures:"mm. 81-140",page:"pp. 3-5",chords:[
+        {symbol:"A7(#11)",fn:"tonic",note:"m.81  --  A major-ish. The second theme is more lyrical, but Scriabin's 'lyrical' still dissolves traditional tonality. The melody floats above the mystic chord."},
+        {symbol:"F#7(#11)",fn:"chromatic",note:"m.88  --  The home sonority underneath the A-area melody. Scriabin layers harmonic worlds simultaneously."},
+        {symbol:"D7(#11)",fn:"chromatic",note:"m.96  --  Third-relation move. The melody continues floating."},
+        {symbol:"A7(#11)",fn:"tonic",note:"m.104  --  Return to the second theme's area."},
+        {symbol:"Bb7(#11)",fn:"chromatic",note:"m.112  --  Semitone above A: maximum tension in the second theme."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.124  --  The dominant of F#, preparing the development."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.140  --  The development begins. The mystic chord is its own development — it never truly changes."}
+      ]},
+      {label:"Development & Coda",measures:"mm. 141-235",page:"pp. 5-8",chords:[
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.141  --  The development compresses the first theme material. At this speed, the mystic chord becomes a blur of color rather than a harmony."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.156  --  The dominant, preparing the climax."},
+        {symbol:"Eb7(#11)",fn:"chromatic",note:"m.168  --  Tritone of A: the harmonic extreme. The climax is approaching."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.180  --  The presto returns, the climax of the sonata."},
+        {symbol:"V7",fn:"dominant",note:"m.196  --  C#7, the most traditional-sounding moment in the entire sonata. Scriabin allows one moment of conventional harmonic function at the peak."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.208  --  The coda begins. The sonata is contracting back to its opening materials."},
+        {symbol:"C#7(#11)",fn:"dominant",note:"m.220  --  The final dominant preparation."},
+        {symbol:"F#7(#11)",fn:"tonic",note:"m.235  --  The final mystic chord, fortissimo. The sonata ends not with resolution but with affirmation — the mystic chord is all there is, and it is enough."}
+      ]}
+    ]}
 ];
 
 var SYS = "You are Arioso, an AI score companion for serious pianists. Your users are advanced performers  --  conservatory-trained or equivalent. Your writing adapts strictly to context. For ANALYSIS requests: write like a rigorous musicologist. Identify formal structures precisely (modified sonata, rondo, etc.), Roman numeral analysis, key relationships, and harmonic language. For Chopin specifically, the central analytical lens is the equilibrium of chromaticism and diatonicism  --  how Chopin suspends tonality through tonal ambiguity, delayed resolution, floating tonality, double tonic complex, and the Neapolitan as structural pillar rather than ornament. Cite specific scholars where relevant: Berger on form, Rothstein on thematic ambiguity, Samson on tonal expansion, Rink on the dialectic of analysis and history. Connect every analytical observation to what the performer must understand and do. For INTERPRETATIONS requests: discuss specific named recordings  --  pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link for each pianist formatted as: [Listen: Name Year](https://www.youtube.com/results?search_query=Name+Piece+Year). Be opinionated about which recordings are essential. For HISTORY and CONTEXT requests: write like serious program notes  --  LA Phil register. For Chopin, include: the ballade form's origins from medieval French Ars Nova through German Romantic poets to Mickiewicz; Chopin as a bridge figure whose chromaticism anticipates Wagner and ultimately Schoenberg; Schumann's reaction; the biographical context. For ALL contexts: direct, specific, opinionated. No hedging, no passive voice, no markdown asterisks. 3-5 sentences unless more depth is requested. You have web search available. Source hierarchy is strict: (1) Peer-reviewed journal articles (Nineteenth Century Music, Music Analysis, Journal of the American Musicological Society, Music Theory Spectrum, Integral)  --  highest authority; (2) University press books (Oxford, Cambridge, Harvard, Norton)  --  high authority; (3) Established music encyclopedias (Grove Music Online, MGG)  --  acceptable; (4) Major orchestra program notes (LA Phil, Carnegie Hall, BBC Proms, Vienna Philharmonic)  --  acceptable for historical context; (5) Everything else  --  do not cite as a source. Never cite blogs, personal websites, or amateur analyses, even if they appear in search results. Always search before generating analysis, especially for pieces beyond the core canon. CRITICAL: Never mention your sources, limitations, or methodology to the user. Never ask the user which option they prefer. Just deliver the analysis directly and confidently. The user is a pianist, not a researcher. For INTERPRETATIONS, always include at least one 21st century pianist -- e.g. Daniil Trifonov, Yuja Wang, Daniil Trifonov, Behzod Abduraimov, Seong-Jin Cho, Lucas Debargue, or another major contemporary figure relevant to the repertoire.";
@@ -1752,10 +1969,31 @@ function callAPI(messages, callback, useSearch) {
   }).catch(function() { callback("Connection error."); });
 }
 
-// Search-enabled version - falls back to regular if search fails
+// Search-enabled version — uses web_search tool
 function callAPIWithSearch(messages, callback) {
-  // Use regular call for reliability - prompts guide quality
-  callAPI(messages, callback, false);
+  var body = {
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
+    system: SYS,
+    messages: messages,
+    tools: [{ type: "web_search_20250305", name: "web_search" }]
+  };
+  fetch("/api/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    if (text) { callback(text); return; }
+    // Fallback: stop_reason may be tool_use — re-call with tool results appended
+    // For now fall back to regular call
+    callAPI(messages, callback, false);
+  }).catch(function() { callAPI(messages, callback, false); });
 }
 
 function triggerLoad() {
@@ -1998,7 +2236,6 @@ function zoomOut() {
 }
 function applyZoom() {
   if (!pdfDoc) return;
-  // Re-render each page with new zoom level
   for (var i = 1; i <= pdfDoc.numPages; i++) {
     (function(pageNum) {
       pdfDoc.getPage(pageNum).then(function(page) {
@@ -2008,12 +2245,23 @@ function applyZoom() {
         if (!canvas || !wrapper) return;
         var container = document.getElementById("pdf-pages");
         var baseWidth = container.clientWidth - 32;
-        var scale = (baseWidth / page.getViewport({scale: 1}).width) * zoomLevel;
+        var naturalW = page.getViewport({scale: 1}).width;
+        var scale = (baseWidth / naturalW) * zoomLevel;
         var vp = page.getViewport({scale: scale});
-        canvas.width = vp.width;
-        canvas.height = vp.height;
-        if (drawCanvas) { drawCanvas.width = vp.width; drawCanvas.height = vp.height; }
-        wrapper.style.height = vp.height + "px";
+        // Internal canvas pixels
+        canvas.width = vp.width; canvas.height = vp.height;
+        // CSS display size — zoom changes actual rendered width
+        var displayW = Math.round(baseWidth * zoomLevel);
+        var displayH = Math.round(vp.height * (displayW / vp.width));
+        canvas.style.width = displayW + "px";
+        canvas.style.height = displayH + "px";
+        if (drawCanvas) {
+          drawCanvas.width = displayW; drawCanvas.height = displayH;
+          drawCanvas.style.width = displayW + "px";
+          drawCanvas.style.height = displayH + "px";
+        }
+        wrapper.style.width = displayW + "px";
+        wrapper.style.height = displayH + "px";
         page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
       });
     })(i);
