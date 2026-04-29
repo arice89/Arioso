@@ -590,13 +590,14 @@ function clearDrawings() {
 #analysis-content::-webkit-scrollbar-track { background: transparent; }
 #analysis-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-/* Chord explanation — secondary panel below full analysis */
+/* Chord explanation — fixed panel between analysis and chat */
 #chord-explanation {
   border-top: 1px solid var(--border2);
-  margin: 0 0 0 0;
-  padding: 16px 40px 20px;
+  padding: 14px 28px 16px;
   background: var(--bg2);
   flex-shrink: 0;
+  max-height: 220px;
+  overflow-y: auto;
 }
 #chord-explanation-label {
   font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
@@ -954,8 +955,8 @@ function clearDrawings() {
     <div id="context-banner"></div>
     <div id="analysis-content">
       <div id="full-analysis"><span class="empty">Select a piece to begin.</span></div>
-      <div id="chord-explanation" style="display:none;"></div>
     </div>
+    <div id="chord-explanation" style="display:none;"></div>
     <div id="chat-section">
       <div id="vision-status" style="font-size:10px;color:var(--text3);padding:4px 2px 6px;display:none;"></div>
       <div id="chat-messages"></div>
