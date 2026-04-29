@@ -1209,7 +1209,7 @@ var PIECES = [
   { id:"beethoven-op109", composer:"Beethoven", title:"Sonata Op. 109", full:"Piano Sonata in E major, Op. 109", year:"1820", key:"E major",
     recordings:[{id:"k64",label:"Kempff 1964",full:"Wilhelm Kempff, 1964"},{id:"b95",label:"Brendel 1995",full:"Alfred Brendel, 1995"},{id:"s04",label:"Schiff 2004",full:"Andras Schiff, 2004"},{id:"af22",label:"Afanassiev 2022",full:"Valery Afanassiev, 2022"}],
     sections:[
-      {label:"I — Vivace",measures:"mm. 1-66",page:"pp. 1-3",chords:[
+      {label:"Mvt I — Vivace",measures:"Vivace ma non troppo"},page:"pp. 1-3",chords:[
         {symbol:"I",fn:"tonic",note:"m.1  --  E major, but the meter is ambiguous — compound duple disguised as simple. The opening is a question, not a statement."},
         {symbol:"V7",fn:"dominant",note:"m.3  --  B dominant seventh. Beethoven establishes the dominant before the tonic is even settled."},
         {symbol:"I",fn:"tonic",note:"m.5  --  E major returns, but with added inner voices. The texture is filling in."},
@@ -1221,7 +1221,7 @@ var PIECES = [
         {symbol:"V",fn:"dominant",note:"m.24  --  B major. Clean, structural — Beethoven clears the air for the Adagio transition."},
         {symbol:"I",fn:"tonic",note:"m.28  --  E major, closing the Vivace. But the transition to Adagio is immediate and shocking."}
       ]},
-      {label:"I — Adagio",measures:"mm. 1-9",page:"p. 3",chords:[
+      {label:"Mvt I — Adagio",measures:"Adagio espressivo"},page:"p. 3",chords:[
         {symbol:"e i",fn:"tonic",note:"m.1  --  E minor. The parallel minor — the first dark shadow in the sonata. This is not the same E as before."},
         {symbol:"iv",fn:"predominant",note:"m.2  --  A minor. The subdominant in minor deepens the tragedy."},
         {symbol:"V7",fn:"dominant",note:"m.4  --  B dominant seventh. The Adagio's harmonic language is simpler but more concentrated."},
@@ -1230,7 +1230,7 @@ var PIECES = [
         {symbol:"V7",fn:"dominant",note:"m.8  --  B7. The final dominant — the Adagio will close, and the Vivace will return."},
         {symbol:"I",fn:"tonic",note:"m.9  --  E major, the Vivace returns. Beethoven's tempo alternation is a formal innovation with no precedent."}
       ]},
-      {label:"II — Prestissimo",measures:"mm. 1-98",page:"pp. 4-6",chords:[
+      {label:"Mvt II — Prestissimo",measures:"Prestissimo"},page:"pp. 4-6",chords:[
         {symbol:"e i",fn:"tonic",note:"m.1  --  E minor, presto. This movement is an eruption — the darkness hinted at in the Adagio now unleashed."},
         {symbol:"III",fn:"tonic",note:"m.8  --  G major, the relative major. Brief warmth immediately extinguished."},
         {symbol:"V7",fn:"dominant",note:"m.16  --  B7, relentless. The dominant hammering is characteristic of Beethoven's late style."},
@@ -1241,7 +1241,7 @@ var PIECES = [
         {symbol:"V7",fn:"dominant",note:"m.72  --  Final dominant preparation. The Prestissimo is about to close."},
         {symbol:"I",fn:"tonic",note:"m.98  --  E major, the parallel major. The ending is not tragic but transcendent — a Beethoven speciality."}
       ]},
-      {label:"III — Theme",measures:"mm. 1-16",page:"pp. 6-7",chords:[
+      {label:"Mvt III — Theme & Vars",measures:"Gesangvoll"},page:"pp. 6-7",chords:[
         {symbol:"I",fn:"tonic",note:"m.1  --  E major, Gesangvoll. The most sustained, singing theme Beethoven ever wrote for piano. Every note matters."},
         {symbol:"V7",fn:"dominant",note:"m.3  --  B7. The dominant is gentle here — no urgency, only inevitability."},
         {symbol:"I",fn:"tonic",note:"m.5  --  E major. The theme unfolds like a slow exhalation."},
@@ -1255,36 +1255,47 @@ var PIECES = [
   { id:"schubert-d960", composer:"Schubert", title:"Sonata D. 960", full:"Piano Sonata in Bb major, D. 960", year:"1828", key:"Bb major",
     recordings:[{id:"s37",label:"Schnabel 1937",full:"Artur Schnabel, 1937"},{id:"b88",label:"Brendel 1988",full:"Alfred Brendel, 1988"},{id:"p03",label:"Perahia 2003",full:"Murray Perahia, 2003"},{id:"im19",label:"Imogen Cooper 2019",full:"Imogen Cooper, 2019"}],
     sections:[
-      {label:"I — Exposition",measures:"mm. 1-80",page:"pp. 1-5",chords:[
-        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, serene and vast. The opening melody has no urgency — it exists in geological time. Schubert wrote this three months before he died."},
-        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. The most analyzed moment in the sonata: a flat-VI intrusion, chromatic, otherworldly. It appears without preparation and resolves as if it were always there. This is Schubert's harmonic signature."},
-        {symbol:"I",fn:"tonic",note:"m.9  --  Bb major returns after the Gb trill. But the listener has been subtly displaced — the tonic now sounds like it has a shadow."},
-        {symbol:"V",fn:"dominant",note:"m.18  --  F major. The dominant — but Schubert delays it unusually long. The first theme has been floating, harmonically uncommitted."},
-        {symbol:"ii",fn:"predominant",note:"m.24  --  C minor. The transition begins — a darkening before the second theme."},
-        {symbol:"V7",fn:"dominant",note:"m.32  --  C7, dominant of F. The second theme will arrive in F# minor — a shocking choice instead of the expected F major."},
-        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Schubert chooses the enharmonic minor instead of the expected relative major. This is deliberate estrangement — the listener expected warmth and received shadow."},
-        {symbol:"A I",fn:"tonic",note:"m.48  --  A major. The relative major finally appears, but late and in the wrong place — Schubert's formal ambiguity is structural, not accidental."},
-        {symbol:"V",fn:"dominant",note:"m.60  --  F major. The exposition closes with the dominant, but the closing theme is curiously resigned."},
-        {symbol:"I",fn:"tonic",note:"m.80  --  Bb major. End of exposition. But what key are we in? Schubert has systematically undermined our confidence in Bb throughout."}
+      {label:"Mvt I — Exposition",measures:"mm. 1-80",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, serene and vast. No urgency. Schubert wrote this three months before he died."},
+        {symbol:"Gb",fn:"chromatic",note:"m.8  --  The Gb major trill. Flat-VI, otherworldly, unrepeated. The most analyzed moment in the sonata — it appears without preparation and resolves as if always there."},
+        {symbol:"I",fn:"tonic",note:"m.9  --  Bb returns. But the listener has been displaced — the tonic now has a shadow."},
+        {symbol:"V",fn:"dominant",note:"m.18  --  F major, delayed unusually long. The first theme has been floating, harmonically uncommitted."},
+        {symbol:"IV",fn:"predominant",note:"m.20  --  Eb major. The subdominant broadens the phrase before the transition."},
+        {symbol:"ii",fn:"predominant",note:"m.24  --  C minor. Transition darkens toward the second theme."},
+        {symbol:"V7/V",fn:"chromatic",note:"m.28  --  C7. Points toward F major — but Schubert refuses the expected arrival."},
+        {symbol:"f# i",fn:"chromatic",note:"m.36  --  F# minor. The second theme. Deliberate estrangement — listener expected F major warmth, received shadow instead."},
+        {symbol:"A I",fn:"tonic",note:"m.48  --  A major. The relative major appears late and in the wrong place."},
+        {symbol:"E I",fn:"chromatic",note:"m.52  --  E major. A third below A — Schubert moves by thirds, not fifths."},
+        {symbol:"V7",fn:"dominant",note:"m.72  --  F7. Final dominant push toward the double bar."},
+        {symbol:"I",fn:"tonic",note:"m.80  --  Bb major. End of exposition. Schubert has undermined confidence in Bb throughout."}
       ]},
-      {label:"I — Development",measures:"mm. 81-160",page:"pp. 5-9",chords:[
-        {symbol:"Bb I",fn:"tonic",note:"m.81  --  The development begins on the tonic — unexpected. Schubert refuses the conventional move to the dominant."},
-        {symbol:"b i",fn:"chromatic",note:"m.96  --  Bb minor, the parallel minor. A devastating move — the home key becomes its own shadow."},
-        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant — Schubert's harmonic world operates by thirds, not fifths. This is the dark heart of the development."},
-        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb. Schubert has traveled through thirds to the harmonic antipode of home."},
-        {symbol:"V7",fn:"dominant",note:"m.148  --  F7, the dominant of Bb. The long journey home begins. But the recapitulation will not bring comfort."},
-        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. The recapitulation — but the Gb trill now appears over an unexpected harmony. Nothing has been resolved."}
+      {label:"Mvt I — Development",measures:"mm. 81-212",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.81  --  Development begins on the tonic — unexpected. Schubert refuses the conventional dominant move."},
+        {symbol:"b i",fn:"chromatic",note:"m.96  --  Bb minor, the parallel minor. The home key becomes its own shadow."},
+        {symbol:"Db I",fn:"chromatic",note:"m.108  --  Db major. The mediant — Schubert's world operates by thirds, not fifths."},
+        {symbol:"Ab I",fn:"chromatic",note:"m.116  --  Ab major. Another third down. The flat-key journey continues."},
+        {symbol:"gb i",fn:"chromatic",note:"m.124  --  Gb minor. The remotest key from Bb — the harmonic antipode of home."},
+        {symbol:"Db I",fn:"chromatic",note:"m.132  --  Db major. Beginning the long return journey."},
+        {symbol:"Ab I",fn:"chromatic",note:"m.136  --  Ab major. Return through thirds, in reverse."},
+        {symbol:"V7",fn:"dominant",note:"m.148  --  F7. The journey home begins. But the recapitulation will not bring comfort."},
+        {symbol:"I",fn:"tonic",note:"m.160  --  Bb major. Recapitulation — but the Gb trill now appears over an unexpected harmony."},
+        {symbol:"f# i",fn:"chromatic",note:"m.192  --  F# minor returns. The second theme now in the tonic minor — even darker than before."},
+        {symbol:"I",fn:"tonic",note:"m.212  --  Bb major. The movement ends — not resolved, only exhausted."}
       ]},
-      {label:"II — Andante",measures:"mm. 1-48",page:"pp. 9-12",chords:[
-        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. The slow movement — remote from the Bb of the first movement, accessed by a shift of a major third. Schubert's third-related keys are his most characteristic harmonic fingerprint."},
-        {symbol:"V",fn:"dominant",note:"m.6  --  G# major. The dominant in minor is particularly desolate here."},
-        {symbol:"i",fn:"tonic",note:"m.10  --  C# minor returns. The melody is a lament — one of Schubert's most sustained."},
-        {symbol:"VI",fn:"tonic",note:"m.16  --  A major. The submediant in minor — a moment of warmth, immediately extinguished."},
+      {label:"Mvt II — Andante",measures:"mm. 1-50",chords:[
+        {symbol:"c# i",fn:"tonic",note:"m.1  --  C# minor. Remote from Bb by a major third — Schubert's characteristic third-relation between movements."},
+        {symbol:"iv",fn:"predominant",note:"m.3  --  F# minor. The subdominant deepens the opening darkness."},
+        {symbol:"V",fn:"dominant",note:"m.6  --  G# major. The dominant in minor is desolate here."},
+        {symbol:"i",fn:"tonic",note:"m.8  --  C# minor. The melody is a lament."},
+        {symbol:"VI",fn:"tonic",note:"m.10  --  A major. A moment of warmth, immediately extinguished."},
+        {symbol:"iv",fn:"predominant",note:"m.14  --  F# minor. The subdominant returns — the lament deepens."},
         {symbol:"A I",fn:"chromatic",note:"m.20  --  A major, the relative major. A middle section of comparative serenity."},
-        {symbol:"V7",fn:"dominant",note:"m.32  --  G#7. The dominant seventh, preparing the return of C# minor."},
-        {symbol:"i",fn:"tonic",note:"m.36  --  C# minor. The lament returns, now accompanied by inner-voice chromaticism."},
-        {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with an unresolved sense of longing."},
-        {symbol:"i",fn:"tonic",note:"m.48  --  C# minor. The final cadence — but not a resolution. A settling."}
+        {symbol:"E I",fn:"chromatic",note:"m.24  --  E major. Another third away — Schubert never stays in one harmonic world."},
+        {symbol:"V7",fn:"dominant",note:"m.32  --  G#7. Preparing the return of C# minor."},
+        {symbol:"i",fn:"tonic",note:"m.36  --  C# minor. The lament returns with inner-voice chromaticism."},
+        {symbol:"N6",fn:"chromatic",note:"m.40  --  D major in first inversion. The Neapolitan — maximum harmonic pressure at the emotional peak."},
+        {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with unresolved longing."},
+        {symbol:"i",fn:"tonic",note:"m.50  --  C# minor. The final cadence — not resolution, only settling."}
       ]}
     ]},
   { id:"ravel-gaspard", composer:"Ravel", title:"Gaspard de la Nuit", full:"Gaspard de la Nuit", year:"1908", key:"C# (Ondine)",
@@ -1412,9 +1423,10 @@ function init() {
 }
 
 function selectPiece(i) {
-  piece = PIECES[i]; rec = piece.recordings[0]; chatHistory = [];
+  piece = PIECES[i]; rec = null; chatHistory = [];
   currentSection = 0;
   pdfDoc = null;
+  contentCache = {}; // clear cache for new piece
   document.getElementById("pdf-pages").innerHTML = "";
   document.getElementById("pdf-pages").style.display = "none";
   document.querySelectorAll(".piece-btn").forEach(function(b,j){ b.classList.toggle("active",j===i); });
@@ -1422,6 +1434,7 @@ function selectPiece(i) {
   t.textContent = piece.full; t.classList.remove("empty");
   document.getElementById("score-subtitle").textContent = piece.composer + "   .   " + piece.year + "   .   " + piece.key;
   document.getElementById("chat-messages").innerHTML = "";
+  prefetchAll(piece); // kick off all parallel fetches
   renderRecs(); loadAnalysis();
   renderChordStrip();
   if(mode==="study") loadStudy();
@@ -1691,30 +1704,128 @@ function setTab(t) {
   renderRecs(); loadAnalysis();
 }
 
+/* ===== CONTENT CACHE — prefetch all tabs in parallel ===== */
+var contentCache = {}; // key: pieceId+tab, value: rendered HTML
+
+function cacheKey(pieceId, tabName, extra) {
+  return pieceId + ":" + tabName + (extra ? ":" + extra : "");
+}
+
+function prefetchAll(p) {
+  if (!p) return;
+  var pid = p.id;
+
+  // Prefetch Analysis
+  var analysisPrompt = "Write a structured analytical overview of " + p.full + " by " + p.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble.";
+  callAPIAsync([{role:"user",content:analysisPrompt}]).then(function(text) {
+    contentCache[cacheKey(pid,"story")] = renderSectioned(text);
+  });
+
+  // Prefetch Practice
+  var practicePrompt = "Give 3 specific practice priorities for " + p.full + " by " + p.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
+  callAPIAsync([{role:"user",content:practicePrompt}]).then(function(text) {
+    contentCache[cacheKey(pid,"practice")] = renderSectioned(text);
+  });
+
+  // Prefetch all 3 Study tabs in parallel
+  var studyPrompts = {
+    history: "Write a structured historical overview of " + p.full + " by " + p.composer + " like serious concert program notes. Use ## to mark each section heading. Sections: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. Each 2-3 sentences. Authoritative, direct, no preamble.",
+    scholarship: "Write a structured overview of musicological scholarship on " + p.full + " by " + p.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
+    interviews: "Write a structured compilation of documented statements about " + p.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
+  };
+  ["history","scholarship","interviews"].forEach(function(t) {
+    callAPIWithSearchAsync([{role:"user",content:studyPrompts[t]}]).then(function(text) {
+      contentCache[cacheKey(pid,"study",t)] = renderSectioned(text);
+    });
+  });
+
+  // Fetch recordings via web search
+  fetchRecordings(p);
+}
+
+function fetchRecordings(p) {
+  var prompt = "Search for the 5 most famous, critically acclaimed, and historically important recordings of " + p.full + " by " + p.composer + ". Include a mix of historic and contemporary pianists. For each, respond ONLY in this JSON array format with no other text: [{\"id\":\"lastname-year\",\"label\":\"Lastname Year\",\"full\":\"Full Name, Year\"}]. Only include recordings that actually exist and are well-documented.";
+  callAPIWithSearchAsync([{role:"user",content:prompt}]).then(function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      // Find JSON array in response
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) return;
+      var recs = JSON.parse(match[0]);
+      if (!Array.isArray(recs) || !recs.length) return;
+      // Save to piece and localStorage
+      var key = "live-recordings-" + p.id;
+      localStorage.setItem(key, JSON.stringify(recs));
+      // If currently viewing this piece's interpretations tab, re-render
+      if (piece && piece.id === p.id && tab === "recording") {
+        rec = recs[0];
+        renderRecs();
+        loadAnalysis();
+      }
+    } catch(e) {}
+  });
+}
+
+function getLiveRecordings(p) {
+  try {
+    var saved = localStorage.getItem("live-recordings-" + p.id);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+/* Async API wrappers returning Promises */
+function callAPIAsync(messages) {
+  return new Promise(function(resolve) {
+    callAPI(messages, resolve);
+  });
+}
+function callAPIWithSearchAsync(messages) {
+  return new Promise(function(resolve) {
+    callAPIWithSearch(messages, resolve);
+  });
+}
+
 function renderRecs() {
   var sel = document.getElementById("recording-selector");
   sel.innerHTML = "";
   if(tab==="recording" && piece) {
     sel.style.display = "flex";
-    // Load any custom performers saved for this piece
+    // Use live recordings if available, else show loading state
+    var liveRecs = getLiveRecordings(piece);
     var customKey = "custom-performers-" + piece.id;
     var customPerformers = [];
     try { customPerformers = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
-    var allRecs = piece.recordings.concat(customPerformers);
-    allRecs.forEach(function(r){
-      var b = document.createElement("button");
-      b.className = "rec-btn" + (rec && r.id===rec.id?" active":"");
-      b.textContent = r.label;
-      b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
-      sel.appendChild(b);
-    });
-    // Add "+" button to add custom performer
-    var addBtn = document.createElement("button");
-    addBtn.className = "rec-btn";
-    addBtn.textContent = "+ Add performer";
-    addBtn.style.cssText = "border-style:dashed;color:var(--text3);";
-    addBtn.onclick = function() { showAddPerformerInput(); };
-    sel.appendChild(addBtn);
+
+    if (!liveRecs) {
+      // Still fetching — show spinner
+      var loading = document.createElement("span");
+      loading.style.cssText = "font-size:11px;color:var(--text3);padding:4px 8px;";
+      loading.textContent = "Finding recordings...";
+      sel.appendChild(loading);
+      // Poll until ready
+      var poll = setInterval(function() {
+        var r = getLiveRecordings(piece);
+        if (r) { clearInterval(poll); renderRecs(); }
+      }, 800);
+    } else {
+      var allRecs = liveRecs.concat(customPerformers);
+      if (!rec || !allRecs.find(function(r){ return r.id===rec.id; })) rec = allRecs[0];
+      allRecs.forEach(function(r){
+        var b = document.createElement("button");
+        b.className = "rec-btn" + (rec && r.id===rec.id?" active":"");
+        b.textContent = r.label;
+        b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
+        sel.appendChild(b);
+      });
+      // Add "+" button
+      var addBtn = document.createElement("button");
+      addBtn.className = "rec-btn";
+      addBtn.textContent = "+ Add performer";
+      addBtn.style.cssText = "border-style:dashed;color:var(--text3);";
+      addBtn.onclick = function() { showAddPerformerInput(); };
+      sel.appendChild(addBtn);
+    }
   } else { sel.style.display = "none"; }
 }
 
@@ -1817,26 +1928,52 @@ function loadAnalysis() {
   if(!piece) return;
   document.getElementById("context-banner").style.display = "none";
   var content = document.getElementById("analysis-content");
-  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var prompt = "";
+  var reqId = ++analysisReqId;
   var currentTab = tab;
-  var reqId = ++analysisReqId; // snapshot current request ID
+  var pid = piece.id;
 
   if(tab==="story") {
-    prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, e.g. Introduction (mm. 1-7) -- covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble, no caveats, no methodology discussion.";
+    var cached = contentCache[cacheKey(pid,"story")];
+    if (cached) { content.innerHTML = cached; return; }
+    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    var prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble.";
+    callAPI([{role:"user",content:prompt}], function(text) {
+      if (reqId !== analysisReqId || tab !== currentTab) return;
+      var html = renderSectioned(text);
+      contentCache[cacheKey(pid,"story")] = html;
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = html;
+    });
+
   } else if(tab==="recording") {
-    var recName = (rec && rec.full) ? rec.full : (piece.recordings[0] ? piece.recordings[0].full : piece.composer);
-    prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Jump straight into the analysis with no preamble. Cover their specific interpretive choices at key passages, how those choices connect to the harmonic structure, and what this recording uniquely reveals. Be opinionated and specific. End with a YouTube search link formatted exactly as: [Listen on YouTube](https://www.youtube.com/results?search_query=" + recName.replace(/ /g, "+") + "+" + piece.title.replace(/ /g, "+") + "). 3-4 sentences then the link.";
+    var liveRecs = getLiveRecordings(piece);
+    var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
+    var recId = rec ? rec.id : "default";
+    var cached = contentCache[cacheKey(pid,"recording",recId)];
+    if (cached) { content.innerHTML = cached; return; }
+    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    var prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Jump straight into the analysis. Cover their specific interpretive choices at key passages, how those choices connect to the harmonic structure, and what this recording uniquely reveals. Be opinionated and specific. End with a YouTube search link formatted as: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then the link.";
+    callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+      if (reqId !== analysisReqId || tab !== currentTab) return;
+      var html = renderSectioned(text);
+      contentCache[cacheKey(pid,"recording",recId)] = html;
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = html;
+    });
+
   } else {
-    prompt = "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
+    var cached = contentCache[cacheKey(pid,"practice")];
+    if (cached) { content.innerHTML = cached; return; }
+    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    var prompt = "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
+    callAPI([{role:"user",content:prompt}], function(text) {
+      if (reqId !== analysisReqId || tab !== currentTab) return;
+      var html = renderSectioned(text);
+      contentCache[cacheKey(pid,"practice")] = html;
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = html;
+    });
   }
-  callAPI([{role:"user",content:prompt}], function(text) {
-    // Only render if this is still the latest request AND same tab
-    if (reqId !== analysisReqId) return;
-    if (tab !== currentTab) return;
-    var el = document.getElementById("analysis-content");
-    if (el) el.innerHTML = renderSectioned(text);
-  });
 }
 
 function renderSectioned(text) {
@@ -1933,15 +2070,20 @@ function setStudyTab(t) {
 function loadStudy() {
   if(!piece) return;
   var content = document.getElementById("study-content");
+  var pid = piece.id;
+  var cached = contentCache[cacheKey(pid,"study",studyTab)];
+  if (cached) { content.innerHTML = cached; return; }
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var historySources = (piece.sources && piece.sources.history) ? " Priority scholarly sources: " + piece.sources.history + ". Use academic biographies and peer-reviewed historical scholarship. Program notes from major orchestras (LA Phil, Carnegie Hall, BBC Proms) are acceptable secondary sources. Avoid Wikipedia as primary source." : " Search for academic biographies, peer-reviewed historical scholarship, and major orchestra program notes for this piece. Avoid Wikipedia as primary source.";
-  var scholarSources = (piece.sources && piece.sources.scholarship) ? " Priority scholarly sources: " + piece.sources.scholarship + ". Search JSTOR and Google Scholar for additional peer-reviewed work. Cite journal names, years, and authors specifically." : " Search JSTOR, Google Scholar, and Music Index for peer-reviewed musicological scholarship on this piece. Cite journal names, years, and authors specifically.";
   var ps = {
     history: "Write a structured historical overview of " + piece.full + " by " + piece.composer + " like serious concert program notes. Use ## to mark each section heading. Sections: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. Each 2-3 sentences. Authoritative, direct, no preamble.",
     scholarship: "Write a structured overview of musicological scholarship on " + piece.full + " by " + piece.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
     interviews: "Write a structured compilation of documented statements about " + piece.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
   };
-  callAPIWithSearch([{role:"user",content:ps[studyTab]}], function(text){ content.innerHTML = renderSectioned(text); });
+  callAPIWithSearch([{role:"user",content:ps[studyTab]}], function(text) {
+    var html = renderSectioned(text);
+    contentCache[cacheKey(pid,"study",studyTab)] = html;
+    if (piece && piece.id === pid) content.innerHTML = html;
+  });
 }
 
 /* CHAT */
