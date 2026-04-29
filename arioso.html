@@ -3177,17 +3177,36 @@ function detectMeasureQuery(query) {
   var mMatch = q.match(/(?:measure|bar|m\.?\s*)(\d+)/);
   var measureNum = mMatch ? parseInt(mMatch[1]) : null;
 
-  // Match structural/qualitative section references
-  var SECTIONS = [
+  // Match structural/qualitative section references — broad natural language
+  var SECTION_PATTERNS = [
+    // Formal sections
     "introduction","first theme","second theme","third theme",
     "exposition","development","recapitulation","coda","codetta","transition",
+    // Movements
     "first movement","second movement","third movement","fourth movement",
-    "first section","second section","opening section","closing section",
-    "lyrical section","climax","presto","allegro","andante","adagio","largo","moderato",
-    "ballad theme","main theme","opening","ending","finale","variation"
+    "opening movement","final movement","last movement","middle movement",
+    // Qualitative passage references
+    "opening","opening phrase","opening section","opening passage","opening bars",
+    "beginning","start of","start of the",
+    "ending","closing","closing section","closing passage","final bars","final passage",
+    "last section","last passage","last bars",
+    "middle section","middle passage","middle part",
+    "lyrical section","lyrical passage","lyrical theme",
+    "climax","climactic","culmination","peak",
+    "presto","allegro","andante","adagio","largo","moderato","lento","vivace",
+    "ballad theme","main theme","primary theme","secondary theme",
+    "variation","episode","fugue","subject","countersubject",
+    "restatement","return of","reprise",
+    "cadenza","coda section","final section"
   ];
   var sectionName = null;
-  SECTIONS.forEach(function(s) { if (q.indexOf(s) !== -1) sectionName = s; });
+  SECTION_PATTERNS.forEach(function(s) {
+    if (q.indexOf(s) !== -1 && !sectionName) sectionName = s;
+  });
+
+  // Also catch "the X part/section/phrase/passage" patterns
+  var partMatch = q.match(/the\s+(opening|closing|final|first|last|middle|beginning|ending)\s+(?:phrase|section|passage|bars?|part|theme|movement)/);
+  if (partMatch && !sectionName) sectionName = partMatch[0];
 
   return { measureNum: measureNum, sectionName: sectionName };
 }
@@ -3206,13 +3225,20 @@ function showScrollHint(msg) {
     "<span style='flex:1;'>&#9432; " + msg + "</span>" +
     "<button onclick='this.parentElement.remove()' style='background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 0 0 8px;line-height:1;'>&#x2715;</button>";
   toast.style.cssText = "display:flex;align-items:center;gap:6px;padding:8px 14px;" +
-    "background:var(--bg2);border:1px solid var(--border2);border-radius:6px;" +
-    "font-size:11px;color:var(--text2);margin-bottom:6px;animation:fadeIn 0.2s ease;";
+    "background:var(--bg2);border:1px solid var(--accent2);border-radius:6px;" +
+    "font-size:11px;color:var(--text2);margin:0 0 6px 0;";
 
-  var chatSection = document.getElementById("chat-section");
-  if (chatSection) chatSection.insertBefore(toast, chatSection.firstChild);
+  // Insert just above the chat input row (always visible)
+  var chatInput = document.getElementById("chat-input-row");
+  if (!chatInput) chatInput = document.querySelector(".chat-input-wrap");
+  if (!chatInput) chatInput = document.getElementById("chat-form");
+  if (chatInput && chatInput.parentElement) {
+    chatInput.parentElement.insertBefore(toast, chatInput);
+  } else {
+    var chatSection = document.getElementById("chat-section");
+    if (chatSection) chatSection.appendChild(toast);
+  }
 
-  // Auto-dismiss after 6 seconds
   setTimeout(function() { if (toast.parentElement) toast.remove(); }, 6000);
 }
 
