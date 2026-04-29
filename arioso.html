@@ -151,22 +151,23 @@ body {
 
 /* Piece cards — resume-focused */
 .piece-card {
-  background: var(--bg); border: 1px solid var(--border);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2);
   border-radius: 8px; padding: 24px 22px 20px; cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
-  position: relative; overflow: hidden; min-height: 180px;
+  position: relative; min-height: 180px;
   display: flex; flex-direction: column; justify-content: space-between;
 }
-.piece-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: linear-gradient(180deg, var(--accent), var(--accent2));
-  opacity: 1; border-radius: 8px 0 0 8px;
-}
+.piece-card::before { display: none; }
 .piece-card:hover {
-  border-color: rgba(139,94,60,0.25); transform: translateY(-2px);
+  border-left-color: var(--accent);
+  border-color: rgba(139,94,60,0.25);
+  border-left-color: var(--accent);
+  transform: translateY(-2px);
   box-shadow: 0 10px 36px rgba(28,25,23,0.08), 0 2px 6px rgba(28,25,23,0.04);
 }
-.piece-card:hover::before { opacity: 1; }
+.piece-card:hover::before { display: none; }
 .piece-card:hover .resume-cta { opacity: 1; transform: translateY(0); }
 .piece-card-composer {
   font-size: 9px; color: var(--accent); text-transform: uppercase;
