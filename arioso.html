@@ -1241,14 +1241,24 @@ function restoreMeasureLabels(pageNum) {
     wrapper.appendChild(label);
   });
 
-  // Labels just restored — invalidate cache and re-prefetch with measure context
-  // Only do this on the last page to avoid multiple refetches
-  if (piece && pageNum === pdfDoc.numPages) {
-    ["story","practice","history","scholarship","interviews","recording"].forEach(function(t) {
-      delete contentCache[piece.id + ":" + t];
-      delete contentCache[piece.id + ":study:" + t];
-    });
-    prefetchAll(piece);
+  // Labels just restored — if this is the first page with labels, re-prefetch with measure context
+  // Use a small delay so all pages can restore before we re-prefetch
+  if (piece && !restoreMeasureLabels._scheduled) {
+    restoreMeasureLabels._scheduled = true;
+    setTimeout(function() {
+      restoreMeasureLabels._scheduled = false;
+      if (!piece) return;
+      var ctx = getMeasureContext();
+      if (!ctx) return; // no labels, skip
+      // Clear cache and re-prefetch with measure context
+      ["story","practice","history","scholarship","interviews","recording"].forEach(function(t) {
+        delete contentCache[piece.id + ":" + t];
+        delete contentCache[piece.id + ":study:" + t];
+      });
+      prefetchAll(piece);
+      // Re-render current tab if already showing
+      loadAnalysis();
+    }, 800);
   }
 }
 
@@ -2698,9 +2708,9 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
-  // Strip ** bold
-  text = text.replace(/^\*\*(.+)\*\*$/gm, "$1");
-  text = text.replace(/\*\*/g, "");
+  // Strip ** bold and *italic* markdown
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+  text = text.replace(/\*([^*\n]+)\*/g, "$1");
 
   // Normalize practice section labels to ## headers
   var PRACTICE_LABELS = ["What's hard","What is hard","What to do","What to listen for","What to listen","Key focus","Priority \\d+[:\\.]?[^\\n]*"];
