@@ -1060,18 +1060,18 @@ var measureState = {        // active placement state
 var ROW_SNAP_THRESHOLD = 50; // px — snap to existing row if click within this
 
 // Find or create a row for a given Y click position
-function getOrCreateRow(pageNum, clickY) {
+function getOrCreateRow(pageNum, labelY) {
   if (!measureRows[pageNum]) measureRows[pageNum] = [];
   var rows = measureRows[pageNum];
   var closest = null, closestDist = Infinity;
   rows.forEach(function(rowY) {
-    var dist = Math.abs(clickY - rowY);
+    var dist = Math.abs(labelY - rowY);
     if (dist < closestDist) { closestDist = dist; closest = rowY; }
   });
   if (closest !== null && closestDist <= ROW_SNAP_THRESHOLD) return closest;
-  var newY = clickY - 18; // sit just above where clicked
-  rows.push(newY);
-  return newY;
+  // New row at the exact labelY passed in
+  rows.push(labelY);
+  return labelY;
 }
 
 function toggleMeasureMode() {
@@ -1108,34 +1108,39 @@ function toggleMeasureMode() {
 function handleMeasureClick(e, pageNum) {
   if (!measureMode) return;
   e.stopPropagation();
-  var rect = e.currentTarget.getBoundingClientRect();
-  var clickX = e.clientX - rect.left;
-  var clickY = e.clientY - rect.top;
 
-  var rowY = getOrCreateRow(pageNum, clickY);
+  // Always measure relative to the wrapper (pw-N), not the canvas/drawCanvas
+  // The label is appended to the wrapper, so we need wrapper-relative coords.
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var wRect = wrapper.getBoundingClientRect();
+  var clickX = e.clientX - wRect.left;
+  var clickY = e.clientY - wRect.top;
 
-  // If this is a new row or different page, ask for starting measure
+  // Small upward offset so label sits just above the barline click point
+  var labelY = clickY - 22;
+  if (labelY < 4) labelY = 4; // don't go above wrapper
+
+  var rowY = getOrCreateRow(pageNum, labelY);
+
   var isNewRow = (measureState.rowY === null ||
                   measureState.page !== pageNum ||
                   Math.abs(rowY - measureState.rowY) > ROW_SNAP_THRESHOLD);
 
   if (isNewRow) {
-    // Show popup to get starting number
     measureState.page = pageNum;
     measureState.rowY = rowY;
+    measureState.pendingX = clickX;
     var popup = document.getElementById("measure-popup");
     document.getElementById("measure-input").value = measureState.nextNum;
     popup.style.display = "block";
     popup.style.left = Math.min(e.clientX + 12, window.innerWidth - 220) + "px";
     popup.style.top = Math.min(e.clientY - 60, window.innerHeight - 120) + "px";
-    // Store pending click position to place label after user confirms
-    measureState.pendingX = clickX;
     setTimeout(function() {
       var inp = document.getElementById("measure-input");
       if (inp) { inp.focus(); inp.select(); }
     }, 50);
   } else {
-    // Same row — place label immediately at exact X
     placeSingleMeasure(pageNum, clickX, rowY, measureState.nextNum);
   }
 }
