@@ -1270,10 +1270,10 @@ function restoreMeasureLabels(pageNum) {
         " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names -- never stop the analysis early, never invent measure numbers beyond this list.";
 
       // Directly fetch story + practice with measure context — bypass prefetchAll debounce
-      var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix;
+      var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end proportionally -- do not spend more words on early sections than later ones. Start with ## Overview (2 sentences). Then ## for each major section (2-3 sentences each). For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix;
       var practicePrompt = "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix;
 
-      var measureTokens = { story: 3500, practice: 1500 };
+      var measureTokens = { story: 4000, practice: 1500 };
       [["story", storyPrompt], ["practice", practicePrompt]].forEach(function(pair) {
         var key = pair[0], prompt = pair[1];
         var cKey = cacheKey(pid, key);
@@ -1600,7 +1600,12 @@ function renderLibrary() {
     }
   }
 
-  libraryPieces.forEach(function(p, i) {
+  var sortedPieces = libraryPieces.slice().sort(function(a, b) {
+    return a.composer.localeCompare(b.composer);
+  });
+
+  sortedPieces.forEach(function(p, i) {
+    var actualIdx = libraryPieces.indexOf(p);
     var card = document.createElement("div");
     card.className = "piece-card";
     card.style.position = "relative";
@@ -1615,15 +1620,14 @@ function renderLibrary() {
       "</div>" +
       (libraryEditMode ? "<button class='lib-delete-btn' title='Remove'>&#x2715;</button>" : "");
     if (!libraryEditMode) {
-      card.onclick = (function(idx) { return function() { openPiece(idx); }; })(i);
+      card.onclick = (function(idx) { return function() { openPiece(idx); }; })(actualIdx);
     }
-    // Wire delete button
     if (libraryEditMode) {
       var deleteBtn = card.querySelector(".lib-delete-btn");
       if (deleteBtn) {
         (function(idx) {
           deleteBtn.addEventListener("click", function(e) { deletePiece(idx, e); });
-        })(i);
+        })(actualIdx);
       }
     }
     grid.appendChild(card);
@@ -2465,7 +2469,7 @@ function prefetchAll(p, force) {
     ? ("\n\nMEASURE CONTEXT: " + mCtx + " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names (The Closing Section, The Coda, The Final Passage, The Return) -- never stop the analysis early, never invent measure numbers beyond this list.")
     : "\n\nNo measure numbers labeled -- describe ALL sections of the entire piece using structural language only: the opening section, the lyrical middle passage, the stormy climax, the closing bars. Never use measure numbers. Cover the whole piece from start to finish.";
   var prompts = {
-    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix,
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end proportionally -- do not spend more words on early sections than later ones. Start with ## Overview (2 sentences). Then ## for each major section (2-3 sentences each). For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix,
     practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix,
     history:  "Historical overview of " + p.full + " by " + p.composer + " (" + p.year + ") like serious program notes. Every sentence must refer specifically to " + p.composer + " and this work. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to this work. Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No links, no URLs, no bold. No preamble." + mPrefix,
@@ -2485,7 +2489,7 @@ function prefetchAll(p, force) {
     if (contentCache[cKey]) return;
 
     // Token limits per tab — story needs room, others are naturally short
-    var tokenLimits = { story: 3500, practice: 1500, history: 2000, scholarship: 2000, interviews: 2000 };
+    var tokenLimits = { story: 4000, practice: 1500, history: 2000, scholarship: 2000, interviews: 2000 };
     var tokens = tokenLimits[key] || 2500;
 
     function attemptFetch(retryDelay) {
