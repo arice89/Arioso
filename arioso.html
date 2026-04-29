@@ -2676,10 +2676,10 @@ function callAPIWithVision(textPrompt, callback) {
     messages: messages
   };
 
-  fetch("/api/chat", {
+  fetch("/api/vision", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body)
+    body: JSON.stringify({ messages: messages, system: SYS })
   }).then(function(r) { return r.json(); })
     .then(function(data) {
       var text = "";
@@ -2690,7 +2690,7 @@ function callAPIWithVision(textPrompt, callback) {
       }
       if (!text && data.error) {
         console.error("[vision] API error:", data.error);
-        if (statusEl) statusEl.textContent = "⚠ Vision error — falling back to knowledge";
+        if (statusEl) statusEl.textContent = "⚠ Vision error — falling back";
         callAPI([{role:"user", content: textPrompt}], callback);
         return;
       }
