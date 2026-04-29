@@ -1255,13 +1255,12 @@ function restoreMeasureLabels(pageNum) {
       if (!piece) return;
       var ctx = getMeasureContext();
       if (!ctx) return; // no labels, skip
-      // Clear cache and re-prefetch with measure context
+      // Clear cache and re-prefetch with measure context (force=true bypasses debounce)
       ["story","practice","history","scholarship","interviews","recording"].forEach(function(t) {
         delete contentCache[piece.id + ":" + t];
         delete contentCache[piece.id + ":study:" + t];
       });
-      prefetchAll(piece);
-      // Re-render current tab if already showing
+      prefetchAll(piece, true);
       loadAnalysis();
     }, 800);
   }
@@ -2345,12 +2344,12 @@ function cacheKey(pieceId, tabName, extra) {
 
 var prefetchLastRun = {}; // pieceId -> timestamp
 
-function prefetchAll(p) {
+function prefetchAll(p, force) {
   if (!p) return;
   var pid = p.id;
   // Debounce: don't re-prefetch the same piece more than once per 30 seconds
   var now = Date.now();
-  if (prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < 30000) {
+  if (!force && prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < 30000) {
     console.log("[prefetch] skipping -- ran", Math.round((now - prefetchLastRun[pid])/1000), "s ago");
     return;
   }
