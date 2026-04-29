@@ -626,6 +626,66 @@ function clearDrawings() {
 #study-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 .loading-wrap { display: flex; align-items: center; justify-content: center; padding: 52px; }
 .empty { color: var(--text3); font-size: 13px; font-weight: 300; letter-spacing: 0.3px; }
+
+/* PERFORMER SEARCH — YouTube autocomplete */
+#performer-search-wrap {
+  width: 100%; padding: 8px 16px 10px; border-top: 1px solid var(--border);
+  background: var(--bg2); display: none;
+}
+#performer-search-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--text3); font-weight: 500; margin-bottom: 6px;
+}
+#performer-search-row { display: flex; gap: 6px; align-items: center; position: relative; }
+#performer-search-input {
+  flex: 1; padding: 7px 12px; border-radius: 4px; font-size: 12px;
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text);
+  outline: none; font-family: inherit; transition: all 0.2s; font-weight: 300;
+}
+#performer-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,94,60,0.06); }
+#performer-search-input::placeholder { color: var(--text3); }
+#performer-search-cancel {
+  font-size: 10px; color: var(--text3); cursor: pointer; background: none;
+  border: none; font-family: inherit; padding: 4px 6px; transition: color 0.15s;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+#performer-search-cancel:hover { color: var(--text); }
+#performer-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 40px; z-index: 200;
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 6px; box-shadow: 0 8px 32px rgba(28,25,23,0.12), 0 2px 8px rgba(28,25,23,0.06);
+  overflow: hidden; display: none;
+}
+.performer-suggestion {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  cursor: pointer; transition: background 0.12s; border-bottom: 1px solid var(--border);
+}
+.performer-suggestion:last-child { border-bottom: none; }
+.performer-suggestion:hover { background: var(--bg2); }
+.performer-suggestion:hover .ps-name { color: var(--accent); }
+.ps-thumb {
+  width: 40px; height: 28px; object-fit: cover; border-radius: 3px;
+  flex-shrink: 0; background: var(--bg3);
+}
+.ps-thumb-placeholder {
+  width: 40px; height: 28px; border-radius: 3px; background: var(--bg3);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--text3);
+}
+.ps-info { flex: 1; min-width: 0; }
+.ps-name {
+  font-size: 12px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s;
+}
+.ps-subtitle {
+  font-size: 10px; color: var(--text3); font-weight: 300;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+}
+.ps-yt { font-size: 9px; color: #e00; flex-shrink: 0; opacity: 0.8; }
+#performer-dropdown-status {
+  padding: 10px 12px; font-size: 11px; color: var(--text3); font-weight: 300;
+  text-align: center;
+}
 </style>
 </head>
 <body>
@@ -775,6 +835,17 @@ function clearDrawings() {
       <button class="analysis-tab" onclick="setTab('practice')">Practice</button>
     </div>
     <div id="recording-selector"></div>
+    <!-- PERFORMER SEARCH — shown only on Interpretations tab -->
+    <div id="performer-search-wrap">
+      <div id="performer-search-label">Search for a performer</div>
+      <div id="performer-search-row">
+        <input id="performer-search-input" type="text" placeholder="e.g. Yuja Wang, Kissin, Trifonov…" autocomplete="off">
+        <button id="performer-search-cancel" onclick="hidePerformerSearch()">Cancel</button>
+        <div id="performer-dropdown">
+          <div id="performer-dropdown-status"></div>
+        </div>
+      </div>
+    </div>
     <div id="context-banner"></div>
     <div id="analysis-content"><span class="empty">Select a piece to begin.</span></div>
     <div id="chat-section">
@@ -1644,6 +1715,7 @@ function init() {
     var p = document.getElementById("ann-popup");
     if(p.style.display==="block" && !p.contains(e.target)) closePopup();
   });
+  initPerformerSearch();
 }
 
 function selectPiece(i) {
@@ -1925,6 +1997,9 @@ function setTab(t) {
   tab = t;
   var ts = ["story","recording","practice"];
   document.querySelectorAll(".analysis-tab").forEach(function(b,i){ b.classList.toggle("active",ts[i]===t); });
+  // Show performer search only on Interpretations tab, if a piece is loaded
+  var searchWrap = document.getElementById("performer-search-wrap");
+  if (searchWrap) searchWrap.style.display = (t === "recording" && piece) ? "block" : "none";
   renderRecs(); loadAnalysis();
 }
 
@@ -2024,19 +2099,16 @@ function renderRecs() {
   sel.innerHTML = "";
   if(tab==="recording" && piece) {
     sel.style.display = "flex";
-    // Use live recordings if available, else show loading state
     var liveRecs = getLiveRecordings(piece);
     var customKey = "custom-performers-" + piece.id;
     var customPerformers = [];
     try { customPerformers = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
 
     if (!liveRecs) {
-      // Still fetching — show spinner
       var loading = document.createElement("span");
-      loading.style.cssText = "font-size:11px;color:var(--text3);padding:4px 8px;";
-      loading.textContent = "Finding recordings...";
+      loading.style.cssText = "font-size:11px;color:var(--text3);padding:4px 8px;font-weight:300;";
+      loading.textContent = "Finding recordings…";
       sel.appendChild(loading);
-      // Poll until ready
       var poll = setInterval(function() {
         var r = getLiveRecordings(piece);
         if (r) { clearInterval(poll); renderRecs(); }
@@ -2047,115 +2119,187 @@ function renderRecs() {
       allRecs.forEach(function(r){
         var b = document.createElement("button");
         b.className = "rec-btn" + (rec && r.id===rec.id?" active":"");
-        b.textContent = r.label;
+        // If this rec has a real YouTube videoId, add a tiny ▶ indicator
+        var ytBadge = r.videoId ? " <span style='font-size:9px;opacity:0.6;'>▶</span>" : "";
+        b.innerHTML = escHtml(r.label) + ytBadge;
+        b.title = r.videoId ? "YouTube recording — " + (r.videoTitle || r.full) : r.full || r.label;
         b.onclick = (function(rr){ return function(){ rec=rr; renderRecs(); loadAnalysis(); }; })(r);
         sel.appendChild(b);
       });
-      // Add "+" button
-      var addBtn = document.createElement("button");
-      addBtn.className = "rec-btn";
-      addBtn.textContent = "+ Add performer";
-      addBtn.style.cssText = "border-style:dashed;color:var(--text3);";
-      addBtn.onclick = function() { showAddPerformerInput(); };
-      sel.appendChild(addBtn);
     }
   } else { sel.style.display = "none"; }
 }
 
-function showAddPerformerInput() {
-  var sel = document.getElementById("recording-selector");
-  // Check if input already showing
-  if (document.getElementById("performer-input-wrap")) return;
-  var wrap = document.createElement("div");
-  wrap.id = "performer-input-wrap";
-  wrap.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 0;";
-  var input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "e.g. Yuja Wang 2019";
-  input.style.cssText = "padding:4px 10px;border-radius:20px;border:1px solid var(--border2);font-size:12px;font-family:inherit;outline:none;width:160px;";
-  var go = document.createElement("button");
-  go.textContent = "Analyze";
-  go.className = "rec-btn active";
-  go.style.fontSize = "11px";
-  go.onclick = function() {
+/* ===== YOUTUBE PERFORMER SEARCH ===== */
+var _ytDebounceTimer = null;
+var _ytSelectedVideoId = null;
+
+function initPerformerSearch() {
+  var input = document.getElementById("performer-search-input");
+  var dropdown = document.getElementById("performer-dropdown");
+  if (!input) return;
+
+  input.addEventListener("input", function() {
     var val = input.value.trim();
-    if (!val) return;
-    addCustomPerformer(val);
+    clearTimeout(_ytDebounceTimer);
+
+    if (val.length < 2) {
+      hideDropdown();
+      return;
+    }
+
+    // Show searching status
+    showDropdownStatus("Searching YouTube…");
+
+    _ytDebounceTimer = setTimeout(function() {
+      searchYouTubePerformers(val);
+    }, 400);
+  });
+
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") { hidePerformerSearch(); }
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener("click", function(e) {
+    if (!dropdown.contains(e.target) && e.target !== input) {
+      hideDropdown();
+    }
+  });
+}
+
+function searchYouTubePerformers(query) {
+  if (!piece) return;
+  // Build a piece hint: composer + piece name for more specific search
+  var pieceHint = piece.composer + " " + piece.title;
+  var url = "/api/youtube?q=" + encodeURIComponent(query) + "&pieceHint=" + encodeURIComponent(pieceHint);
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.results || !data.results.length) {
+        showDropdownStatus("No recordings found — try a different name");
+        return;
+      }
+      renderDropdownResults(data.results);
+    })
+    .catch(function() {
+      showDropdownStatus("Search unavailable — try typing a name and pressing Enter");
+    });
+}
+
+function renderDropdownResults(results) {
+  var dropdown = document.getElementById("performer-dropdown");
+  dropdown.innerHTML = "";
+  dropdown.style.display = "block";
+
+  results.forEach(function(r) {
+    var item = document.createElement("div");
+    item.className = "performer-suggestion";
+
+    var thumb = "";
+    if (r.thumbnail) {
+      thumb = "<img class='ps-thumb' src='" + r.thumbnail + "' alt='' onerror=\"this.style.display='none'\">";
+    } else {
+      thumb = "<div class='ps-thumb-placeholder'>♪</div>";
+    }
+
+    var subtitle = r.videoTitle
+      ? truncate(r.videoTitle, 48)
+      : piece.title + " · YouTube";
+
+    item.innerHTML =
+      thumb +
+      "<div class='ps-info'>" +
+        "<div class='ps-name'>" + escHtml(r.performerName) + "</div>" +
+        "<div class='ps-subtitle'>" + escHtml(subtitle) + "</div>" +
+      "</div>" +
+      "<span class='ps-yt'>▶ YT</span>";
+
+    item.addEventListener("click", function() {
+      selectPerformerFromYT(r);
+    });
+
+    dropdown.appendChild(item);
+  });
+}
+
+function selectPerformerFromYT(result) {
+  var input = document.getElementById("performer-search-input");
+  input.value = result.performerName;
+  _ytSelectedVideoId = result.videoId;
+  hideDropdown();
+
+  // Build rec object with YouTube video link
+  var id = "yt-" + result.videoId;
+  var newRec = {
+    id: id,
+    label: result.performerName,
+    full: result.performerName + " (YouTube)",
+    videoId: result.videoId,
+    videoTitle: result.videoTitle
   };
-  input.addEventListener("keydown", function(e) { if (e.key === "Enter") go.onclick(); });
-  var cancel = document.createElement("button");
-  cancel.textContent = "x";
-  cancel.className = "rec-btn";
-  cancel.style.cssText = "font-size:11px;padding:3px 8px;";
-  cancel.onclick = function() { wrap.remove(); };
-  wrap.appendChild(input);
-  wrap.appendChild(go);
-  wrap.appendChild(cancel);
-  sel.appendChild(wrap);
-  setTimeout(function(){ input.focus(); }, 50);
+
+  // Save to custom performers
+  var customKey = "custom-performers-" + piece.id;
+  var existing = [];
+  try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+  if (!existing.find(function(r){ return r.id === id; })) {
+    existing.push(newRec);
+    localStorage.setItem(customKey, JSON.stringify(existing));
+  }
+
+  // Switch to this recording and load interpretation
+  rec = newRec;
+  hidePerformerSearch();
+  renderRecs();
+  loadAnalysis();
+}
+
+function showDropdownStatus(msg) {
+  var dropdown = document.getElementById("performer-dropdown");
+  dropdown.style.display = "block";
+  dropdown.innerHTML = "<div id='performer-dropdown-status'>" + escHtml(msg) + "</div>";
+}
+
+function hideDropdown() {
+  var dropdown = document.getElementById("performer-dropdown");
+  if (dropdown) { dropdown.style.display = "none"; dropdown.innerHTML = ""; }
+}
+
+function showPerformerSearch() {
+  var wrap = document.getElementById("performer-search-wrap");
+  if (wrap) {
+    wrap.style.display = "block";
+    setTimeout(function() {
+      var inp = document.getElementById("performer-search-input");
+      if (inp) { inp.value = ""; inp.focus(); }
+    }, 50);
+  }
+}
+
+function hidePerformerSearch() {
+  var wrap = document.getElementById("performer-search-wrap");
+  if (wrap) wrap.style.display = "none";
+  hideDropdown();
+}
+
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function showAddPerformerInput() {
+  showPerformerSearch();
 }
 
 function addCustomPerformer(pianistName) {
-  var wrap = document.getElementById("performer-input-wrap");
-  if (wrap) wrap.innerHTML = "<span style='font-size:12px;color:var(--text3);padding:4px 8px;'>Searching...</span>";
-
-  var prompt = "Does the pianist " + pianistName + " have any known recordings or performances of " + piece.full + " by " + piece.composer + "? Include studio recordings, live concerts, and YouTube performances. Respond ONLY as JSON with no other text: {\"found\": true/false, \"fullName\": \"Full Name\", \"performances\": [{\"decade\": \"2010s\", \"context\": \"one sentence on what makes it notable\"}]}. Max 3 performances. If not found, set found to false.";
-
-  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
-    var sel = document.getElementById("recording-selector");
-    if (wrap) wrap.remove();
-    try {
-      var clean = text.replace(/```json|```/g,"").trim();
-      var match = clean.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("no json");
-      var data = JSON.parse(match[0]);
-
-      if (!data.found || !data.performances || !data.performances.length) {
-        var msg = document.createElement("div");
-        msg.style.cssText = "font-size:12px;color:var(--text3);padding:6px 10px;";
-        msg.textContent = "No known performances of this piece found for " + (data.fullName || pianistName) + ".";
-        sel.appendChild(msg);
-        setTimeout(function(){ if (msg.parentNode) msg.remove(); }, 3000);
-        return;
-      }
-
-      var fullName = data.fullName || pianistName;
-      var picker = document.createElement("div");
-      picker.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:4px 0;width:100%;";
-
-      data.performances.forEach(function(perf) {
-        var btn = document.createElement("button");
-        btn.style.cssText = "text-align:left;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);";
-        btn.innerHTML = "<strong>" + fullName + "</strong> <span style='color:var(--text3);font-size:11px;'>" + perf.decade + "</span><br><span style='color:var(--text2);font-size:11px;'>" + perf.context + "</span>";
-        btn.onclick = (function(p, fn) { return function() {
-          var id = "custom-" + fn.replace(/\s+/g,"-").toLowerCase() + "-" + p.decade;
-          var newRec = { id: id, label: fn.split(" ").pop() + " (" + p.decade + ")", full: fn + ", " + p.decade };
-          var customKey = "custom-performers-" + piece.id;
-          var existing = [];
-          try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
-          if (!existing.find(function(r){ return r.id === id; })) { existing.push(newRec); localStorage.setItem(customKey, JSON.stringify(existing)); }
-          picker.remove();
-          rec = newRec;
-          renderRecs();
-          loadAnalysis();
-        }; })(perf, fullName);
-        picker.appendChild(btn);
-      });
-
-      var cancel = document.createElement("button");
-      cancel.textContent = "Cancel";
-      cancel.style.cssText = "font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:inherit;color:var(--text3);margin-top:2px;";
-      cancel.onclick = function() { picker.remove(); };
-      picker.appendChild(cancel);
-      sel.appendChild(picker);
-    } catch(e) {
-      var msg = document.createElement("div");
-      msg.style.cssText = "font-size:12px;color:var(--text3);padding:6px 10px;";
-      msg.textContent = "Could not find recordings. Try a different name.";
-      sel.appendChild(msg);
-      setTimeout(function(){ if (msg.parentNode) msg.remove(); }, 3000);
-    }
-  });
+  // Legacy fallback — not called in new flow but kept for safety
+  showPerformerSearch();
+  var inp = document.getElementById("performer-search-input");
+  if (inp) { inp.value = pianistName; }
 }
 
 function loadAnalysis() {
@@ -2186,7 +2330,12 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"recording",recId)];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence. Use ## for each section: ## Their Approach (what defines their sound and interpretive stance), ## Key Moments (2-3 specific passages with measure references and what they do differently), ## What It Reveals (what their choices expose about the harmonic structure), ## Essential or Skip? (direct verdict). Speak like a brilliant colleague who knows this repertoire cold — opinionated, specific, not academic. 2-3 sentences per section. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recNameForPrompt + " " + piece.title) + ").";
+    // Use direct YouTube link if we have a real videoId, else fall back to search
+    var ytLink = (rec && rec.videoId)
+      ? "https://www.youtube.com/watch?v=" + rec.videoId
+      : "https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title);
+    var recNameForPrompt = recName || piece.composer;
+    var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence. Use ## for each section: ## Their Approach (what defines their sound and interpretive stance), ## Key Moments (2-3 specific passages with measure references and what they do differently), ## What It Reveals (what their choices expose about the harmonic structure), ## Essential or Skip? (direct verdict). Speak like a brilliant colleague who knows this repertoire cold — opinionated, specific, not academic. 2-3 sentences per section. End with: [Listen on YouTube](" + ytLink + ").";
     callAPIWithSearch([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
