@@ -2574,10 +2574,56 @@ function renderSectioned(text) {
     });
     para = para.replace(/^\[\s*|\s*\]$/g, "");
     if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
+    para = highlightMusicalTerms(para);
     out += "<p style='margin-bottom:16px;line-height:1.9;font-size:13px;color:var(--text);font-weight:300;" + (firstBlock ? "margin-top:4px;" : "") + "'>" + para + "</p>";
     firstBlock = false;
   }
   return out || "<p style='font-size:13px;color:var(--text);'>" + text + "</p>";
+}
+
+/**
+ * Wraps key musical terms in subtle colored spans.
+ * Targets: key names, harmonic function words, structural terms.
+ * Restrained — only ~10% of text gets highlighted.
+ */
+function highlightMusicalTerms(text) {
+  // Already contains HTML — don't double-process links or spans
+  if (text.indexOf('<a ') !== -1 || text.indexOf('<span') !== -1) return text;
+
+  // Color 1: terracotta accent (--accent) — harmonic function terms
+  var HARMONIC = [
+    "tonic","dominant","subdominant","pre-dominant","predominant",
+    "Neapolitan","augmented sixth","diminished seventh","half cadence",
+    "perfect cadence","deceptive cadence","authentic cadence",
+    "secondary dominant","modal mixture","chromatic mediant","enharmonic"
+  ];
+
+  // Color 2: muted accent2 (--accent2) — key/tonal area names
+  var KEY_PATTERN = /\b([A-G][#b]?\s*(?:major|minor|Major|Minor))\b/g;
+
+  // Color 3: text2 (darker neutral) — structural terms
+  var STRUCTURAL = [
+    "modulation","resolution","suspension","anticipation","retardation",
+    "sequence","development","recapitulation","exposition","transition",
+    "coda","cadenza","fermata","rubato","ritardando","accelerando"
+  ];
+
+  // Apply harmonic terms (terracotta, weight 400)
+  HARMONIC.forEach(function(term) {
+    var re = new RegExp("\\b(" + term.replace(/\s+/g,"\\s+") + ")\\b", "gi");
+    text = text.replace(re, "<span style='color:var(--accent);font-weight:400;'>$1</span>");
+  });
+
+  // Apply key names (warm gold, weight 400)
+  text = text.replace(KEY_PATTERN, "<span style='color:var(--accent2);font-weight:400;'>$1</span>");
+
+  // Apply structural terms (slightly darker than body, weight 400)
+  STRUCTURAL.forEach(function(term) {
+    var re = new RegExp("\\b(" + term + ")\\b", "gi");
+    text = text.replace(re, "<span style='color:var(--text2);font-weight:400;'>$1</span>");
+  });
+
+  return text;
 }
 
 function makeHeader(text, isFirst) {
