@@ -17,9 +17,9 @@
   --bg3:      #ebe7de;
   --bg4:      #e2ddd3;
   --panel:    #f7f4ef;
-  --text:     #1c1917;
-  --text2:    #6b6560;
-  --text3:    #a8a29d;
+  --text:     #1a1410;   /* slightly warmer near-black */
+  --text2:    #4a4540;   /* darkened from #6b6560 — much more readable */
+  --text3:    #8a847e;   /* darkened from #a8a29d — still muted but legible */
   --accent:   #8b5e3c;
   --accent2:  #c4a882;
   --border:   rgba(28,25,23,0.08);
@@ -295,7 +295,7 @@ body {
   font-family: 'Cormorant Garamond', serif;
   font-size: 18px; font-weight: 500; letter-spacing: 0.1px; color: var(--text);
 }
-#score-header-info p { font-size: 11px; color: var(--text3); margin-top: 3px; letter-spacing: 0.3px; }
+#score-header-info p { font-size: 11px; color: var(--text2); margin-top: 3px; letter-spacing: 0.3px; }
 #score-header-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
 
 .hdr-btn {
@@ -606,7 +606,7 @@ function clearDrawings() {
 #chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 .chat-msg { font-size: 12px; line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
 .chat-msg.user { color: var(--text); font-weight: 400; }
-.chat-msg.assistant { color: var(--text2); }
+.chat-msg.assistant { color: var(--text); font-weight: 300; }
 .chat-msg.assistant::before {
   content: "Arioso  —  "; font-weight: 600; color: var(--accent);
   font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
@@ -2494,7 +2494,7 @@ function renderSectioned(text) {
     });
     para = para.replace(/^\[\s*|\s*\]$/g, "");
     if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
-    out += "<p style='margin-bottom:20px;line-height:1.9;font-size:13px;color:var(--text2);font-weight:300;" + (firstBlock ? "margin-top:4px;" : "") + "'>" + para + "</p>";
+    out += "<p style='margin-bottom:20px;line-height:1.9;font-size:13px;color:var(--text);font-weight:300;" + (firstBlock ? "margin-top:4px;" : "") + "'>" + para + "</p>";
     firstBlock = false;
   }
   return out || "<p style='font-size:13px;color:var(--text2);'>" + text + "</p>";
