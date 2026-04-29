@@ -2343,9 +2343,18 @@ function cacheKey(pieceId, tabName, extra) {
   return pieceId + ":" + tabName + (extra ? ":" + extra : "");
 }
 
+var prefetchLastRun = {}; // pieceId -> timestamp
+
 function prefetchAll(p) {
   if (!p) return;
   var pid = p.id;
+  // Debounce: don't re-prefetch the same piece more than once per 30 seconds
+  var now = Date.now();
+  if (prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < 30000) {
+    console.log("[prefetch] skipping -- ran", Math.round((now - prefetchLastRun[pid])/1000), "s ago");
+    return;
+  }
+  prefetchLastRun[pid] = now;
 
   // Record how many measure labels exist right now so we can detect changes later
   var measureCount = 0;
@@ -2362,11 +2371,11 @@ function prefetchAll(p) {
     ? ("\n\nMEASURE CONTEXT: " + mCtx + " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names (The Closing Section, The Coda, The Final Passage, The Return) -- never stop the analysis early, never invent measure numbers beyond this list.")
     : "\n\nNo measure numbers labeled -- describe ALL sections of the entire piece using structural language only: the opening section, the lyrical middle passage, the stormy climax, the closing bars. Never use measure numbers. Cover the whole piece from start to finish.";
   var prompts = {
-    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. IMPORTANT: cover the ENTIRE piece from beginning to end -- do not stop partway through. Start with ## Overview. Then ## for each major section in order. For sections with labeled measures, reference those numbers. For all remaining sections beyond the labeled measures, use descriptive names only (The Closing Section, The Final Climax, The Coda, The Return) and describe them in structural terms -- never invent measure numbers. No section of the piece should be left out. Precise and specific. No bold. No preamble." + mPrefix,
-    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ".\n\nFor each priority use exactly this structure:\n\nPassage name (mm. X-Y)\nWhat's hard: one sentence describing the specific physical or coordination challenge -- name what the notes are doing, not a character label.\nWhat to do: 2-3 numbered steps. Start each with a verb: Play, Count, Listen, isolate, repeat. Make each step immediately actionable at the piano.\nWhat to listen for: one sentence on the specific sound or feeling that tells you it's working.\n\nKeep each priority to 6-8 lines total. No abstract phrases. No theory explanations. Sound like a teacher standing next to the student." + mPrefix,
-    history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
-    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble." + mPrefix,
-    interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. IMPORTANT: cover the ENTIRE piece from beginning to end -- do not stop partway through. Structure your response as plain labeled sections. Each section starts with a short label on its own line (e.g. Overview, Opening Section, The Return, The Coda) followed by 2-3 sentences. For sections with labeled measures, put the measure range on its own line after the label (e.g. Measures: 1-7). For all remaining sections beyond labeled measures, use descriptive names only -- never invent measure numbers. No section left out. No markdown, no ##, no bold, no asterisks. No preamble." + mPrefix,
+    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each priority use this exact plain-text structure with each label on its own line:\n\nPriority 1\n[passage name]\nMeasures: X-Y\nWhat's hard: one sentence on the physical challenge.\nWhat to do:\n1. [verb] specific action\n2. [verb] specific action\n3. [verb] specific action\nWhat to listen for: one sentence on the sound that confirms it works.\n\nNo markdown. No ##. No bold. No asterisks. Plain text only. Sound like a teacher next to the student." + mPrefix,
+    history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use plain section labels on their own line: Origins, Composer at the Time, Cultural Moment, Reception and Legacy. 2-3 sentences each. No markdown, no ##, no bold. No preamble.",
+    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use plain section labels on their own line: Formal Analysis, Harmonic Language, Programmatic Content, Performance Practice. 2-3 sentences each. Name specific analysts. No markdown, no ##, no bold. No preamble." + mPrefix,
+    interviews: "Documented statements about " + p.full + ". Use plain section labels on their own line: The Composer's Voice, Contemporary Reactions, The Great Interpreters. 2-3 sentences each. Name specific people. No markdown, no ##, no bold. No preamble."
   };
 
   // Fire ALL content calls in parallel -- don't chain
@@ -2745,7 +2754,7 @@ function loadAnalysis() {
         ? "https://www.youtube.com/watch?v=" + rec.videoId
         : "https://www.youtube.com/results?search_query=" + encodeURIComponent((recName || piece.composer) + " " + piece.title);
       var recNameForPrompt = recName || piece.composer;
-      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence -- this pianist is known for performing this piece. Use ## for each section: ## Their Approach, ## Key Moments (2-3 passages with measure refs), ## What It Reveals, ## Essential or Skip?. Opinionated, specific, peer-level. 2-3 sentences each. End with: [Listen on YouTube](" + ytLink + "). No bold. No preamble.";
+      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence -- this pianist is known for performing this piece. Use plain section labels on their own line: Their Approach, Key Moments, What It Reveals, Essential or Skip. Opinionated, specific, peer-level. 2-3 sentences each. For Key Moments, put each passage on its own line. End with: [Listen on YouTube](" + ytLink + "). No markdown, no ##, no bold. No preamble.";
       callAPIWithSearch([{role:"user",content:prompt}], function(text) {
         if (reqId !== analysisReqId || tab !== currentTab) return;
         var html = renderSectioned(text);
@@ -2792,12 +2801,21 @@ function renderSectioned(text) {
   }
   text = processed.join("\n");
 
-  // Normalize practice section labels to ## headers
-  var PRACTICE_LABELS = ["What's hard","What is hard","What to do","What to listen for","What to listen","Key focus","Priority \\d+[:\\.]?[^\\n]*"];
+  // Normalize practice section labels to ## headers — handle both standalone and inline
+  var PRACTICE_LABELS = ["What's hard","What is hard","What to do","What to listen for","What to listen","Key focus"];
   PRACTICE_LABELS.forEach(function(h) {
-    var re = new RegExp("^(" + h + ")[:\\s]*", "gim");
-    text = text.replace(re, "## $1\n\n");
+    // Inline: text ## Label -> text\n\n## Label
+    var reInline = new RegExp("([^\\n])\\s*##\\s*(" + h + ")[:\\s]*", "gi");
+    text = text.replace(reInline, "$1\n\n## $2\n\n");
+    // Standalone at line start
+    var reStand = new RegExp("^##?\\s*(" + h + ")[:\\s]*", "gim");
+    text = text.replace(reStand, "## $1\n\n");
+    // Plain label at line start (no ##)
+    var rePlain = new RegExp("^(" + h + ")[:\\s]*$", "gim");
+    text = text.replace(rePlain, "## $1\n\n");
   });
+  // Also handle Priority N patterns inline
+  text = text.replace(/([^\n])\s*##\s*(Priority\s+\d+)/gi, "$1\n\n## $2\n\n");
 
   // Strip preamble lines
   var lines2 = text.split("\n");
@@ -2824,6 +2842,13 @@ function renderSectioned(text) {
     if (!block) continue;
 
     var flat = block.replace(/\n/g, " ").trim();
+
+    // "Measures: X-Y" line — render as small measure badge
+    if (flat.match(/^Measures?:\s*[\d–\-]+/i)) {
+      out += "<div style='font-size:10px;color:var(--text3);letter-spacing:0.5px;margin-bottom:8px;margin-top:-4px;'>" + flat + "</div>";
+      firstBlock = false;
+      continue;
+    }
 
     // Section header
     if (flat.match(/^#{1,3}\s/)) {
@@ -2933,6 +2958,14 @@ function highlightMusicalTerms(text) {
 }
 
 function makeHeader(text, isFirst) {
+  // Practice sub-labels get a smaller, left-accented style
+  var isPracticeLabel = /^(What's hard|What is hard|What to do|What to listen for|What to listen|Key focus)$/i.test(text.trim());
+  if (isPracticeLabel) {
+    return "<div style='font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;" +
+      "letter-spacing:1.2px;margin-top:14px;margin-bottom:6px;" +
+      "padding-left:8px;border-left:2px solid var(--accent);line-height:1.4;'>" + text + "</div>";
+  }
+  // Main section header
   return "<div style='font-family:\"Cormorant Garamond\",serif;font-size:16px;font-weight:500;color:var(--text);" +
     "margin-top:" + (isFirst ? "2px" : "32px") + ";margin-bottom:10px;" +
     "padding-bottom:8px;border-bottom:1px solid var(--border);" +
