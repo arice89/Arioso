@@ -729,7 +729,7 @@ function clearDrawings() {
 #study-content p { margin-bottom: 18px; font-size: 13px; font-weight: 300; color: var(--text2); line-height: 1.9; }
 #study-content::-webkit-scrollbar { width: 3px; }
 #study-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-.loading-wrap { display: flex; align-items: center; justify-content: center; padding: 52px; }
+.loading-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 52px; }
 .empty { color: var(--text3); font-size: 13px; font-weight: 300; letter-spacing: 0.3px; }
 
 /* PERFORMER SEARCH -- YouTube autocomplete */
@@ -1211,14 +1211,10 @@ function saveMeasureLabels(pageNum) {
     data.push({ left: l.style.left, top: l.style.top, text: l.textContent });
   });
   try { localStorage.setItem(measureKey(pageNum), JSON.stringify(data)); } catch(e) {}
-  // Only invalidate measure-sensitive tabs (story + practice)
+  // Always invalidate measure-sensitive tabs when labels change — context has changed
   if (piece) {
     ["story", "practice"].forEach(function(t) {
-      var key = piece.id + ":" + t;
-      var existing = contentCache[key];
-      if (!existing) return;
-      var hasMeasures = existing.indexOf("mm.") !== -1 || existing.indexOf("m. ") !== -1;
-      if (!hasMeasures) delete contentCache[key];
+      delete contentCache[piece.id + ":" + t];
     });
   }
 }
@@ -2837,16 +2833,6 @@ function loadAnalysis() {
 
     if (tab === "story") {
       var cached = contentCache[cacheKey(pid,"story")];
-      // If cached but has no measure numbers and we now have labels, invalidate once
-      if (cached && !didInvalidate && getMeasureContext()) {
-        var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
-        if (!hasMeasures) {
-          didInvalidate = true;
-          delete contentCache[cacheKey(pid,"story")];
-          cached = null;
-          prefetchAll(piece, true); // force=true bypasses debounce
-        }
-      }
       if (cached) { content.innerHTML = scrubLegacy(cached); return; }
       if (tryCount > 120) { // ~42 seconds — only show error after extended wait
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
@@ -2859,15 +2845,6 @@ function loadAnalysis() {
 
     } else if (tab === "practice") {
       var cached = contentCache[cacheKey(pid,"practice")];
-      if (cached && !didInvalidate && getMeasureContext()) {
-        var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
-        if (!hasMeasures) {
-          didInvalidate = true;
-          delete contentCache[cacheKey(pid,"practice")];
-          cached = null;
-          prefetchAll(piece, true);
-        }
-      }
       if (cached) { content.innerHTML = scrubLegacy(cached); return; }
       // Fire practice on-demand if not already in flight
       if (tryCount === 1 && piece) {
