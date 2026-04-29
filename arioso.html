@@ -3054,30 +3054,46 @@ function sendChat() {
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
   ctx += (getMeasureContext() || getNoMeasureContext()) + " ";
-
-  // Detect if query references a specific measure or section
-  var detected = detectMeasureQuery(msg);
-  var targetPages = null;
-  if (detected.measureNum) {
-    targetPages = findPagesForMeasure(detected.measureNum);
-    if (targetPages) console.log("[vision] measure " + detected.measureNum + " -> pages", targetPages);
-    // Show scroll hint if measure isn't currently visible
-    if (!isMeasureVisible(detected.measureNum)) {
-      showScrollHint("Scroll to m." + detected.measureNum + " for the most accurate analysis");
-    }
-  } else if (detected.sectionName) {
-    // Qualitative section reference — hint to scroll to that part
-    showScrollHint("Scroll to the " + detected.sectionName + " for the most accurate analysis");
-  }
-
   var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
 
   chatHistory.push({role:"user", content: msg});
 
+  // Detect if query references a specific measure or section
+  var detected = detectMeasureQuery(msg);
+  var targetPages = null;
+  var needsScrollHint = false;
+
+  if (detected.measureNum) {
+    targetPages = findPagesForMeasure(detected.measureNum);
+    if (targetPages) console.log("[vision] measure " + detected.measureNum + " -> pages", targetPages);
+    if (!isMeasureVisible(detected.measureNum)) {
+      needsScrollHint = true;
+      showScrollHintWithAction(
+        "Scroll to m." + detected.measureNum + ", then click Analyze",
+        function() { executeCapture(fullPrompt, targetPages, onReply, detected); }
+      );
+    }
+  } else if (detected.sectionName) {
+    needsScrollHint = true;
+    showScrollHintWithAction(
+      "Scroll to the " + detected.sectionName + ", then click Analyze",
+      function() { executeCapture(fullPrompt, null, onReply, detected); }
+    );
+  }
+
+  if (!needsScrollHint) {
+    executeCapture(fullPrompt, targetPages, onReply, detected);
+  }
+}
+
+function executeCapture(fullPrompt, targetPages, onReply, detected) {
+  // Remove scroll hint if still showing
+  var toast = document.getElementById("scroll-hint-toast");
+  if (toast) toast.remove();
+
   if (targetPages) {
-    // Render the specific pages containing the requested measure
     var statusEl = document.getElementById("vision-status");
-    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Loading m." + detected.measureNum + " (p." + targetPages.join("-") + ")"; }
+    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Loading m." + (detected && detected.measureNum ? detected.measureNum : "") + " (p." + targetPages.join("-") + ")"; }
     captureSpecificPages(targetPages).then(function(imageBase64) {
       if (!imageBase64) { callAPIWithVision(fullPrompt, onReply); return; }
       var messages = [{
@@ -3100,7 +3116,6 @@ function sendChat() {
         .catch(function() { callAPIWithVision(fullPrompt, onReply); });
     });
   } else {
-    // Use viewport capture (default)
     callAPIWithVision(fullPrompt, onReply);
   }
 }
@@ -3216,30 +3231,43 @@ function detectMeasureQuery(query) {
  * Auto-dismisses after 5 seconds.
  */
 function showScrollHint(msg) {
+  showScrollHintWithAction(msg, null);
+}
+
+function showScrollHintWithAction(msg, onAnalyze) {
   var existing = document.getElementById("scroll-hint-toast");
   if (existing) existing.remove();
 
   var toast = document.createElement("div");
   toast.id = "scroll-hint-toast";
-  toast.innerHTML =
-    "<span style='flex:1;'>&#9432; " + msg + "</span>" +
-    "<button onclick='this.parentElement.remove()' style='background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 0 0 8px;line-height:1;'>&#x2715;</button>";
-  toast.style.cssText = "display:flex;align-items:center;gap:6px;padding:8px 14px;" +
-    "background:var(--bg2);border:1px solid var(--accent2);border-radius:6px;" +
-    "font-size:11px;color:var(--text2);margin:0 0 6px 0;";
 
-  // Insert just above the chat input row (always visible)
+  var btnHtml = onAnalyze
+    ? "<button id='scroll-hint-analyze' style='background:var(--accent);color:white;border:none;border-radius:4px;" +
+      "padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;'>Analyze now</button>"
+    : "";
+
+  toast.innerHTML =
+    "<span style='flex:1;font-weight:500;'>&#9432; " + msg + "</span>" +
+    btnHtml +
+    "<button onclick='this.parentElement.remove()' style='background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px;padding:0 0 0 6px;line-height:1;'>&#x2715;</button>";
+
+  toast.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;" +
+    "background:#2d1f0e;color:#f5ede0;border-radius:6px;" +
+    "font-size:11px;margin:0 0 6px 0;box-shadow:0 2px 8px rgba(0,0,0,0.15);";
+
   var chatInput = document.getElementById("chat-input-row");
-  if (!chatInput) chatInput = document.querySelector(".chat-input-wrap");
-  if (!chatInput) chatInput = document.getElementById("chat-form");
   if (chatInput && chatInput.parentElement) {
     chatInput.parentElement.insertBefore(toast, chatInput);
-  } else {
-    var chatSection = document.getElementById("chat-section");
-    if (chatSection) chatSection.appendChild(toast);
   }
 
-  setTimeout(function() { if (toast.parentElement) toast.remove(); }, 6000);
+  if (onAnalyze) {
+    var btn = document.getElementById("scroll-hint-analyze");
+    if (btn) btn.onclick = function() { onAnalyze(); };
+    // Also auto-dismiss after 20 seconds if user doesn't act
+    setTimeout(function() { if (toast.parentElement) toast.remove(); }, 20000);
+  } else {
+    setTimeout(function() { if (toast.parentElement) toast.remove(); }, 6000);
+  }
 }
 
 /**
