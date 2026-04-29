@@ -840,7 +840,7 @@ function clearDrawings() {
       <div id="performer-search-label">Search for a performer</div>
       <div id="performer-search-row">
         <input id="performer-search-input" type="text" placeholder="e.g. Yuja Wang, Kissin, Trifonov…" autocomplete="off">
-        <button id="performer-search-cancel" onclick="hidePerformerSearch()">Cancel</button>
+        <button id="performer-search-cancel" onclick="clearPerformerSearch()">Clear</button>
         <div id="performer-dropdown">
           <div id="performer-dropdown-status"></div>
         </div>
@@ -1997,9 +1997,9 @@ function setTab(t) {
   tab = t;
   var ts = ["story","recording","practice"];
   document.querySelectorAll(".analysis-tab").forEach(function(b,i){ b.classList.toggle("active",ts[i]===t); });
-  // Show performer search only on Interpretations tab, if a piece is loaded
   var searchWrap = document.getElementById("performer-search-wrap");
   if (searchWrap) searchWrap.style.display = (t === "recording" && piece) ? "block" : "none";
+  if (t !== "recording") hideDropdown();
   renderRecs(); loadAnalysis();
 }
 
@@ -2149,7 +2149,7 @@ function initPerformerSearch() {
   });
 
   input.addEventListener("keydown", function(e) {
-    if (e.key === "Escape") { hidePerformerSearch(); }
+    if (e.key === "Escape") { clearPerformerSearch(); }
   });
 
   // Close dropdown on outside click
@@ -2242,7 +2242,6 @@ function renderDropdownResults(results) {
 
 function selectPerformerFromYT(result) {
   var input = document.getElementById("performer-search-input");
-  input.value = result.performerName;
   _ytSelectedVideoId = result.videoId;
   hideDropdown();
 
@@ -2265,9 +2264,11 @@ function selectPerformerFromYT(result) {
     localStorage.setItem(customKey, JSON.stringify(existing));
   }
 
+  // Clear input but keep search bar visible for another search
+  if (input) input.value = "";
+
   // Switch to this recording and load interpretation
   rec = newRec;
-  hidePerformerSearch();
   renderRecs();
   loadAnalysis();
 }
@@ -2281,6 +2282,12 @@ function showDropdownStatus(msg) {
 function hideDropdown() {
   var dropdown = document.getElementById("performer-dropdown");
   if (dropdown) { dropdown.style.display = "none"; dropdown.innerHTML = ""; }
+}
+
+function clearPerformerSearch() {
+  var inp = document.getElementById("performer-search-input");
+  if (inp) inp.value = "";
+  hideDropdown();
 }
 
 function showPerformerSearch() {
