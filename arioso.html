@@ -1118,8 +1118,8 @@ function handleMeasureClick(e, pageNum) {
   var clickY = e.clientY - wRect.top;
 
   // Small upward offset so label sits just above the barline click point
-  var labelY = clickY - 22;
-  if (labelY < 4) labelY = 4; // don't go above wrapper
+  var labelY = clickY - 8;
+  if (labelY < 4) labelY = 4;
 
   var rowY = getOrCreateRow(pageNum, labelY);
 
