@@ -979,11 +979,16 @@ function clearDrawings() {
 
 <!-- MEASURE NUMBER POPUP -->
 <div id="measure-popup" onmousedown="event.stopPropagation()">
-  <label>Measure number</label>
+  <label>Starting measure</label>
   <input id="measure-input" type="number" min="1" placeholder="e.g. 36">
+  <label style="margin-top:8px;">Measures in this row</label>
+  <input id="measure-count" type="number" min="1" max="20" value="4" placeholder="4">
+  <label style="margin-top:8px;">Spacing (px)</label>
+  <input id="measure-spacing" type="number" min="40" max="300" value="120" placeholder="120">
   <div id="measure-popup-btns">
     <div class="meas-btn" onclick="closeMeasurePopup()">Cancel</div>
-    <div class="meas-btn primary" onclick="placeMeasureLabel()">Place</div>
+    <div class="meas-btn" onclick="undoLastMeasureRow()" style="color:var(--text3);">Undo</div>
+    <div class="meas-btn primary" onclick="placeMeasureRow()">Place row</div>
   </div>
 </div>
 
@@ -1045,6 +1050,8 @@ function clearDrawings() {
 /* MEASURE NUMBERS */
 var measureMode = false;
 var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
+var lastMeasureStart = 1; // remember last starting measure for convenience
+var measureRowHistory = []; // for undo: [{page, labels:[el,...]}]
 
 function toggleMeasureMode() {
   measureMode = !measureMode;
@@ -1053,7 +1060,6 @@ function toggleMeasureMode() {
   var btn = document.getElementById("measure-btn");
   btn.classList.toggle("toggled", measureMode);
   btn.textContent = measureMode ? "Done" : "Add measures";
-  // Toggle class on score panel for CSS targeting
   var panel = document.getElementById("score-panel");
   if (panel) panel.classList.toggle("measure-mode", measureMode);
   document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
@@ -1071,46 +1077,93 @@ function handleMeasureClick(e, pageNum) {
   pendingMeasureY = e.clientY - rect.top;
   pendingMeasurePage = pageNum;
   var popup = document.getElementById("measure-popup");
-  document.getElementById("measure-input").value = "";
+  // Pre-fill starting measure = last used + last row count
+  document.getElementById("measure-input").value = lastMeasureStart;
   popup.style.display = "block";
-  popup.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + "px";
-  popup.style.top = Math.min(e.clientY - 80, window.innerHeight - 120) + "px";
+  popup.style.left = Math.min(e.clientX + 10, window.innerWidth - 220) + "px";
+  popup.style.top = Math.min(e.clientY - 80, window.innerHeight - 180) + "px";
   setTimeout(function() { document.getElementById("measure-input").focus(); }, 50);
 }
 
-// Row band size in pixels - snap Y to nearest multiple of this
-var ROW_BAND = 150;
+// Row band size — snap Y so labels in same row share a Y position
+var ROW_BAND = 120;
 
 function snapToRow(y) {
-  // Floor to band, place label 30px below band start (above staff lines)
   var band = Math.floor(y / ROW_BAND);
-  return band * ROW_BAND + 30;
+  return band * ROW_BAND + 28;
 }
 
-function placeMeasureLabel() {
-  var val = document.getElementById("measure-input").value.trim();
-  if (!val) return;
+function placeMeasureRow() {
+  var startVal = parseInt(document.getElementById("measure-input").value);
+  var count = parseInt(document.getElementById("measure-count").value) || 4;
+  var spacing = parseInt(document.getElementById("measure-spacing").value) || 120;
+  if (isNaN(startVal) || startVal < 1) return;
+
   var wrapper = document.getElementById("pw-" + pendingMeasurePage);
   if (!wrapper) return;
 
-  var label = document.createElement("div");
-  label.className = "measure-label";
-  label.textContent = "m." + val;
-  label.style.left = pendingMeasureX + "px";
-  // Snap Y to nearest row band so labels in same row align
   var snappedY = snapToRow(pendingMeasureY);
-  label.style.top = snappedY + "px";
+  var rowLabels = [];
 
-  // Click to delete
-  label.title = "Click to delete";
-  label.addEventListener("click", function(e) {
-    e.stopPropagation();
-    if (measureMode) label.remove();
-  });
+  for (var i = 0; i < count; i++) {
+    var mNum = startVal + i;
+    var label = document.createElement("div");
+    label.className = "measure-label";
+    label.textContent = "m." + mNum;
+    label.dataset.measureNum = mNum;
+    var xPos = pendingMeasureX + (i * spacing);
+    label.style.left = xPos + "px";
+    label.style.top = snappedY + "px";
 
-  wrapper.appendChild(label);
+    // Click to delete in measure mode; drag to adjust X position
+    (function(lbl) {
+      lbl.addEventListener("click", function(e) {
+        e.stopPropagation();
+        if (measureMode) { lbl.remove(); saveMeasureLabels(pendingMeasurePage); }
+      });
+      // Allow horizontal drag to fine-tune position
+      lbl.addEventListener("mousedown", function(e) {
+        if (!measureMode) return;
+        e.stopPropagation();
+        var startX = e.clientX;
+        var origLeft = parseInt(lbl.style.left);
+        function onMove(ev) {
+          lbl.style.left = (origLeft + ev.clientX - startX) + "px";
+        }
+        function onUp() {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          saveMeasureLabels(pendingMeasurePage);
+        }
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    })(label);
+
+    wrapper.appendChild(label);
+    rowLabels.push(label);
+  }
+
+  // Save for undo
+  measureRowHistory.push({ page: pendingMeasurePage, labels: rowLabels });
+  // Remember for next placement
+  lastMeasureStart = startVal + count;
+  document.getElementById("measure-input").value = lastMeasureStart;
+
   saveMeasureLabels(pendingMeasurePage);
   closeMeasurePopup();
+}
+
+function undoLastMeasureRow() {
+  if (!measureRowHistory.length) return;
+  var last = measureRowHistory.pop();
+  last.labels.forEach(function(lbl) { lbl.remove(); });
+  saveMeasureLabels(last.page);
+  // Update start field to previous value
+  var startField = document.getElementById("measure-input");
+  if (startField && last.labels.length) {
+    startField.value = parseInt(last.labels[0].dataset.measureNum) || "";
+  }
 }
 
 function closeMeasurePopup() {
@@ -3207,10 +3260,7 @@ function clearDrawings() {
   });
 }
 
-/* MEASURE NUMBERS */
-var measureMode = false;
-var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
-
+/* MEASURE NUMBERS -- state declared earlier */
 
 
 
