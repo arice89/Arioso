@@ -2284,7 +2284,7 @@ function toggleDraw() {
   document.getElementById("draw-toolbar").style.display = drawMode ? "flex" : "none";
   document.querySelectorAll(".draw-canvas").forEach(function(dc) {
     dc.classList.toggle("active", drawMode);
-    if (!drawMode) dc.style.cursor = "default";
+    if (drawMode) dc.style.cursor = ""; else dc.style.cursor = "default";
   });
   document.querySelectorAll(".pdf-page-wrapper canvas:not(.draw-canvas)").forEach(function(c) {
     c.style.cursor = drawMode ? "crosshair" : "default";
