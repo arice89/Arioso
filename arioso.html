@@ -607,6 +607,8 @@ function clearDrawings() {
 .chat-msg { font-size: 12px; line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
 .chat-msg.user { color: var(--text); font-weight: 400; }
 .chat-msg.assistant { color: var(--text); font-weight: 300; }
+.chat-msg.thinking-msg { opacity: 0.6; }
+.chat-msg.thinking-msg .ldots { display: inline-flex; gap: 3px; padding: 2px 0; }
 .chat-msg.assistant::before {
   content: "Arioso  —  "; font-weight: 600; color: var(--accent);
   font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
@@ -1735,7 +1737,7 @@ var PIECES = [
 
 // MODE 1: Score-grounded — used for chord clicks, chord popup, chat, practice tab
 // The model reads the score image and analyzes only what is visible.
-var SYS_SCORE = "You are Arioso, a score analyst for advanced pianists. A score image is attached. It is your ONLY source of truth for this query.\n\nANALYSIS METHOD — follow this order every time:\n1. Identify the bass note (lowest sounding pitch).\n2. Identify the upper voices above it.\n3. Determine the interval stack and chord quality.\n4. Identify root and inversion.\n5. Assign Roman numeral relative to the key.\n6. State harmonic function (tonic / dominant / pre-dominant / chromatic).\n7. State one direct performance implication — voicing weight, timing, touch, pedaling.\n\nRULES:\n- Analyze ONLY what is visible in this passage. Do not reference the global form or other sections unless they are visible in the image.\n- When uncertain, describe what you see: 'the bass is on F, with A and C above — this reads as IV' — not 'I cannot determine this.'\n- Never use ** for bold. No preamble. No disclaimers. No hedging.\n- Speak like a top conservatory teacher reading the score in real time: direct, specific, grounded in the notes.\n- If the passage shows texture or articulation markings, address them. They are harmonic and performative information.\n- Keep answers to 3-5 sentences unless more depth is needed.";
+var SYS_SCORE = "You are Arioso, a score analyst for advanced pianists. A score image is attached. It is your ONLY source of truth.\n\nBEFORE giving any advice, you must first describe what you actually see in the image:\n- What is the right hand doing? (single line melody, chords, rapid figuration, octaves, trills?)\n- What is the left hand doing? (bass + chord pattern, arpeggios, octaves, single line?)\n- What is the rhythmic unit? (eighth notes, sixteenth notes, triplets, mixed?)\n- Are there any visible markings? (dynamics, articulation, pedal marks, tempo words, fingering?)\n\nOnly after observing the texture may you give practice advice. Every piece of advice must trace directly back to a specific visible feature. Do not name or label anything that is not clearly shown.\n\nPROHIBITED unless clearly visible in the image:\n- Labeling sections as 'agitato', 'cantabile', 'waltz', 'developmental', or any character description\n- Assuming left-hand arpeggios, right-hand melody, or any standard texture\n- Referencing dynamics (pp, ff, crescendo) unless they appear as markings in the score\n- Naming a passage as part of the 'second theme', 'coda', 'development', or any formal section\n\nANALYSIS METHOD for harmony:\n1. Bass note (lowest pitch)\n2. Upper voices\n3. Interval stack → chord quality\n4. Root and inversion\n5. Roman numeral in the key\n6. Harmonic function\n7. One direct performance implication\n\nFORMAT for practice advice:\nStart with: 'In this passage I can see [describe texture]. Because of this...'\nThen give 2-3 specific, actionable practice points tied to what you described.\n\nRULES:\n- If you cannot clearly see a feature, say so and describe what you can see instead.\n- No preamble. No disclaimers. No hedging about sources.\n- 3-6 sentences total. Direct, specific, grounded in the notes and markings visible.";
 
 // MODE 2: Knowledge-driven — used for Analysis tab, Interpretations tab, Study tabs
 // The model draws on deep musical knowledge of the piece. No score image attached.
@@ -2078,7 +2080,7 @@ function prefetchAll(p) {
 
   var prompts = {
     story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive — 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.",
-    practice: "3 practice priorities for " + p.full + " by " + p.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific challenge. One sentence: exactly what to do — name a rhythmic subdivision, fingering, or voicing strategy. Conservatory-level technique assumed. No bold. No preamble.",
+    practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each priority: name the passage and measures, describe the specific texture or figuration that creates the challenge (e.g. 'rapid sixteenth-note thirds in the right hand over a sustained bass'), then give one precise actionable instruction — a rhythmic subdivision, a specific fingering strategy, or a voicing technique. Do not label textures with character names (agitato, cantabile) — describe what the notes are doing. No bold. No preamble.",
     history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
     interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
@@ -2554,6 +2556,22 @@ function sendChat() {
   var ud = document.createElement("div"); ud.className="chat-msg user"; ud.textContent=msg; msgs.appendChild(ud);
   var btn = document.getElementById("send-btn"); btn.disabled=true;
 
+  // Thinking indicator
+  var thinking = document.createElement("div");
+  thinking.className = "chat-msg assistant thinking-msg";
+  thinking.innerHTML = "<div class='ldots'><span></span><span></span><span></span></div>";
+  msgs.appendChild(thinking);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  function onReply(reply) {
+    thinking.remove();
+    chatHistory.push({role:"assistant", content: reply});
+    var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply;
+    msgs.appendChild(ad);
+    msgs.scrollTop = msgs.scrollHeight;
+    btn.disabled=false;
+  }
+
   // Build context prefix
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
@@ -2562,21 +2580,11 @@ function sendChat() {
   // Use vision if score is loaded, otherwise plain chat history
   var imageBase64 = captureScoreImage();
   if (imageBase64) {
-    // Vision call — single turn with image + full question
-    callAPIWithVision(fullPrompt, function(reply) {
-      chatHistory.push({role:"user", content: msg});
-      chatHistory.push({role:"assistant", content: reply});
-      var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply; msgs.appendChild(ad);
-      msgs.scrollTop = msgs.scrollHeight; btn.disabled=false;
-    });
+    chatHistory.push({role:"user", content: msg});
+    callAPIWithVision(fullPrompt, onReply);
   } else {
-    // No score loaded — use conversation history
     chatHistory.push({role:"user", content: ctx+msg});
-    callAPI(chatHistory, function(reply){
-      chatHistory.push({role:"assistant",content:reply});
-      var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply; msgs.appendChild(ad);
-      msgs.scrollTop = msgs.scrollHeight; btn.disabled=false;
-    });
+    callAPI(chatHistory, onReply);
   }
 }
 
