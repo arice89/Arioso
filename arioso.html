@@ -2131,7 +2131,10 @@ function showLoading(x, y, page) {
 }
 
 function analyzeClick(page, xp, yp) {
-  var prompt = "I am looking at page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). I have clicked at approximately " + xp + "% from the left and " + yp + "% from the top of this page.\n\nLook at the score image. Find the notes at that location. Identify: (1) the bass note, (2) the upper voices, (3) the chord quality from the interval stack, (4) the inversion, (5) the Roman numeral in " + piece.key + ", (6) the harmonic function.\n\nRespond ONLY in this exact JSON format with no other text:\n{\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"2 sentences: what this chord is and what it demands from the performer.\"}.\n\nFunction must be exactly one of: tonic, dominant, predominant, chromatic.";
+  var mCtx = getMeasureContext() || getNoMeasureContext();
+  var prompt = "I am looking at page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). I have clicked at approximately " + xp + "% from the left and " + yp + "% from the top of this page.\n\n" +
+    mCtx + "\n\n" +
+    "Look at the score image. Find the notes at that location. Identify: (1) the bass note, (2) the upper voices, (3) the chord quality from the interval stack, (4) the inversion, (5) the Roman numeral in " + piece.key + ", (6) the harmonic function.\n\nRespond ONLY in this exact JSON format with no other text:\n{\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"2 sentences: what this chord is and what it demands from the performer.\"}.\n\nFunction must be exactly one of: tonic, dominant, predominant, chromatic.";
   callAPIWithVision(prompt, function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -2838,6 +2841,7 @@ function sendChat() {
   // Build context prefix
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
+  ctx += (getMeasureContext() || getNoMeasureContext()) + " ";
 
   // Detect if query references a specific measure or section
   var detected = detectMeasureQuery(msg);
@@ -3566,8 +3570,10 @@ function loadChordAnalysis(chord) {
   var chordContext = (chord.note || "").split(" -- ");
   var location = chordContext[0].trim();
   var existingNote = chordContext[1] || "";
+  var mCtx = getMeasureContext() || getNoMeasureContext();
   var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer +
     ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" +
+    mCtx + "\n\n" +
     existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, " +
     "(2) explain what this harmony is doing structurally, (3) what it demands from the performer -- " +
     "voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
@@ -3688,6 +3694,43 @@ function restoreMeasureLabels(pageNum) {
     });
     wrapper.appendChild(label);
   });
+}
+
+/**
+ * Collects all user-placed measure labels across all PDF pages.
+ * Returns a context string for injection into AI prompts.
+ * Returns null if no labels exist.
+ */
+function getMeasureContext() {
+  if (!pdfDoc) return null;
+  var nums = [];
+  for (var i = 1; i <= pdfDoc.numPages; i++) {
+    var wrapper = document.getElementById("pw-" + i);
+    if (!wrapper) continue;
+    wrapper.querySelectorAll(".measure-label").forEach(function(l) {
+      var n = parseInt(l.textContent.replace(/[^0-9]/g, ""));
+      if (!isNaN(n)) nums.push(n);
+    });
+  }
+  if (!nums.length) return null;
+  nums.sort(function(a, b) { return a - b; });
+  // Deduplicate
+  nums = nums.filter(function(n, i) { return nums.indexOf(n) === i; });
+  var min = nums[0], max = nums[nums.length - 1];
+  return "The user has labeled measures " + nums.join(", ") +
+    " on this score (covering m." + min + " to m." + max + "). " +
+    "When referring to passages, anchor your descriptions to these measure numbers. " +
+    "Only reference measure numbers that appear in this list. Never invent or assume unlabeled measures.";
+}
+
+/**
+ * Returns a fallback context string when no measure labels exist.
+ */
+function getNoMeasureContext() {
+  return "No measure numbers have been labeled on this score yet. " +
+    "Describe passages using structural language: opening section, middle passage, " +
+    "rising sequence, the passage visible in this image, etc. " +
+    "Do NOT invent or assume measure numbers.";
 }
 
 function clearAnnotationsForPiece() {
