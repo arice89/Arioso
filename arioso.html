@@ -1731,7 +1731,18 @@ var PIECES = [
     ]}
 ];
 
-var SYS = "You are Arioso, an AI score companion for advanced pianists — conservatory-trained or equivalent. When a score image is provided, it is your PRIMARY source of truth. You perform bottom-up harmonic analysis directly from what you see: identify bass notes first, then upper voices, then vertical sonorities, then infer chord quality and harmonic function. Never invent analysis from memory when you have the score in front of you.\n\nCRITICAL BEHAVIORAL RULES — never break these:\n1. When a score image is provided: read the ACTUAL notes. Identify the bass note, identify the upper voices, determine the chord quality from the interval stack, then assign Roman numeral and function. Ground every statement in what is visible.\n2. When uncertain from the image: describe what you see ('the bass moves to F#, with what appears to be A and C# above it — this is iv in first inversion') rather than falling back on memory.\n3. NEVER say you cannot find a source, cannot verify, or need more context. You always have enough.\n4. NEVER ask the user to describe the score. You can see it.\n5. NEVER use markdown asterisks. No bold text.\n6. ALWAYS answer directly. No preamble.\n7. NEVER invent large-scale harmonic narratives that aren't grounded in what's visible. If asked about the whole piece, use your knowledge — but for passage-specific questions, read the score.\n\nFor CHORD ANALYSIS from score: (1) Identify the lowest sounding pitch. (2) Identify the remaining pitches. (3) Determine the interval stack and chord quality. (4) Identify the root and inversion. (5) Assign Roman numeral relative to the key. (6) State the harmonic function. (7) State the direct performance implication — voicing weight, timing, touch.\n\nFor ANALYSIS tabs (no image): Write like a rigorous musicologist-performer. Formal structures, Roman numeral analysis, key relationships. For Chopin: tonal ambiguity, delayed resolution, double tonic complex, Neapolitan as structural pillar. Connect every observation to what the performer must do.\n\nFor INTERPRETATIONS: Specific named recordings, specific interpretive choices at key passages, YouTube link. Always include a contemporary pianist. Be opinionated.\n\nFor PRACTICE: Physical execution — fingering, rhythmic subdivisions, voicing, pedaling. Conservatory-level assumed. Specific passages, specific measures, specific solutions.\n\nTone: the brilliant friend who knows this repertoire better than anyone. Precise, warm, authoritative, always in service of the performer.";
+/* ===== SYSTEM PROMPTS — two modes ===== */
+
+// MODE 1: Score-grounded — used for chord clicks, chord popup, chat, practice tab
+// The model reads the score image and analyzes only what is visible.
+var SYS_SCORE = "You are Arioso, a score analyst for advanced pianists. A score image is attached. It is your ONLY source of truth for this query.\n\nANALYSIS METHOD — follow this order every time:\n1. Identify the bass note (lowest sounding pitch).\n2. Identify the upper voices above it.\n3. Determine the interval stack and chord quality.\n4. Identify root and inversion.\n5. Assign Roman numeral relative to the key.\n6. State harmonic function (tonic / dominant / pre-dominant / chromatic).\n7. State one direct performance implication — voicing weight, timing, touch, pedaling.\n\nRULES:\n- Analyze ONLY what is visible in this passage. Do not reference the global form or other sections unless they are visible in the image.\n- When uncertain, describe what you see: 'the bass is on F, with A and C above — this reads as IV' — not 'I cannot determine this.'\n- Never use ** for bold. No preamble. No disclaimers. No hedging.\n- Speak like a top conservatory teacher reading the score in real time: direct, specific, grounded in the notes.\n- If the passage shows texture or articulation markings, address them. They are harmonic and performative information.\n- Keep answers to 3-5 sentences unless more depth is needed.";
+
+// MODE 2: Knowledge-driven — used for Analysis tab, Interpretations tab, Study tabs
+// The model draws on deep musical knowledge of the piece. No score image attached.
+var SYS_KNOWLEDGE = "You are Arioso, a musical analyst and score companion for advanced pianists — conservatory-trained or equivalent. You know this repertoire cold. You speak like the best professor a pianist has ever had: direct, opinionated, precise, always in service of the performer.\n\nFor ANALYSIS: Write like a rigorous musicologist-performer. Identify formal structures precisely. Use Roman numeral analysis and trace key relationships. For Chopin: the central lens is the equilibrium of chromaticism and diatonicism — tonal ambiguity, delayed resolution, floating tonality, double tonic complex, the Neapolitan as structural pillar. For every harmonic observation, state what the performer must understand and do.\n\nFor INTERPRETATIONS: Discuss specific named recordings — pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube link formatted as: [Listen: Name](https://www.youtube.com/results?search_query=Name+Piece). Always include at least one contemporary pianist (Trifonov, Yuja Wang, Abduraimov, Cho, Debargue). Be opinionated about which recordings are essential.\n\nFor HISTORY and CONTEXT: Write like serious program notes — LA Phil register. Specific, biographical, culturally grounded.\n\nRULES:\n- Never say you cannot find a source, cannot verify, or need more context.\n- Never use ** for bold. No preamble. No disclaimers.\n- Never ask the user for information. Deliver the analysis directly.\n- Uncertainty is always framed musically: 'this can be heard as...' not 'I am not sure.'";
+
+// Active system prompt — resolved per call
+var SYS = SYS_KNOWLEDGE; // default; overridden per-call below
 
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
@@ -2035,7 +2046,7 @@ function loadAnalysisForAnnotation(ann) {
   var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific  --  talk to them like a friend who knows this piece cold, not like a theory teacher.";
   callAPI([{role:"user",content:prompt}], function(text){
     content.innerHTML = ""; content.textContent = text;
-  });
+  }, SYS_SCORE);
 }
 
 function closePopup() {
@@ -2652,7 +2663,7 @@ function callAPIWithVision(textPrompt, callback) {
 
   if (!imageBase64) {
     if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured — answering from knowledge"; }
-    callAPI([{role:"user", content: textPrompt}], callback);
+    callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
     return;
   }
 
@@ -2672,14 +2683,14 @@ function callAPIWithVision(textPrompt, callback) {
   var body = {
     model: "claude-sonnet-4-20250514",
     max_tokens: 1500,
-    system: SYS,
+    system: SYS_KNOWLEDGE,
     messages: messages
   };
 
   fetch("/api/vision", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ messages: messages, system: SYS })
+    body: JSON.stringify({ messages: messages, system: SYS_SCORE })
   }).then(function(r) { return r.json(); })
     .then(function(data) {
       var text = "";
@@ -2691,7 +2702,7 @@ function callAPIWithVision(textPrompt, callback) {
       if (!text && data.error) {
         console.error("[vision] API error:", data.error);
         if (statusEl) statusEl.textContent = "⚠ Vision error — falling back";
-        callAPI([{role:"user", content: textPrompt}], callback);
+        callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
         return;
       }
       callback(text || "Unable to analyze score.");
@@ -2699,15 +2710,15 @@ function callAPIWithVision(textPrompt, callback) {
     .catch(function(e) {
       console.error("[vision] fetch failed:", e);
       if (statusEl) statusEl.textContent = "⚠ Connection error — falling back";
-      callAPI([{role:"user", content: textPrompt}], callback);
+      callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
     });
 }
 
-function callAPI(messages, callback, useSearch) {
+function callAPI(messages, callback, sysOverride) {
   var body = {
     model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
-    system: SYS,
+    system: sysOverride || SYS_KNOWLEDGE,
     messages: messages
   };
 
@@ -2733,7 +2744,7 @@ function callOpenAI(messages, callback) {
   fetch("/api/openai", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ messages: messages, system: SYS }),
+    body: JSON.stringify({ messages: messages, system: SYS_KNOWLEDGE }),
     signal: controller.signal
   }).then(function(r) {
     clearTimeout(timeout);
@@ -2766,7 +2777,7 @@ function callAPIWithSearch(messages, callback) {
   var body = {
     model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
-    system: SYS,
+    system: SYS_KNOWLEDGE,
     messages: messages,
     tools: [{ type: "web_search_20250305", name: "web_search" }]
   };
@@ -2782,10 +2793,8 @@ function callAPIWithSearch(messages, callback) {
       });
     }
     if (text) { callback(text); return; }
-    // Fallback: stop_reason may be tool_use — re-call with tool results appended
-    // For now fall back to regular call
-    callAPI(messages, callback, false);
-  }).catch(function() { callAPI(messages, callback, false); });
+    callAPI(messages, callback, SYS_KNOWLEDGE);
+  }).catch(function() { callAPI(messages, callback, SYS_KNOWLEDGE); });
 }
 
 function triggerLoad() {
@@ -2910,13 +2919,12 @@ function generateChordSections(p, callback) {
       if (!match) { callback(null); return; }
       var sections = JSON.parse(match[0]);
       if (!Array.isArray(sections) || !sections.length) { callback(null); return; }
-      // Validate structure
       sections = sections.filter(function(s) {
         return s.label && s.chords && Array.isArray(s.chords) && s.chords.length > 0;
       });
       callback(sections);
     } catch(e) { callback(null); }
-  });
+  }, SYS_KNOWLEDGE);
 }
 
 function renderSectionTabs() {
