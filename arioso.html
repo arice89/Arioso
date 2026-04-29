@@ -105,14 +105,15 @@ body {
   font-size: 11px; color: var(--text3); letter-spacing: 1.5px;
   text-transform: uppercase; margin-top: 7px; font-weight: 400;
 }
-#add-piece-btn {
+#add-piece-btn, #edit-library-btn {
   padding: 9px 20px; border-radius: 3px; font-size: 10px;
   font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase;
   border: 1px solid var(--border2); background: transparent;
   color: var(--text2); cursor: pointer; font-family: inherit; transition: all 0.2s;
   margin-top: 4px; flex-shrink: 0;
 }
-#add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
+#add-piece-btn:hover, #edit-library-btn:hover { border-color: var(--accent); color: var(--accent); }
+#edit-library-btn.active { border-color: var(--accent); color: var(--accent); }
 #library-tabs { display: flex; padding: 0 56px; }
 .lib-tab {
   padding: 12px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
@@ -813,7 +814,7 @@ function clearDrawings() {
         <span id="library-logo-sub">AI Score Companion</span>
       </div>
       <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
-      <button id="edit-library-btn" onclick="toggleEditLibrary()" style="background:none;border:1px solid var(--border2);color:var(--text3);padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:8px;">Edit</button>
+      <button id="edit-library-btn" onclick="toggleEditLibrary()">Edit</button>
     </div>
     <div id="library-header-top">
       <div>
@@ -1549,8 +1550,10 @@ var libraryEditMode = false;
 function toggleEditLibrary() {
   libraryEditMode = !libraryEditMode;
   var btn = document.getElementById("edit-library-btn");
-  if (btn) btn.textContent = libraryEditMode ? "Done" : "Edit";
-  if (btn) btn.style.color = libraryEditMode ? "var(--accent)" : "var(--text3)";
+  if (btn) {
+    btn.textContent = libraryEditMode ? "Done" : "Edit";
+    btn.classList.toggle("active", libraryEditMode);
+  }
   renderLibrary();
 }
 
