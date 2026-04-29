@@ -1159,10 +1159,19 @@ function placeSingleMeasure(pageNum, x, rowY, num) {
   var wrapper = document.getElementById("pw-" + pageNum);
   if (!wrapper) return;
 
+  // Use the PDF canvas CSS width as reference — it's always set correctly
+  var canvas = document.getElementById("pc-" + pageNum);
+  var refW = (canvas && canvas.offsetWidth) ? canvas.offsetWidth : (wrapper.offsetWidth || 1);
+  var refH = (canvas && canvas.offsetHeight) ? canvas.offsetHeight : (wrapper.offsetHeight || 1);
+  var xPct = (x / refW) * 100;
+  var yPct = (rowY / refH) * 100;
+
   var label = document.createElement("div");
   label.className = "measure-label";
   label.textContent = "m." + num;
   label.dataset.measureNum = num;
+  label.dataset.xPct = xPct;
+  label.dataset.yPct = yPct;
   label.style.left = x + "px";
   label.style.top = rowY + "px";
 
@@ -3664,14 +3673,20 @@ function restoreDrawing(pageNum) {
 function saveMeasureLabels(pageNum) {
   var wrapper = document.getElementById("pw-" + pageNum);
   if (!wrapper) return;
+  var canvas = document.getElementById("pc-" + pageNum);
+  var refW = (canvas && canvas.offsetWidth) ? canvas.offsetWidth : (wrapper.offsetWidth || 1);
+  var refH = (canvas && canvas.offsetHeight) ? canvas.offsetHeight : (wrapper.offsetHeight || 1);
   var labels = wrapper.querySelectorAll(".measure-label");
   var data = [];
   labels.forEach(function(l) {
-    data.push({ left: l.style.left, top: l.style.top, text: l.textContent });
+    var xPct = parseFloat(l.dataset.xPct);
+    var yPct = parseFloat(l.dataset.yPct);
+    // Recompute from current px if percentages not stored yet
+    if (isNaN(xPct)) xPct = (parseInt(l.style.left) || 0) / refW * 100;
+    if (isNaN(yPct)) yPct = (parseInt(l.style.top) || 0) / refH * 100;
+    data.push({ xPct: xPct, yPct: yPct, text: l.textContent });
   });
-  try {
-    localStorage.setItem(measureKey(pageNum), JSON.stringify(data));
-  } catch(e) {}
+  try { localStorage.setItem(measureKey(pageNum), JSON.stringify(data)); } catch(e) {}
 }
 
 function restoreMeasureLabels(pageNum) {
@@ -3685,13 +3700,35 @@ function restoreMeasureLabels(pageNum) {
     var label = document.createElement("div");
     label.className = "measure-label";
     label.textContent = d.text;
-    label.style.left = d.left;
-    label.style.top = d.top;
-    label.title = "Click to delete";
-    label.addEventListener("click", function(e) {
-      e.stopPropagation();
-      if (measureMode) { label.remove(); saveMeasureLabels(pageNum); }
-    });
+    // Support both old format (left/top px) and new format (xPct/yPct)
+    if (d.xPct !== undefined) {
+      var wW = wrapper.offsetWidth || 1;
+      var wH = wrapper.offsetHeight || 1;
+      label.dataset.xPct = d.xPct;
+      label.dataset.yPct = d.yPct;
+      label.style.left = (d.xPct / 100 * wW) + "px";
+      label.style.top = (d.yPct / 100 * wH) + "px";
+    } else {
+      // Legacy: convert old px positions to percentages
+      var wW2 = wrapper.offsetWidth || 1;
+      var wH2 = wrapper.offsetHeight || 1;
+      var lPx = parseInt(d.left) || 0;
+      var tPx = parseInt(d.top) || 0;
+      label.dataset.xPct = (lPx / wW2 * 100);
+      label.dataset.yPct = (tPx / wH2 * 100);
+      label.style.left = d.left;
+      label.style.top = d.top;
+    }
+    var num = parseInt(label.textContent.replace(/[^0-9]/g, ""));
+    if (!isNaN(num)) label.dataset.measureNum = num;
+    (function(lbl, pg) {
+      lbl.addEventListener("mousedown", function(e) {
+        e.stopPropagation();
+        if (!measureMode) return;
+        lbl.remove();
+        saveMeasureLabels(pg);
+      });
+    })(label, pageNum);
     wrapper.appendChild(label);
   });
 }
@@ -3788,6 +3825,15 @@ function applyZoom() {
         wrapper.style.marginLeft = "auto";
         wrapper.style.marginRight = "auto";
         page.render({canvasContext: canvas.getContext("2d"), viewport: vp});
+        // Reposition measure labels to match new wrapper dimensions
+        wrapper.querySelectorAll(".measure-label").forEach(function(lbl) {
+          var xp = parseFloat(lbl.dataset.xPct);
+          var yp = parseFloat(lbl.dataset.yPct);
+          if (!isNaN(xp) && !isNaN(yp)) {
+            lbl.style.left = (xp / 100 * displayW) + "px";
+            lbl.style.top = (yp / 100 * displayH) + "px";
+          }
+        });
       });
     })(i);
   }
