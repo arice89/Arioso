@@ -3395,16 +3395,66 @@ function loadChordAnalysis(chord) {
   banner.style.display = "block";
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var chordContext = chord.note.split(" -- ");
+
+  var chordContext = (chord.note || "").split(" -- ");
   var location = chordContext[0].trim();
   var existingNote = chordContext[1] || "";
-  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer + ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" + existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, (2) explain what this harmony is doing structurally in this passage, (3) explain what it demands from the performer -- voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
+  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer +
+    ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" +
+    existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, " +
+    "(2) explain what this harmony is doing structurally, (3) what it demands from the performer -- " +
+    "voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
+
   var snapReqId = analysisReqId;
-  callAPIWithVision(prompt, function(text) {
+
+  // Extract measure number from note field to find correct pages
+  var mMatch = location.match(/m\.?\s*(\d+)/i);
+  var targetPages = mMatch ? findPagesForMeasure(parseInt(mMatch[1])) : null;
+
+  // Also try section page data directly
+  if (!targetPages && section && section.page) {
+    var pageText = section.page.replace(/pp?\.\s*/i, "");
+    var pageRange = pageText.match(/(\d+)(?:[^\d]+(\d+))?/);
+    if (pageRange) {
+      targetPages = [];
+      var p1 = parseInt(pageRange[1]);
+      var p2 = pageRange[2] ? Math.min(parseInt(pageRange[2]), p1 + 1) : p1;
+      for (var p = p1; p <= p2; p++) targetPages.push(p);
+    }
+  }
+
+  function onResult(text) {
     if (analysisReqId !== snapReqId) return;
     var el = document.getElementById("analysis-content");
     if (el) el.innerHTML = renderSectioned(text);
-  });
+  }
+
+  if (targetPages && pdfDoc) {
+    console.log("[vision] chord analysis using pages:", targetPages);
+    captureSpecificPages(targetPages).then(function(imageBase64) {
+      if (!imageBase64) { callAPIWithVision(prompt, onResult); return; }
+      var messages = [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: "image/png", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }];
+      fetch("/api/vision", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ messages: messages, system: SYS_SCORE })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          var text = "";
+          if (data.content) data.content.forEach(function(b) { if (b.type==="text") text += b.text; });
+          onResult(text || "Unable to analyze score.");
+        })
+        .catch(function() { callAPIWithVision(prompt, onResult); });
+    });
+  } else {
+    callAPIWithVision(prompt, onResult);
+  }
 }
 
 /* SAVE/RESTORE ANNOTATIONS */
