@@ -1742,7 +1742,7 @@ function prefetchAll(p) {
 }
 
 function fetchRecordings(p) {
-  var prompt = "List the 5 most celebrated recordings of " + p.full + " by " + p.composer + ". Include historic and contemporary. For each, give the pianist's full name and the approximate decade of their most famous recording of this work. Respond ONLY as a JSON array: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 1970s\"}]. Only include pianists who have definitively recorded this work.";
+  var prompt = "List the 5 most celebrated pianists known for performing " + p.full + " by " + p.composer + ". Include studio recordings, live concert recordings, and YouTube performances — not just commercial studio albums. Include a mix of historic and contemporary pianists. Respond ONLY as a JSON array with no other text: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 2010s\"}]. Only include pianists who have definitively performed this work.";
   callAPIWithSearchAsync([{role:"user",content:prompt}]).then(function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -1977,20 +1977,28 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
-  // Normalize GPT formatting patterns into ## headers:
-  // Pattern 1: **Header**\nContent or **Header**\n\nContent
-  text = text.replace(/\*\*([^*\n]+)\*\*\s*\n/g, "## $1\n");
-  // Pattern 2: **Header** Content on same line
-  text = text.replace(/\*\*([^*\n]+)\*\*\s+([A-Z])/g, "## $1\n\n$2");
-  // Pattern 3: Known section words at line start without ## e.g. "Overview Chopin..."
+  // GPT wraps entire paragraphs in ** — strip outer ** from each paragraph first
+  // Then split known header words from their body text
+  
+  // Step 1: Remove ** that wrap entire lines/paragraphs
+  text = text.replace(/^\*\*(.+)\*\*$/gm, "$1");
+  
+  // Step 2: Split "HeaderWord body..." into "## HeaderWord\n\nbody..."
   var HEADERS = ["Overview","Introduction","Exposition","Development","Recapitulation","Coda","Origins","Composer at the Time","Cultural Moment","Reception and Legacy","Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice","The Composer's Voice","Contemporary Reactions","The Great Interpreters"];
   HEADERS.forEach(function(h) {
-    var re = new RegExp("^(" + h + ")\\s+([A-Z])", "gm");
+    var re = new RegExp("^(" + h + "(?:\\s*\\([^)]*\\))?(?:\\s*mm\\.\\s*[\\d-]+)?)\\s+([A-Z])", "gm");
     text = text.replace(re, "## $1\n\n$2");
   });
-  // Pattern 4: "I. Movement Name (mm. X-Y) Content"
+  // Also split "SectionName (mm. X-Y) Body" for any capitalized section name
+  text = text.replace(/^([A-Z][a-z]+(?:\s+[A-Za-z]+)*\s+\(mm\.\s*[\d-]+\))\s+([A-Z])/gm, "## $1\n\n$2");
+
+  // Step 3: Handle "**Header**\nContent" or "**Header (mm.)**\nContent"  
+  text = text.replace(/\*\*([^*\n]+)\*\*\s*\n/g, "## $1\n");
+
+  // Step 4: Handle "I. Movement (mm. X-Y) Body..."
   text = text.replace(/^([IVX]+\.\s+[A-Za-z: ,()-]+(?:\([^)]*\))?)\s+([A-Z])/gm, "## $1\n\n$2");
-  // Strip any remaining stray **
+
+  // Step 5: Strip any remaining **
   text = text.replace(/\*\*/g, "");
 
   // Strip preamble
