@@ -74,42 +74,42 @@ body {
   display: none; flex-direction: column; height: 100vh; background: var(--bg3);
 }
 #library-header {
-  padding: 36px 52px 0; background: var(--bg);
+  padding: 40px 56px 0; background: var(--bg);
   border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 #library-header-top {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;
 }
 #library-greeting {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 20px; font-weight: 300; letter-spacing: -0.1px; color: var(--text2); line-height: 1;
+  font-size: 34px; font-weight: 300; letter-spacing: -0.3px; color: var(--text2); line-height: 1;
 }
 #library-greeting strong { color: var(--text); font-weight: 400; }
 #library-greeting span { color: var(--accent); font-style: italic; }
 #library-subtitle {
-  font-size: 10px; color: var(--text3); letter-spacing: 1.5px;
-  text-transform: uppercase; margin-top: 5px; font-weight: 400;
+  font-size: 11px; color: var(--text3); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-top: 8px; font-weight: 400;
 }
 #add-piece-btn {
-  padding: 7px 16px; border-radius: 3px; font-size: 9px;
-  font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase;
-  border: 1px solid var(--border3); background: transparent;
-  color: var(--text3); cursor: pointer; font-family: inherit; transition: all 0.2s;
+  padding: 9px 20px; border-radius: 3px; font-size: 10px;
+  font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; font-family: inherit; transition: all 0.2s;
 }
 #add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
 #library-tabs { display: flex; gap: 0; }
 .lib-tab {
-  padding: 13px 0; margin-right: 28px; font-size: 9px; cursor: pointer; color: var(--text3);
+  padding: 15px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
   border-bottom: 1.5px solid transparent; transition: all 0.2s; font-family: inherit;
   background: transparent; border-top: none; border-left: none; border-right: none;
-  letter-spacing: 1.8px; text-transform: uppercase; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
 }
 .lib-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-#library-body { flex: 1; overflow-y: auto; padding: 36px 52px; }
+#library-body { flex: 1; overflow-y: auto; padding: 40px 56px; }
 #library-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 /* Decorative score preview lines */
@@ -762,6 +762,8 @@ function clearDrawings() {
       </div>
       <div id="score-header-actions">
         <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate Score</button>
+        <!-- divider between primary and utility actions -->
+        <span id="toolbar-divider" style="display:none;width:1px;height:18px;background:var(--border2);margin:0 4px;flex-shrink:0;"></span>
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border2);border-radius:4px;overflow:hidden;margin:0 3px;background:var(--bg2);">
           <button class="hdr-btn" onclick="zoomOut()" style="border:none;border-radius:0;padding:6px 11px;background:transparent;">−</button>
           <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:38px;text-align:center;line-height:1;border-left:1px solid var(--border);border-right:1px solid var(--border);padding:6px 4px;display:inline-flex;align-items:center;justify-content:center;">100%</span>
@@ -1081,7 +1083,7 @@ function clearSavedPDF() {
     document.getElementById("pdf-pages").style.display = "none";
     document.getElementById("upload-zone").style.display = "block";
     (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-    document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
     document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
     annotations = [];
@@ -1097,7 +1099,7 @@ function initPDF() {
       document.getElementById("pdf-pages").style.display = "flex";
       if(piece) {
         (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
-        document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
       }
       renderAllPages();
       showUploadSuccess("Score loaded from last session");
@@ -1303,7 +1305,7 @@ function openPiece(libIdx) {
       document.getElementById("clear-pdf-btn").style.display = "block";
       if (piece) {
         (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
-        document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
         document.getElementById("measure-btn").style.display = "block";
       }
       renderAllPages();
@@ -1318,7 +1320,7 @@ function openPiece(libIdx) {
       "<input type='file' id='file-input' accept='.pdf' onchange='loadPDF(this)' style='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;'>";
     document.getElementById("pdf-pages").style.display = "none";
     (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-    document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
     document.getElementById("clear-pdf-btn").style.display = "none";
   };
   if (libPiece.curated && CURATED_PDFS[libPiece.id]) {
@@ -1746,7 +1748,7 @@ function selectPiece(i) {
         document.getElementById("upload-zone").style.display = "none";
         document.getElementById("pdf-pages").style.display = "flex";
         document.getElementById("clear-pdf-btn").style.display = "block";
-        document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
         document.getElementById("measure-btn").style.display = "block";
         renderAllPages();
       });
@@ -1784,7 +1786,7 @@ function loadPDF(input) {
       document.getElementById("clear-pdf-btn").style.display = "block";
       if(piece) {
         (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
-        document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="flex";
         document.getElementById("measure-btn").style.display = "block";
       }
       renderAllPages();
@@ -3065,7 +3067,7 @@ function clearSavedPDF() {
     document.getElementById("pdf-pages").style.display = "none";
     document.getElementById("upload-zone").style.display = "block";
     (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-    document.getElementById("draw-btn").style.display = "none";
+    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
     document.getElementById("measure-btn").style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
     annotations = [];
@@ -3082,7 +3084,7 @@ function goToLibrary() {
   document.getElementById("pdf-pages").style.display = "none";
   document.getElementById("upload-zone").style.display = "block";
   (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-  document.getElementById("draw-btn").style.display = "none";
+  document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
   document.getElementById("clear-pdf-btn").style.display = "none";
   document.getElementById("annotations-bar").style.display = "none";
   annotations = [];
