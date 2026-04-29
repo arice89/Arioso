@@ -1266,9 +1266,21 @@ function clearSavedPDF() {
     (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
     document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
     document.getElementById("measure-btn").style.display = "none";
+    var undoBtn = document.getElementById("measure-undo-btn"); if(undoBtn) undoBtn.style.display = "none";
     document.getElementById("clear-pdf-btn").style.display = "none";
     annotations = [];
+    measureRowHistory = [];
+    measureRows = {};
     document.getElementById("annotations-bar").style.display = "none";
+    // Clear all saved annotation and measure labels for this piece from localStorage
+    if (piece) {
+      var pid = piece.id;
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.startsWith("arioso-annot-" + pid) || k.startsWith("arioso-meas-" + pid)) {
+          localStorage.removeItem(k);
+        }
+      });
+    }
   });
 }
 
@@ -3818,22 +3830,7 @@ function loadPDFfromDB(callback) {
   });
 }
 
-function clearSavedPDF() {
-  openDB(function(db) {
-    var tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete("current-pdf");
-    pdfDoc = null;
-    document.getElementById("pdf-pages").innerHTML = "";
-    document.getElementById("pdf-pages").style.display = "none";
-    document.getElementById("upload-zone").style.display = "block";
-    (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="none";})();
-    document.getElementById("draw-btn").style.display = "none"; var _td=document.getElementById("toolbar-divider"); if(_td) _td.style.display="none";
-    document.getElementById("measure-btn").style.display = "none";
-    document.getElementById("clear-pdf-btn").style.display = "none";
-    annotations = [];
-    document.getElementById("annotations-bar").style.display = "none";
-  });
-}
+/* clearSavedPDF defined earlier */
 
 
 function goToLibrary() {
