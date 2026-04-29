@@ -1740,8 +1740,7 @@ var PIECES = [
 /* ===== SYSTEM PROMPTS — two modes ===== */
 
 // MODE 1: Score-grounded — used for chord clicks, chord popup, chat, practice tab
-// The model reads the score image and analyzes only what is visible.
-var SYS_SCORE = "You are Arioso, a score analyst for advanced pianists. A score image is attached. It is your ONLY source of truth.\n\nBEFORE giving any advice, you must first describe what you actually see in the image:\n- What is the right hand doing? (single line melody, chords, rapid figuration, octaves, trills?)\n- What is the left hand doing? (bass + chord pattern, arpeggios, octaves, single line?)\n- What is the rhythmic unit? (eighth notes, sixteenth notes, triplets, mixed?)\n- Are there any visible markings? (dynamics, articulation, pedal marks, tempo words, fingering?)\n\nOnly after observing the texture may you give practice advice. Every piece of advice must trace directly back to a specific visible feature. Do not name or label anything that is not clearly shown.\n\nPROHIBITED unless clearly visible in the image:\n- Labeling sections as 'agitato', 'cantabile', 'waltz', 'developmental', or any character description\n- Assuming left-hand arpeggios, right-hand melody, or any standard texture\n- Referencing dynamics (pp, ff, crescendo) unless they appear as markings in the score\n- Naming a passage as part of the 'second theme', 'coda', 'development', or any formal section\n\nANALYSIS METHOD for harmony:\n1. Bass note (lowest pitch)\n2. Upper voices\n3. Interval stack → chord quality\n4. Root and inversion\n5. Roman numeral in the key\n6. Harmonic function\n7. One direct performance implication\n\nFORMAT for practice advice:\nStart with: 'In this passage I can see [describe texture]. Because of this...'\nThen give 2-3 specific, actionable practice points tied to what you described.\n\nRULES:\n- If you cannot clearly see a feature, say so and describe what you can see instead.\n- No preamble. No disclaimers. No hedging about sources.\n- 3-6 sentences total. Direct, specific, grounded in the notes and markings visible.";
+var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Your job is to describe and analyze what the notation shows, not what you know about the music.\n\nSTEP 1 — OBSERVE LITERALLY (do this first, always):\nLook at the image and answer these questions from what you can see:\n- Right hand: are the notes single-line, chords, or rapid figuration? How many notes per beat?\n- Left hand: are the notes single-line, chords, octaves, or a repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value visible? Is the rhythm even, syncopated, or mixed?\n- Markings: list any dynamic markings, tempo words, articulation, or pedal marks that are literally printed in this image.\n\nSTEP 2 — DESCRIBE WITHOUT NAMING:\nDescribe the texture using only what you observed. Do not use any of these words unless they are printed in the score:\nwaltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy\n\nInstead, say what the notes are doing:\n- 'The right hand has a single line of eighth notes'\n- 'The left hand repeats a three-note pattern on each beat'\n- 'Both hands play chords simultaneously'\n\nSTEP 3 — PRACTICE ADVICE:\nGive 2-3 practice points. Each must:\n- Reference a specific observable feature from Step 1\n- State a concrete physical action (finger independence, wrist rotation, subdivision, voicing weight)\n- NOT assume what the passage 'should' sound like based on the piece's reputation\n\nABSOLUTE PROHIBITIONS:\n- Do not call anything a 'theme', 'subject', 'episode', or 'section' unless labeled in the score\n- Do not assume which hand has the melody — describe both hands neutrally\n- Do not reference dynamics unless the marking is visible\n- Do not say 'typical Chopin' or reference any stylistic expectation\n- Do not use ** for bold\n- No preamble, no disclaimers\n\nIf you cannot clearly read a feature, say: 'This area of the image is unclear — I can see [what you can see].'\n\nFor harmony: identify bass note → upper voices → interval stack → chord quality → Roman numeral → function → one performance implication.";
 
 // MODE 2: Knowledge-driven — used for Analysis tab, Interpretations tab, Study tabs
 // The model draws on deep musical knowledge of the piece. No score image attached.
@@ -2579,17 +2578,12 @@ function sendChat() {
   // Build context prefix
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
-  var fullPrompt = ctx + "Referring to the score image provided, answer this question: " + msg;
+  var fullPrompt = ctx + "Look at the score image. Describe only what the notation shows — do not name textures or patterns from memory. Then answer: " + msg;
 
-  // Use vision if score is loaded, otherwise plain chat history
-  var imageBase64 = captureScoreImage();
-  if (imageBase64) {
-    chatHistory.push({role:"user", content: msg});
-    callAPIWithVision(fullPrompt, onReply);
-  } else {
-    chatHistory.push({role:"user", content: ctx+msg});
-    callAPI(chatHistory, onReply);
-  }
+  // Always use vision path — callAPIWithVision handles the async capture internally
+  // and falls back to text-only if no score is available
+  chatHistory.push({role:"user", content: msg});
+  callAPIWithVision(fullPrompt, onReply);
 }
 
 /* MODE */
@@ -2606,63 +2600,99 @@ function setMode(m) {
 /* ===== SCORE VISION ===== */
 
 /**
- * Captures the visible score pages into a single base64 JPEG.
- * Composites PDF canvas + draw overlay for each visible page.
- * Returns null if no score is loaded or capture fails.
+ * Captures a high-resolution crop of the currently visible score.
+ * - Finds which PDF pages are visible in the scroll container
+ * - Re-renders them at 2x scale via PDF.js (not the display canvas)
+ * - Crops to only the visible vertical region
+ * - Returns a Promise resolving to base64 PNG, or null on failure
  */
 function captureScoreImage() {
-  if (!pdfDoc) { console.log("[vision] no pdfDoc"); return null; }
+  if (!pdfDoc) { console.log("[vision] no pdfDoc"); return Promise.resolve(null); }
+  var pdfPages = document.getElementById("pdf-pages");
+  if (!pdfPages || pdfPages.style.display === "none") { return Promise.resolve(null); }
 
-  var pages = document.getElementById("pdf-pages");
-  if (!pages || pages.style.display === "none") { console.log("[vision] pdf-pages hidden"); return null; }
+  var scoreDisplay = document.getElementById("score-display");
+  var containerRect = scoreDisplay.getBoundingClientRect();
 
-  // Collect rendered page canvases
-  var pageCanvases = [];
+  // Find which page wrappers overlap the visible viewport
+  var visiblePageNums = [];
   for (var i = 1; i <= pdfDoc.numPages; i++) {
-    var pc = document.getElementById("pc-" + i);
-    if (pc && pc.width > 0 && pc.height > 0) {
-      pageCanvases.push({ pdf: pc, draw: document.getElementById("dc-" + i) });
+    var wrapper = document.getElementById("pw-" + i);
+    if (!wrapper) continue;
+    var r = wrapper.getBoundingClientRect();
+    if (r.bottom > containerRect.top && r.top < containerRect.bottom) {
+      visiblePageNums.push(i);
     }
   }
+  if (!visiblePageNums.length) visiblePageNums = [1];
 
-  if (!pageCanvases.length) { console.log("[vision] no rendered canvases found"); return null; }
-  console.log("[vision] found " + pageCanvases.length + " pages to capture");
+  // Limit to 2 pages — enough context, keeps payload focused
+  visiblePageNums = visiblePageNums.slice(0, 2);
+  console.log("[vision] rendering pages at 2x:", visiblePageNums);
 
-  // Use first 3 pages max to keep payload manageable
-  var toCapture = pageCanvases.slice(0, 3);
-  var W = toCapture[0].pdf.width;
-  var totalH = toCapture.reduce(function(h, p) { return h + p.pdf.height; }, 0);
+  var SCALE = 2.0;
 
-  var composite = document.createElement("canvas");
-  composite.width = W;
-  composite.height = totalH;
-  var ctx = composite.getContext("2d");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, totalH);
+  // Re-render each visible page at 2x using PDF.js
+  var pagePromises = visiblePageNums.map(function(pageNum) {
+    return pdfDoc.getPage(pageNum).then(function(page) {
+      var vp = page.getViewport({ scale: SCALE });
+      var c = document.createElement("canvas");
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      return page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise
+        .then(function() {
+          // Record how much of this page is actually visible (for cropping)
+          var wrapper = document.getElementById("pw-" + pageNum);
+          var wRect = wrapper ? wrapper.getBoundingClientRect() : null;
+          var visTop = 0, visBottom = c.height;
+          if (wRect) {
+            var pageDisplayH = wRect.height;
+            var overlapTop = Math.max(0, containerRect.top - wRect.top);
+            var overlapBottom = Math.min(pageDisplayH, containerRect.bottom - wRect.top);
+            // Convert display pixels → canvas pixels (2x scale)
+            var scaleY = c.height / pageDisplayH;
+            visTop = Math.max(0, Math.round(overlapTop * scaleY) - 20); // small padding
+            visBottom = Math.min(c.height, Math.round(overlapBottom * scaleY) + 20);
+          }
+          return { canvas: c, visTop: visTop, visBottom: visBottom };
+        });
+    });
+  });
 
-  var y = 0;
-  for (var j = 0; j < toCapture.length; j++) {
-    var p = toCapture[j];
+  return Promise.all(pagePromises).then(function(results) {
+    if (!results.length) return null;
+
+    var W = results[0].canvas.width;
+    var totalH = results.reduce(function(h, r) { return h + (r.visBottom - r.visTop); }, 0);
+
+    var composite = document.createElement("canvas");
+    composite.width = W;
+    composite.height = totalH;
+    var ctx = composite.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, totalH);
+
+    var y = 0;
+    results.forEach(function(r) {
+      var cropH = r.visBottom - r.visTop;
+      ctx.drawImage(r.canvas, 0, r.visTop, W, cropH, 0, y, W, cropH);
+      y += cropH;
+    });
+
     try {
-      ctx.drawImage(p.pdf, 0, y);
-      if (p.draw && p.draw.width > 0 && p.draw.height > 0) {
-        ctx.drawImage(p.draw, 0, y);
-      }
+      // PNG for sharpness — staff lines need crisp edges, not JPEG artifacts
+      var dataUrl = composite.toDataURL("image/png");
+      var b64 = dataUrl.split(",")[1];
+      console.log("[vision] captured " + W + "x" + totalH + " px, base64 length:", b64.length);
+      return b64 || null;
     } catch(e) {
-      console.warn("[vision] drawImage failed page " + (j+1) + ":", e);
+      console.error("[vision] toDataURL failed:", e);
+      return null;
     }
-    y += p.pdf.height;
-  }
-
-  try {
-    var dataUrl = composite.toDataURL("image/jpeg", 0.82);
-    var b64 = dataUrl.split(",")[1];
-    console.log("[vision] captured image, base64 length:", b64 ? b64.length : 0);
-    return b64 || null;
-  } catch(e) {
-    console.error("[vision] toDataURL failed (likely CORS):", e);
+  }).catch(function(e) {
+    console.error("[vision] page render failed:", e);
     return null;
-  }
+  });
 }
 
 /**
@@ -2670,60 +2700,48 @@ function captureScoreImage() {
  * Falls back to text-only callAPI if image capture fails.
  */
 function callAPIWithVision(textPrompt, callback) {
-  var imageBase64 = captureScoreImage();
   var statusEl = document.getElementById("vision-status");
 
-  if (!imageBase64) {
-    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured — answering from knowledge"; }
-    callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
-    return;
-  }
-
-  if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Reading from score"; }
-
-  var messages = [{
-    role: "user",
-    content: [
-      {
-        type: "image",
-        source: { type: "base64", media_type: "image/jpeg", data: imageBase64 }
-      },
-      { type: "text", text: textPrompt }
-    ]
-  }];
-
-  var body = {
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1500,
-    system: SYS_KNOWLEDGE,
-    messages: messages
-  };
-
-  fetch("/api/vision", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ messages: messages, system: SYS_SCORE })
-  }).then(function(r) { return r.json(); })
-    .then(function(data) {
-      var text = "";
-      if (data.content && Array.isArray(data.content)) {
-        data.content.forEach(function(block) {
-          if (block.type === "text") text += block.text;
-        });
-      }
-      if (!text && data.error) {
-        console.error("[vision] API error:", data.error);
-        if (statusEl) statusEl.textContent = "⚠ Vision error — falling back";
-        callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
-        return;
-      }
-      callback(text || "Unable to analyze score.");
-    })
-    .catch(function(e) {
-      console.error("[vision] fetch failed:", e);
-      if (statusEl) statusEl.textContent = "⚠ Connection error — falling back";
+  captureScoreImage().then(function(imageBase64) {
+    if (!imageBase64) {
+      if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured — answering from knowledge"; }
       callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
-    });
+      return;
+    }
+    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Reading from score"; }
+
+    var messages = [{
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: "image/png", data: imageBase64 } },
+        { type: "text", text: textPrompt }
+      ]
+    }];
+
+    fetch("/api/vision", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ messages: messages, system: SYS_SCORE })
+    }).then(function(r) { return r.json(); })
+      .then(function(data) {
+        var text = "";
+        if (data.content && Array.isArray(data.content)) {
+          data.content.forEach(function(b) { if (b.type === "text") text += b.text; });
+        }
+        if (!text && data.error) {
+          console.error("[vision] API error:", data.error);
+          if (statusEl) statusEl.textContent = "⚠ Vision error — falling back";
+          callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
+          return;
+        }
+        callback(text || "Unable to analyze score.");
+      })
+      .catch(function(e) {
+        console.error("[vision] fetch failed:", e);
+        if (statusEl) statusEl.textContent = "⚠ Connection error — falling back";
+        callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
+      });
+  });
 }
 
 function callAPI(messages, callback, sysOverride) {
