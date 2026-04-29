@@ -1926,7 +1926,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"recording",recId)];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Specific interpretive choices at key passages, connection to harmonic structure, what this recording uniquely reveals. Opinionated and specific. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then link.";
+    var prompt = "You are analyzing " + recName + "'s recording of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). This is a real, well-documented work. Analyze the recording directly — do not question or comment on the piece title or existence. Cover their specific interpretive choices at key passages, connection to harmonic structure, what this recording uniquely reveals. Opinionated, specific, peer-level. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then link.";
     callAPIWithSearch([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
