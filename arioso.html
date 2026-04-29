@@ -1977,21 +1977,23 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
-  // Strip all ** 
-  text = text.replace(/\*\*/g, "");
-
-  // Post-process: split "Header Body..." into "## Header\n\nBody..."
-  // Catches GPT ignoring ## instructions
-  var HEADERS = ["Overview","Introduction","Exposition","Development","Recapitulation","Coda","Origins","Composer at the Time","Cultural Moment","Reception and Legacy","Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice","The Composer's Voice","Contemporary Reactions","The Great Interpreters","Conclusion"];
+  // Normalize GPT formatting patterns into ## headers:
+  // Pattern 1: **Header**\nContent or **Header**\n\nContent
+  text = text.replace(/\*\*([^*\n]+)\*\*\s*\n/g, "## $1\n");
+  // Pattern 2: **Header** Content on same line
+  text = text.replace(/\*\*([^*\n]+)\*\*\s+([A-Z])/g, "## $1\n\n$2");
+  // Pattern 3: Known section words at line start without ## e.g. "Overview Chopin..."
+  var HEADERS = ["Overview","Introduction","Exposition","Development","Recapitulation","Coda","Origins","Composer at the Time","Cultural Moment","Reception and Legacy","Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice","The Composer's Voice","Contemporary Reactions","The Great Interpreters"];
   HEADERS.forEach(function(h) {
-    // Match "HeaderWord rest of sentence..." at start of line, not already ##-prefixed
     var re = new RegExp("^(" + h + ")\\s+([A-Z])", "gm");
     text = text.replace(re, "## $1\n\n$2");
   });
-  // Also handle "I. Movement Name (mm. X-Y) Body..." patterns
+  // Pattern 4: "I. Movement Name (mm. X-Y) Content"
   text = text.replace(/^([IVX]+\.\s+[A-Za-z: ,()-]+(?:\([^)]*\))?)\s+([A-Z])/gm, "## $1\n\n$2");
+  // Strip any remaining stray **
+  text = text.replace(/\*\*/g, "");
 
-  // Strip preamble lines
+  // Strip preamble
   var lines = text.split("\n");
   var cleaned = [];
   var started = false;
