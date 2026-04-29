@@ -800,6 +800,7 @@ function clearDrawings() {
   <div id="welcome-inner">
     <h1>Arioso</h1>
     <p>AI Score Companion</p>
+    <p style="font-size:11px;color:#999;margin-top:-8px;margin-bottom:16px;max-width:260px;line-height:1.6;">Analysis takes 3–10 seconds to load. If content appears blank, please wait — it is generating.</p>
     <input id="welcome-input" type="text" placeholder="First name" maxlength="40">
     <button id="welcome-btn" onclick="submitWelcome()">Get started</button>
   </div>
@@ -1276,6 +1277,7 @@ function restoreMeasureLabels(pageNum) {
       var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix;
       var practicePrompt = "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix;
 
+      var measureTokens = { story: 3500, practice: 1500 };
       [["story", storyPrompt], ["practice", practicePrompt]].forEach(function(pair) {
         var key = pair[0], prompt = pair[1];
         var cKey = cacheKey(pid, key);
@@ -1286,7 +1288,7 @@ function restoreMeasureLabels(pageNum) {
           contentCache[cKey] = renderSectioned(text);
           var el = document.getElementById("full-analysis");
           if (el && tab === key) el.innerHTML = scrubLegacy(contentCache[cKey]);
-        });
+        }, null, measureTokens[key]);
       });
     }, 800);
   }
@@ -2398,7 +2400,7 @@ function updateContextBanner(ann) {
 function loadAnalysisForAnnotation(ann) {
   updateContextBanner(ann);
   showChordExplanation(ann.roman, ann.fn,
-    "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>");
+    "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>");
   var prompt = "The performer just annotated a harmony on page " + ann.page + " of " + piece.full + " by " + piece.composer + ". The harmony is " + ann.roman + " (" + ann.fn + "). " + ann.explanation + " In 2-3 short sentences: what does knowing this change about how you actually play this moment? Be direct and specific -- talk to them like a friend who knows this piece cold, not like a theory teacher.";
   callAPI([{role:"user",content:prompt}], function(text){
     var body = document.getElementById("chord-explanation-body");
@@ -2487,7 +2489,7 @@ function prefetchAll(p, force) {
     if (contentCache[cKey]) return;
 
     // Token limits per tab — story needs room, others are naturally short
-    var tokenLimits = { story: 2500, practice: 1500, history: 2000, scholarship: 2000, interviews: 2000 };
+    var tokenLimits = { story: 3500, practice: 1500, history: 2000, scholarship: 2000, interviews: 2000 };
     var tokens = tokenLimits[key] || 2500;
 
     function attemptFetch(retryDelay) {
@@ -2851,7 +2853,7 @@ function loadAnalysis() {
         return;
       }
       if (content.innerHTML.indexOf("ldots") === -1) {
-        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+        content.innerHTML = "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>";
       }
       setTimeout(tryFromCache, 200);
 
@@ -2886,7 +2888,7 @@ function loadAnalysis() {
         return;
       }
       if (content.innerHTML.indexOf("ldots") === -1) {
-        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+        content.innerHTML = "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>";
       }
       setTimeout(tryFromCache, 200);
 
@@ -2896,7 +2898,7 @@ function loadAnalysis() {
       var recId = rec ? rec.id : "default";
       var cached = contentCache[cacheKey(pid,"recording",recId)];
       if (cached) { content.innerHTML = scrubLegacy(cached); return; }
-      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      content.innerHTML = "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>";
       var ytLink = (rec && rec.videoId)
         ? "https://www.youtube.com/watch?v=" + rec.videoId
         : "https://www.youtube.com/results?search_query=" + encodeURIComponent((recName || piece.composer) + " " + piece.title);
@@ -3191,7 +3193,7 @@ function loadStudy() {
     var cached = contentCache[cacheKey(pid,"study",studyTab)];
     if (cached) { content.innerHTML = scrubLegacy(cached); return; }
     if (content.innerHTML.indexOf("ldots") === -1) {
-      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      content.innerHTML = "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>";
     }
     setTimeout(tryStudyCache, 350);
   }
@@ -4194,7 +4196,7 @@ function loadChordAnalysis(chord) {
 
   // Show loading state in chord explanation panel (leave full analysis intact)
   showChordExplanation(chord.symbol, chord.fn,
-    "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>");
+    "<div class='loading-wrap' style='flex-direction:column;gap:12px;'><div class='ldots'><span></span><span></span><span></span></div><div style='font-size:11px;color:var(--text3);letter-spacing:0.5px;'>Generating analysis — usually 3–5 seconds</div></div>");
 
   var chordContext = (chord.note || "").split(" -- ");
   var location = chordContext[0].trim();
