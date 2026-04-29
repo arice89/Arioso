@@ -1270,7 +1270,7 @@ function restoreMeasureLabels(pageNum) {
         " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names -- never stop the analysis early, never invent measure numbers beyond this list.";
 
       // Directly fetch story + practice with measure context — bypass prefetchAll debounce
-      var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end with the right number of sections for its length and type — a short etude or prelude may have 2-3 sections, a ballade, nocturne, or impromptu 4-6, a sonata movement, toccata, or fantasy 8-15, a fugue or passacaglia as many episodes as it has. Do not end early or collapse the second half into one or two sections regardless of piece length. Keep each section to 2-3 sentences. Start with ## Overview (2 sentences). Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Second Theme Returns, ## The Coda, ## The Final Bars). Never invent measure numbers. No section left out. No bold. No preamble." + mPrefix;
+      var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: First, determine the structure of this piece. If it has multiple movements (sonata, suite, partita, etc.), organize the analysis by movement — use ## for each movement header (e.g. ## I. Allegro, ## II. Adagio) and within each movement use ### for subsections (e.g. ### Opening Theme, ### Development, ### Recapitulation). If it is a single-movement work (etude, prelude, nocturne, ballade, impromptu, toccata, fugue, etc.), use only ## for sections — no movement headers. For sections with labeled measures include them in the header (e.g. ## I. Allegro: mm. 1-32). For unlabeled sections use descriptive names. Cover the ENTIRE piece — do not end early or collapse the second half. Right number of sections for the type: prelude/etude 2-3, nocturne/impromptu 4-6, ballade/fantasy 6-10, sonata movement 4-8 subsections each. Keep each section to 2-3 sentences. Never invent measure numbers. No bold. No preamble." + mPrefix;
       var practicePrompt = "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix;
 
       var measureTokens = { story: 4000, practice: 1500 };
@@ -2469,7 +2469,7 @@ function prefetchAll(p, force) {
     ? ("\n\nMEASURE CONTEXT: " + mCtx + " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names (The Closing Section, The Coda, The Final Passage, The Return) -- never stop the analysis early, never invent measure numbers beyond this list.")
     : "\n\nNo measure numbers labeled -- describe ALL sections of the entire piece using structural language only: the opening section, the lyrical middle passage, the stormy climax, the closing bars. Never use measure numbers. Cover the whole piece from start to finish.";
   var prompts = {
-    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end with the right number of sections for its length and type — a short etude or prelude may have 2-3 sections, a ballade, nocturne, or impromptu 4-6, a sonata movement, toccata, or fantasy 8-15, a fugue or passacaglia as many episodes as it has. Do not end early or collapse the second half into one or two sections regardless of piece length. Keep each section to 2-3 sentences. Start with ## Overview (2 sentences). Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Second Theme Returns, ## The Coda, ## The Final Bars). Never invent measure numbers. No section left out. No bold. No preamble." + mPrefix,
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: First, determine the structure of this piece. If it has multiple movements (sonata, suite, partita, etc.), organize the analysis by movement — use ## for each movement header (e.g. ## I. Allegro, ## II. Adagio) and within each movement use ### for subsections (e.g. ### Opening Theme, ### Development, ### Recapitulation). If it is a single-movement work (etude, prelude, nocturne, ballade, impromptu, toccata, fugue, etc.), use only ## for sections — no movement headers. For sections with labeled measures include them in the header (e.g. ## I. Allegro: mm. 1-32). For unlabeled sections use descriptive names. Cover the ENTIRE piece — do not end early or collapse the second half. Right number of sections for the type: prelude/etude 2-3, nocturne/impromptu 4-6, ballade/fantasy 6-10, sonata movement 4-8 subsections each. Keep each section to 2-3 sentences. Never invent measure numbers. No bold. No preamble." + mPrefix,
     practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix,
     history:  "Historical overview of " + p.full + " by " + p.composer + " (" + p.year + ") like serious program notes. Every sentence must refer specifically to " + p.composer + " and this work. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to this work. Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No links, no URLs, no bold. No preamble." + mPrefix,
@@ -2936,6 +2936,10 @@ function renderSectioned(text) {
   });
   var ytLinks = []; // keep for legacy block renderer compatibility
 
+  // Convert ### subheaders FIRST (before ## catches them), use distinct sentinel
+  text = text.replace(/\s*###\s*([^\n]+)/g, function(match, label) {
+    return "\n\n__SUBHDR__" + label.trim() + "__SUBHDR__\n\n";
+  });
   // Convert ## headers to a sentinel that survives block splitting
   // "## Label" → "\n\n__HDR__Label__HDR__\n\n"
   text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
@@ -2961,7 +2965,7 @@ function renderSectioned(text) {
     var isShort = trimmed.length > 0 && trimmed.length <= 80;
     var noTrailingPunct = !/[.,;:!?]$/.test(trimmed);
     var notBullet = !/^[-•\d]/.test(trimmed);
-    var notSentinel = !/^__/.test(trimmed); // exclude __HDR__ and __YTBLOCK__ sentinels
+    var notSentinel = !/^__/.test(trimmed); // exclude __HDR__, __SUBHDR__, __YTBLOCK__ sentinels
     var followedByBlank = nextLine === "";
     if (isShort && noTrailingPunct && notBullet && notSentinel && followedByBlank && trimmed.length > 8) {
       processed.push("## " + trimmed);
@@ -3017,6 +3021,14 @@ function renderSectioned(text) {
     var hdrMatch = flat.match(/^__HDR__(.+)__HDR__$/);
     if (hdrMatch) {
       out += makeHeader(hdrMatch[1].trim(), firstBlock);
+      firstBlock = false;
+      continue;
+    }
+
+    // Subheader sentinel from ### processing — smaller, indented style
+    var subhdrMatch = flat.match(/^__SUBHDR__(.+)__SUBHDR__$/);
+    if (subhdrMatch) {
+      out += "<div style='font-family:\"Cormorant Garamond\",serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.3px;margin:16px 0 6px 0;padding-left:12px;border-left:2px solid var(--accent);'>" + subhdrMatch[1].trim() + "</div>";
       firstBlock = false;
       continue;
     }
