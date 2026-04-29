@@ -93,71 +93,100 @@ body {
 
 /* LIBRARY SCREEN */
 #library-screen {
-  display: none; flex-direction: column; height: 100vh; background: var(--bg3);
+  display: none; flex-direction: column; height: 100vh;
+  background: var(--bg3);
 }
 #library-header {
-  padding: 28px 40px 0; background: var(--bg); border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  background-image: radial-gradient(ellipse at 80% 50%, rgba(139,94,60,0.04) 0%, transparent 60%);
+  padding: 48px 56px 0; background: var(--bg);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 #library-header-top {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+  display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px;
 }
 #library-greeting {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 400; letter-spacing: -0.3px; color: var(--text);
+  font-size: 36px; font-weight: 300; letter-spacing: -0.5px; color: var(--text);
+  line-height: 1;
 }
-#library-greeting span { color: var(--accent); }
+#library-greeting span { color: var(--accent); font-style: italic; }
+#library-subtitle {
+  font-size: 12px; color: var(--text3); letter-spacing: 1px;
+  text-transform: uppercase; margin-top: 8px; font-weight: 400;
+}
 #add-piece-btn {
-  padding: 8px 20px; border-radius: var(--radius); font-size: 11px;
-  font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase;
+  padding: 9px 20px; border-radius: 3px; font-size: 10px;
+  font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase;
   border: 1px solid var(--border3); background: transparent;
-  color: var(--text2); cursor: pointer; font-family: inherit; transition: all 0.15s;
+  color: var(--text3); cursor: pointer; font-family: inherit; transition: all 0.2s;
+  margin-bottom: 4px;
 }
-#add-piece-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+#add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
 #library-tabs { display: flex; gap: 0; }
 .lib-tab {
-  padding: 12px 18px; font-size: 12px; cursor: pointer; color: var(--text3);
-  border-bottom: 2px solid transparent; transition: all 0.15s; font-family: inherit;
+  padding: 14px 0; margin-right: 32px; font-size: 10px; cursor: pointer; color: var(--text3);
+  border-bottom: 1.5px solid transparent; transition: all 0.2s; font-family: inherit;
   background: transparent; border-top: none; border-left: none; border-right: none;
-  letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
 }
 .lib-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-#library-body { flex: 1; overflow-y: auto; padding: 32px 40px; }
-#library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+#library-body { flex: 1; overflow-y: auto; padding: 48px 56px; }
+#library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* Piece cards — editorial, not SaaS */
 .piece-card {
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 22px 20px; cursor: pointer;
-  transition: all 0.2s; position: relative; overflow: hidden;
+  border-radius: 8px; padding: 28px 24px 22px; cursor: pointer;
+  transition: all 0.25s; position: relative; overflow: hidden;
 }
-.piece-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  opacity: 0; transition: opacity 0.2s;
+.piece-card::after {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent2));
+  opacity: 0; transition: opacity 0.25s;
 }
-.piece-card:hover { border-color: var(--border3); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(28,25,23,0.08); }
-.piece-card:hover::before { opacity: 1; }
+.piece-card:hover {
+  border-color: rgba(139,94,60,0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(28,25,23,0.07), 0 2px 8px rgba(28,25,23,0.04);
+}
+.piece-card:hover::after { opacity: 1; }
 .piece-card-composer {
-  font-size: 10px; color: var(--accent); text-transform: uppercase;
-  letter-spacing: 1.2px; margin-bottom: 8px; font-weight: 500;
+  font-size: 9px; color: var(--accent); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 10px; font-weight: 500;
 }
-.piece-card-title { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-weight: 500; line-height: 1.3; margin-bottom: 4px; }
-.piece-card-opus { font-size: 11px; color: var(--text3); font-weight: 300; }
+.piece-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 400; line-height: 1.25;
+  margin-bottom: 4px; color: var(--text);
+}
+.piece-card-opus { font-size: 11px; color: var(--text3); font-weight: 300; letter-spacing: 0.2px; }
 .piece-card-badge {
-  display: inline-block; margin-top: 12px; padding: 3px 8px; border-radius: 3px;
-  font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px;
+  display: inline-block; margin-top: 16px; padding: 3px 8px; border-radius: 2px;
+  font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;
   background: var(--bg2); color: var(--text3);
 }
-.piece-card-badge.curated { background: rgba(139,94,60,0.08); color: var(--accent); }
-.add-card {
-  background: var(--bg2); border: 1.5px dashed var(--border2);
-  border-radius: var(--radius-lg); padding: 22px 20px; cursor: pointer;
-  transition: all 0.2s; display: flex;
-  flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 130px;
+.piece-card-badge.curated {
+  background: rgba(139,94,60,0.07); color: var(--accent);
 }
-.add-card:hover { border-color: var(--accent); background: var(--bg); }
-.add-card-icon { font-size: 20px; color: var(--text3); }
-.add-card-label { font-size: 11px; color: var(--text3); font-weight: 400; letter-spacing: 0.5px; }
+
+/* Add card — a soft invitation, not a button */
+.add-card {
+  background: transparent;
+  border: 1px dashed rgba(139,94,60,0.25);
+  border-radius: 8px; padding: 28px 24px; cursor: pointer;
+  transition: all 0.25s; display: flex;
+  flex-direction: column; align-items: flex-start; justify-content: flex-end;
+  min-height: 150px; gap: 6px;
+}
+.add-card:hover { border-color: var(--accent); background: rgba(139,94,60,0.03); }
+.add-card-icon { font-size: 18px; color: rgba(139,94,60,0.4); margin-bottom: 4px; }
+.add-card-label {
+  font-size: 11px; color: var(--text3); font-weight: 300;
+  letter-spacing: 0.3px; line-height: 1.5;
+}
 
 /* ADD PIECE MODAL */
 #add-modal {
@@ -513,7 +542,7 @@ function clearDrawings() {
   line-height: 1.8;
 }
 #chat-section { border-top: 1px solid var(--border); padding: 12px 16px; flex-shrink: 0; background: var(--bg); }
-#chat-messages { max-height: 90px; overflow-y: auto; margin-bottom: 8px; }
+#chat-messages { max-height: 180px; overflow-y: auto; margin-bottom: 10px; }
 .chat-msg { font-size: 12px; line-height: 1.6; margin-bottom: 6px; }
 .chat-msg.user { color: var(--text); font-weight: 500; }
 .chat-msg.assistant { color: var(--text2); }
@@ -574,7 +603,10 @@ function clearDrawings() {
 <div id="library-screen">
   <div id="library-header">
     <div id="library-header-top">
-      <div id="library-greeting">Welcome back <span id="greeting-name"></span></div>
+      <div>
+        <div id="library-greeting">Good evening, <span id="greeting-name"></span></div>
+        <div id="library-subtitle">Your practice studio</div>
+      </div>
       <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
     </div>
     <div id="library-tabs">
@@ -1024,7 +1056,10 @@ function submitWelcome() {
   if (!val) return;
   userName = val;
   localStorage.setItem("arioso-name", userName);
-  document.getElementById("greeting-name").textContent = userName;
+  var hour = new Date().getHours();
+  var tod = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  var greetEl = document.getElementById("library-greeting");
+  if (greetEl) greetEl.innerHTML = tod + ", <span id=\'greeting-name\'>" + userName + "</span>";
   showScreen("library");
   loadLibrary();
 }
