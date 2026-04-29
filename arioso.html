@@ -1212,16 +1212,16 @@ function restoreMeasureLabels(pageNum) {
   if (!saved) return;
   var data = [];
   try { data = JSON.parse(saved); } catch(e) { return; }
+  if (!data.length) return;
+
   data.forEach(function(d) {
     var label = document.createElement("div");
     label.className = "measure-label";
     label.textContent = d.text;
-    // Handle both new % format and legacy px format
     if (d.left && d.left.indexOf("%") !== -1) {
       label.style.left = d.left;
       label.style.top = d.top;
     } else {
-      // Legacy px: convert to % using current wrapper size
       var canvas = document.getElementById("pc-" + pageNum);
       var refW = (canvas && canvas.offsetWidth > 0) ? canvas.offsetWidth : (wrapper.offsetWidth || 1);
       var refH = (canvas && canvas.offsetHeight > 0) ? canvas.offsetHeight : (wrapper.offsetHeight || 1);
@@ -1240,6 +1240,16 @@ function restoreMeasureLabels(pageNum) {
     })(label, pageNum);
     wrapper.appendChild(label);
   });
+
+  // Labels just restored — invalidate cache and re-prefetch with measure context
+  // Only do this on the last page to avoid multiple refetches
+  if (piece && pageNum === pdfDoc.numPages) {
+    ["story","practice","history","scholarship","interviews","recording"].forEach(function(t) {
+      delete contentCache[piece.id + ":" + t];
+      delete contentCache[piece.id + ":study:" + t];
+    });
+    prefetchAll(piece);
+  }
 }
 
 // Undo removes only the last placed measure (not the whole row)
