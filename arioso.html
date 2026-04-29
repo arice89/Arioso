@@ -2348,10 +2348,10 @@ function prefetchAll(p) {
 
   var mCtx = getMeasureContext();
   var mPrefix = mCtx
-    ? ("\n\nMEASURE CONTEXT: " + mCtx + " For sections beyond the last labeled measure, use structural language (the closing passage, the coda, the recapitulation) rather than inventing measure numbers.")
-    : "\n\nNo measure numbers labeled -- describe all passages using structural language only: the opening section, the lyrical middle passage, the stormy climax, the closing bars. Never use measure numbers.";
+    ? ("\n\nMEASURE CONTEXT: " + mCtx + " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names (The Closing Section, The Coda, The Final Passage, The Return) -- never stop the analysis early, never invent measure numbers beyond this list.")
+    : "\n\nNo measure numbers labeled -- describe ALL sections of the entire piece using structural language only: the opening section, the lyrical middle passage, the stormy climax, the closing bars. Never use measure numbers. Cover the whole piece from start to finish.";
   var prompts = {
-    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive -- 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble." + mPrefix,
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. IMPORTANT: cover the ENTIRE piece from beginning to end -- do not stop partway through. Start with ## Overview. Then ## for each major section in order. For sections with labeled measures, reference those numbers. For all remaining sections beyond the labeled measures, use descriptive names only (The Closing Section, The Final Climax, The Coda, The Return) and describe them in structural terms -- never invent measure numbers. No section of the piece should be left out. Precise and specific. No bold. No preamble." + mPrefix,
     practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ".\n\nFor each priority use exactly this structure:\n\nPassage name (mm. X-Y)\nWhat's hard: one sentence describing the specific physical or coordination challenge -- name what the notes are doing, not a character label.\nWhat to do: 2-3 numbered steps. Start each with a verb: Play, Count, Listen, isolate, repeat. Make each step immediately actionable at the piano.\nWhat to listen for: one sentence on the specific sound or feeling that tells you it's working.\n\nKeep each priority to 6-8 lines total. No abstract phrases. No theory explanations. Sound like a teacher standing next to the student." + mPrefix,
     history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble." + mPrefix,
@@ -3873,9 +3873,34 @@ function applyZoom() {
         canvas.style.width = displayW + "px";
         canvas.style.height = displayH + "px";
         if (drawCanvas) {
-          drawCanvas.width = displayW; drawCanvas.height = displayH;
+          // Save current drawing before resizing (resize clears canvas)
+          var savedDataUrl = null;
+          try {
+            if (drawCanvas.width > 0 && drawCanvas.height > 0) {
+              savedDataUrl = drawCanvas.toDataURL();
+            }
+          } catch(e) {}
+
+          var oldW = drawCanvas.width || 1;
+          var oldH = drawCanvas.height || 1;
+          drawCanvas.width = displayW;
+          drawCanvas.height = displayH;
           drawCanvas.style.width = displayW + "px";
           drawCanvas.style.height = displayH + "px";
+
+          // Redraw at new scale
+          if (savedDataUrl) {
+            (function(dc, dataUrl, srcW, srcH, dstW, dstH) {
+              var img = new Image();
+              img.onload = function() {
+                dc.getContext("2d").drawImage(img, 0, 0, srcW, srcH, 0, 0, dstW, dstH);
+              };
+              img.src = dataUrl;
+            })(drawCanvas, savedDataUrl, oldW, oldH, displayW, displayH);
+          } else {
+            // Try restoring from localStorage
+            restoreDrawing(pageNum);
+          }
         }
         wrapper.style.width = displayW + "px";
         wrapper.style.height = displayH + "px";
