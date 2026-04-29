@@ -1713,33 +1713,7 @@ function cacheKey(pieceId, tabName, extra) {
 
 function prefetchAll(p) {
   if (!p) return;
-  var pid = p.id;
-
-  // Prefetch Analysis
-  var analysisPrompt = "Write a structured analytical overview of " + p.full + " by " + p.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble.";
-  callAPIAsync([{role:"user",content:analysisPrompt}]).then(function(text) {
-    contentCache[cacheKey(pid,"story")] = renderSectioned(text);
-  });
-
-  // Prefetch Practice
-  var practicePrompt = "Give 3 specific practice priorities for " + p.full + " by " + p.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
-  callAPIAsync([{role:"user",content:practicePrompt}]).then(function(text) {
-    contentCache[cacheKey(pid,"practice")] = renderSectioned(text);
-  });
-
-  // Prefetch all 3 Study tabs in parallel
-  var studyPrompts = {
-    history: "Write a structured historical overview of " + p.full + " by " + p.composer + " like serious concert program notes. Use ## to mark each section heading. Sections: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. Each 2-3 sentences. Authoritative, direct, no preamble.",
-    scholarship: "Write a structured overview of musicological scholarship on " + p.full + " by " + p.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
-    interviews: "Write a structured compilation of documented statements about " + p.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
-  };
-  ["history","scholarship","interviews"].forEach(function(t) {
-    callAPIWithSearchAsync([{role:"user",content:studyPrompts[t]}]).then(function(text) {
-      contentCache[cacheKey(pid,"study",t)] = renderSectioned(text);
-    });
-  });
-
-  // Fetch recordings via web search
+  // Only fetch recordings in background — everything else on-demand with cache
   fetchRecordings(p);
 }
 
@@ -1932,46 +1906,44 @@ function loadAnalysis() {
   var currentTab = tab;
   var pid = piece.id;
 
-  if (tab === "story" || tab === "practice") {
-    var key = cacheKey(pid, tab);
-    var cached = contentCache[key];
+  if (tab === "story") {
+    var cached = contentCache[cacheKey(pid,"story")];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var attempts = 0;
-    var poll = setInterval(function() {
-      if (reqId !== analysisReqId || tab !== currentTab) { clearInterval(poll); return; }
-      var c = contentCache[key];
-      if (c) { clearInterval(poll); var el = document.getElementById("analysis-content"); if (el) el.innerHTML = c; return; }
-      attempts++;
-      if (attempts > 16) {
-        clearInterval(poll);
-        var prompt = tab === "story"
-          ? "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with Overview covering formal structure, key architecture, harmonic language. Then one paragraph per major section with name and measure range. Use Roman numeral terminology. No preamble."
-          : "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each: name a passage or measure range, the challenge, what to do. Ground in harmonic structure. No generic advice. No preamble.";
-        callOpenAI([{role:"user",content:prompt}], function(text) {
-          if (reqId !== analysisReqId || tab !== currentTab) return;
-          var html = renderSectioned(text);
-          contentCache[key] = html;
-          var el = document.getElementById("analysis-content");
-          if (el) el.innerHTML = html;
-        });
-      }
-    }, 500);
-    return;
-  }
+    var prompt = "Analytical overview of " + piece.full + " by " + piece.composer + ". ## Overview covering formal structure, key architecture, harmonic language. Then one short paragraph per major section: name, measure range, key harmonic events, performance demands. Roman numerals. Direct, no preamble.";
+    callOpenAI([{role:"user",content:prompt}], function(text) {
+      if (reqId !== analysisReqId || tab !== currentTab) return;
+      var html = renderSectioned(text);
+      contentCache[cacheKey(pid,"story")] = html;
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = html;
+    });
 
-  if (tab === "recording") {
+  } else if (tab === "recording") {
     var liveRecs = getLiveRecordings(piece);
     var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
     var recId = rec ? rec.id : "default";
     var cached = contentCache[cacheKey(pid,"recording",recId)];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Jump straight into the analysis. Cover their specific interpretive choices at key passages, how those choices connect to the harmonic structure, and what this recording uniquely reveals. Be opinionated and specific. End with a YouTube search link formatted as: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then the link.";
+    var prompt = "Discuss " + recName + "'s recording of " + piece.full + ". Specific interpretive choices at key passages, connection to harmonic structure, what this recording uniquely reveals. Opinionated and specific. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then link.";
     callAPIWithSearch([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
       contentCache[cacheKey(pid,"recording",recId)] = html;
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = html;
+    });
+
+  } else { // practice
+    var cached = contentCache[cacheKey(pid,"practice")];
+    if (cached) { content.innerHTML = cached; return; }
+    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    var prompt = "3 practice priorities for " + piece.full + " by " + piece.composer + ". Each: ## Passage Name (mm. X-Y), then 2 sentences: the specific technical challenge, and exactly what to do — including rhythmic practice strategies for difficult passages. No harmonic theory lectures. Actionable only.";
+    callOpenAI([{role:"user",content:prompt}], function(text) {
+      if (reqId !== analysisReqId || tab !== currentTab) return;
+      var html = renderSectioned(text);
+      contentCache[cacheKey(pid,"practice")] = html;
       var el = document.getElementById("analysis-content");
       if (el) el.innerHTML = html;
     });
