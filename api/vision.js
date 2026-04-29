@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",  // Sonnet supports vision
-        max_tokens: 1500,
+        max_tokens: 2500,
         system: system || "",
         messages: messages
       })
