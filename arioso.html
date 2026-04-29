@@ -1197,13 +1197,12 @@ function saveMeasureLabels(pageNum) {
     data.push({ left: l.style.left, top: l.style.top, text: l.textContent });
   });
   try { localStorage.setItem(measureKey(pageNum), JSON.stringify(data)); } catch(e) {}
-  // Invalidate analysis/practice cache so next tab visit regenerates with current measure context
-  // But only if the cached content doesn't already have measure numbers
+  // Only invalidate measure-sensitive tabs (story + practice)
   if (piece) {
-    ["story","practice","scholarship"].forEach(function(t) {
+    ["story", "practice"].forEach(function(t) {
       var key = piece.id + ":" + t;
       var existing = contentCache[key];
-      if (!existing) return; // nothing to invalidate
+      if (!existing) return;
       var hasMeasures = existing.indexOf("mm.") !== -1 || existing.indexOf("m. ") !== -1;
       if (!hasMeasures) delete contentCache[key];
     });
@@ -1255,10 +1254,10 @@ function restoreMeasureLabels(pageNum) {
       if (!piece) return;
       var ctx = getMeasureContext();
       if (!ctx) return; // no labels, skip
-      // Clear cache and re-prefetch with measure context (force=true bypasses debounce)
-      ["story","practice","history","scholarship","interviews","recording"].forEach(function(t) {
+      // Only invalidate measure-sensitive tabs — history/scholarship/interviews
+      // don't use measure numbers so no need to regenerate them
+      ["story", "practice"].forEach(function(t) {
         delete contentCache[piece.id + ":" + t];
-        delete contentCache[piece.id + ":study:" + t];
       });
       prefetchAll(piece, true);
       loadAnalysis();
@@ -2372,31 +2371,39 @@ function prefetchAll(p, force) {
   var prompts = {
     story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix,
     practice: "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix,
-    history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
-    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble." + mPrefix,
-    interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
+    history:  "Historical overview of " + p.full + " by " + p.composer + " (" + p.year + ") like serious program notes. Every sentence must refer specifically to " + p.composer + " and this work. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
+    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to this work. Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble." + mPrefix,
+    interviews: "Documented statements and critical reception for " + p.full + " by " + p.composer + " (" + p.year + "). Every sentence must refer specifically to " + p.composer + " and this work — not any other composer or piece. Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
   };
 
-  // Fire ALL content calls in parallel -- don't chain
-  Object.keys(prompts).forEach(function(key) {
+  // Stagger calls — history/scholarship/interviews don't need measure context
+  // so fire them last and only once; story+practice fire first
+  var priorityOrder = ["story", "practice", "history", "scholarship", "interviews"];
+  var keys = Object.keys(prompts).sort(function(a, b) {
+    return priorityOrder.indexOf(a) - priorityOrder.indexOf(b);
+  });
+
+  keys.forEach(function(key, idx) {
     var isStudy = (key === "history" || key === "scholarship" || key === "interviews");
     var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
-    if (contentCache[cKey]) return; // already cached, skip
-    callAPI([{role:"user",content:prompts[key]}], function(text) {
-      if (!text || text.length < 50) {
-        // Empty or error response -- don't cache, will retry on next tab visit
-        console.warn("[prefetch] empty response for", key, "-- not caching");
-        return;
-      }
-      contentCache[cKey] = renderSectioned(text);
-      // Render immediately if user is already on this tab
+    if (contentCache[cKey]) return;
+    setTimeout(function() {
       if (!piece || piece.id !== pid) return;
-      var el = document.getElementById("full-analysis");
-      if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
-      else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
-      var sc = document.getElementById("study-content");
-      if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
-    });
+      if (contentCache[cKey]) return;
+      callAPI([{role:"user",content:prompts[key]}], function(text) {
+        if (!text || text.length < 50) {
+          console.warn("[prefetch] empty response for", key, "-- not caching");
+          return;
+        }
+        contentCache[cKey] = renderSectioned(text);
+        if (!piece || piece.id !== pid) return;
+        var el = document.getElementById("full-analysis");
+        if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
+        else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
+        var sc = document.getElementById("study-content");
+        if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
+      });
+    }, idx * 400); // 0, 400, 800, 1200, 1600ms — one call at a time
   });
 
   // Recordings fetch in parallel
@@ -2791,6 +2798,19 @@ function renderSectioned(text) {
     return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
   });
 
+  // Force known section labels to ## headers regardless of surrounding whitespace
+  var KNOWN_HEADERS = [
+    "Origins","Composer at the Time","Cultural Moment","Reception and Legacy",
+    "Formal Analysis","Harmonic Language","Programmatic Content","Performance Practice",
+    "The Composer's Voice","Contemporary Reactions","The Great Interpreters",
+    "Overview","Their Approach","Key Moments","What It Reveals","Essential or Skip",
+    "Priority 1","Priority 2","Priority 3"
+  ];
+  KNOWN_HEADERS.forEach(function(h) {
+    var re = new RegExp("(^|\\n)(" + h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ")\\s*\\n", "g");
+    text = text.replace(re, "$1## $2\n\n");
+  });
+
   // Strip ALL ## occurrences — inline or standalone — and treat what follows as a label
   // Convert "text ## Label" -> "text\n\nLabel"
   text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
@@ -2994,7 +3014,7 @@ function makeHeader(text, isFirst) {
   }
   // Main section header
   return "<div style='font-family:\"Cormorant Garamond\",serif;font-size:16px;font-weight:500;color:var(--text);" +
-    "margin-top:" + (isFirst ? "2px" : "32px") + ";margin-bottom:10px;" +
+    "margin-top:" + (isFirst ? "4px" : "32px") + ";margin-bottom:10px;" +
     "padding-bottom:8px;border-bottom:1px solid var(--border);" +
     "letter-spacing:0.1px;line-height:1.35;'>" + text + "</div>";
 }
@@ -3116,7 +3136,8 @@ function executeCapture(fullPrompt, targetPages, onReply, detected) {
         .catch(function() { callAPIWithVision(fullPrompt, onReply); });
     });
   } else {
-    callAPIWithVision(fullPrompt, onReply);
+    // User has scrolled to the right place — capture exactly what's visible, no redirect
+    callAPIWithVision(fullPrompt, onReply, true);
   }
 }
 
@@ -3192,7 +3213,10 @@ function detectMeasureQuery(query) {
   var mMatch = q.match(/(?:measure|bar|m\.?\s*)(\d+)/);
   var measureNum = mMatch ? parseInt(mMatch[1]) : null;
 
-  // Match structural/qualitative section references — broad natural language
+  // Normalize common typos before detection
+  q = q.replace(/opnening|opneing|openning/g, "opening");
+  q = q.replace(/recapitualtion|recapitulation/g, "recapitulation");
+  q = q.replace(/developement/g, "development");
   var SECTION_PATTERNS = [
     // Formal sections
     "introduction","first theme","second theme","third theme",
@@ -3380,7 +3404,7 @@ function captureSpecificPages(pageNums) {
  * - Crops to only the visible vertical region
  * - Returns a Promise resolving to base64 PNG, or null on failure
  */
-function captureScoreImage() {
+function captureScoreImage(skipTitlePageCheck) {
   if (!pdfDoc) { console.log("[vision] no pdfDoc"); return Promise.resolve(null); }
   var pdfPages = document.getElementById("pdf-pages");
   if (!pdfPages || pdfPages.style.display === "none") { return Promise.resolve(null); }
@@ -3400,9 +3424,9 @@ function captureScoreImage() {
   }
   if (!visiblePageNums.length) visiblePageNums = [1];
 
-  // If only seeing page 1 (likely title page), check if there are measure labels
-  // on later pages and include those instead for better context
-  if (visiblePageNums.length === 1 && visiblePageNums[0] === 1) {
+  // If only seeing page 1 (likely title page), check for pages with music
+  // But skip this redirect if the user explicitly scrolled (skipTitlePageCheck=true)
+  if (!skipTitlePageCheck && visiblePageNums.length === 1 && visiblePageNums[0] === 1) {
     var pagesWithLabels = [];
     for (var j = 1; j <= Math.min(pdfDoc.numPages, 5); j++) {
       var pw = document.getElementById("pw-" + j);
@@ -3490,10 +3514,10 @@ function captureScoreImage() {
  * Calls Claude Sonnet with vision -- attaches score image + text message.
  * Falls back to text-only callAPI if image capture fails.
  */
-function callAPIWithVision(textPrompt, callback) {
+function callAPIWithVision(textPrompt, callback, skipTitlePageCheck) {
   var statusEl = document.getElementById("vision-status");
 
-  captureScoreImage().then(function(imageBase64) {
+  captureScoreImage(skipTitlePageCheck).then(function(imageBase64) {
     if (!imageBase64) {
       if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured -- answering from knowledge"; }
       callAPI([{role:"user", content: textPrompt}], callback, SYS_SCORE);
