@@ -1272,7 +1272,7 @@ function restoreMeasureLabels(pageNum) {
           if (!text || text.length < 50) { console.warn("[measure-restore] empty response for", key); return; }
           contentCache[cKey] = renderSectioned(text);
           var el = document.getElementById("full-analysis");
-          if (el && tab === key) el.innerHTML = contentCache[cKey];
+          if (el && tab === key) el.innerHTML = scrubLegacy(contentCache[cKey]);
         });
       });
     }, 800);
@@ -2351,6 +2351,11 @@ function setTab(t) {
 var contentCache = {}; // key: pieceId+tab, value: rendered HTML
 var contentCacheGen = {}; // key: pieceId, value: measure count when cached
 
+function scrubLegacy(html) {
+  if (!html) return html;
+  return html.replace(/__YTBLOCK_\d+__/g, "");
+}
+
 function cacheKey(pieceId, tabName, extra) {
   return pieceId + ":" + tabName + (extra ? ":" + extra : "");
 }
@@ -2422,13 +2427,13 @@ function prefetchAll(p, force) {
         // For story/practice: silently replace if currently displayed AND content lacks measure numbers
         if (key === "story" && tab === "story" && el) {
           var hasMeasures = el.innerHTML.indexOf("mm.") !== -1 || el.innerHTML.indexOf("m. ") !== -1;
-          if (!hasMeasures || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = contentCache[cKey];
+          if (!hasMeasures || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = scrubLegacy(contentCache[cKey]);
         } else if (key === "practice" && tab === "practice" && el) {
           var hasMeasures2 = el.innerHTML.indexOf("mm.") !== -1 || el.innerHTML.indexOf("m. ") !== -1;
-          if (!hasMeasures2 || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = contentCache[cKey];
+          if (!hasMeasures2 || el.innerHTML.indexOf("ldots") !== -1) el.innerHTML = scrubLegacy(contentCache[cKey]);
         }
         var sc = document.getElementById("study-content");
-        if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
+        if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = scrubLegacy(contentCache[cKey]);
       });
     }
 
@@ -2758,7 +2763,7 @@ function loadAnalysis() {
           prefetchAll(piece, true); // force=true bypasses debounce
         }
       }
-      if (cached) { content.innerHTML = cached; return; }
+      if (cached) { content.innerHTML = scrubLegacy(cached); return; }
       if (tryCount > 120) { // ~42 seconds — only show error after extended wait
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
         return;
@@ -2779,7 +2784,7 @@ function loadAnalysis() {
           prefetchAll(piece, true); // force=true bypasses debounce
         }
       }
-      if (cached) { content.innerHTML = cached; return; }
+      if (cached) { content.innerHTML = scrubLegacy(cached); return; }
       if (tryCount > 120) {
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
         return;
@@ -2794,7 +2799,7 @@ function loadAnalysis() {
       var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
       var recId = rec ? rec.id : "default";
       var cached = contentCache[cacheKey(pid,"recording",recId)];
-      if (cached) { content.innerHTML = cached; return; }
+      if (cached) { content.innerHTML = scrubLegacy(cached); return; }
       content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
       var ytLink = (rec && rec.videoId)
         ? "https://www.youtube.com/watch?v=" + rec.videoId
@@ -3007,6 +3012,8 @@ function renderSectioned(text) {
     firstBlock = false;
   }
   if (!out) out = "<p style='font-size:13px;color:var(--text);'>" + text + "</p>";
+  // Strip any legacy __YTBLOCK__ placeholders that may have survived from old cache
+  out = out.replace(/__YTBLOCK_\d+__/g, "");
   return '<div class="analysis-inner">' + out + '</div>';
 }
 
@@ -3086,7 +3093,7 @@ function loadStudy() {
   function tryStudyCache() {
     if (!piece || piece.id !== pid || studyTab !== currentStudyTab) return;
     var cached = contentCache[cacheKey(pid,"study",studyTab)];
-    if (cached) { content.innerHTML = cached; return; }
+    if (cached) { content.innerHTML = scrubLegacy(cached); return; }
     if (content.innerHTML.indexOf("ldots") === -1) {
       content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
     }
