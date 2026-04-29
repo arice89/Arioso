@@ -2014,40 +2014,32 @@ function prefetchAll(p) {
   if (!p) return;
   var pid = p.id;
 
-  var analysisPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive — 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.";
-  var practicePrompt = "3 practice priorities for " + p.full + " by " + p.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific challenge. One sentence: exactly what to do — name a rhythmic subdivision, fingering, or voicing strategy. Conservatory-level technique assumed. Speak like a brilliant colleague, not a textbook. No bold. No preamble.";
-  var studyPrompts = {
-    history: "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
+  var prompts = {
+    story:    "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive — 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.",
+    practice: "3 practice priorities for " + p.full + " by " + p.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific challenge. One sentence: exactly what to do — name a rhythmic subdivision, fingering, or voicing strategy. Conservatory-level technique assumed. No bold. No preamble.",
+    history:  "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
     interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
   };
 
-  // Chain: Analysis → Practice → History → Scholarship → Interviews
-  callAPI([{role:"user",content:analysisPrompt}], function(text) {
-    contentCache[cacheKey(pid,"story")] = renderSectioned(text);
-    if (piece && piece.id === pid && tab === "story") {
+  // Fire ALL content calls in parallel — don't chain
+  Object.keys(prompts).forEach(function(key) {
+    var isStudy = (key === "history" || key === "scholarship" || key === "interviews");
+    var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
+    if (contentCache[cKey]) return; // already cached, skip
+    callAPI([{role:"user",content:prompts[key]}], function(text) {
+      contentCache[cKey] = renderSectioned(text);
+      // Render immediately if user is already on this tab
+      if (!piece || piece.id !== pid) return;
       var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = contentCache[cacheKey(pid,"story")];
-    }
-
-    callAPI([{role:"user",content:practicePrompt}], function(text) {
-      contentCache[cacheKey(pid,"practice")] = renderSectioned(text);
-
-      callAPI([{role:"user",content:studyPrompts.history}], function(text) {
-        contentCache[cacheKey(pid,"study","history")] = renderSectioned(text);
-
-        callAPI([{role:"user",content:studyPrompts.scholarship}], function(text) {
-          contentCache[cacheKey(pid,"study","scholarship")] = renderSectioned(text);
-
-          callAPI([{role:"user",content:studyPrompts.interviews}], function(text) {
-            contentCache[cacheKey(pid,"study","interviews")] = renderSectioned(text);
-          });
-        });
-      });
+      if (key === "story" && tab === "story" && el) el.innerHTML = contentCache[cKey];
+      else if (key === "practice" && tab === "practice" && el) el.innerHTML = contentCache[cKey];
+      var sc = document.getElementById("study-content");
+      if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
     });
   });
 
-  // Recordings fetch in parallel — doesn't block anything
+  // Recordings fetch in parallel
   fetchRecordings(p);
 }
 
@@ -2170,22 +2162,46 @@ function initPerformerSearch() {
 
 function searchYouTubePerformers(query) {
   if (!piece) return;
-  // Build a piece hint: composer + piece name for more specific search
   var pieceHint = piece.composer + " " + piece.title;
   var url = "/api/youtube?q=" + encodeURIComponent(query) + "&pieceHint=" + encodeURIComponent(pieceHint);
 
   fetch(url)
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      if (!r.ok) throw new Error("youtube api unavailable");
+      return r.json();
+    })
     .then(function(data) {
-      if (!data.results || !data.results.length) {
-        showDropdownStatus("No recordings found — try a different name");
-        return;
+      if (data.results && data.results.length) {
+        renderDropdownResults(data.results);
+      } else {
+        // YouTube returned nothing — fall back to Claude search
+        searchPerformerWithClaude(query);
       }
-      renderDropdownResults(data.results);
     })
     .catch(function() {
-      showDropdownStatus("Search unavailable — try typing a name and pressing Enter");
+      // YouTube API not deployed yet — use Claude+search fallback
+      searchPerformerWithClaude(query);
     });
+}
+
+function searchPerformerWithClaude(query) {
+  if (!piece) return;
+  var prompt = "Find YouTube recordings of the pianist \"" + query + "\" performing " + piece.full + " by " + piece.composer + ". Search YouTube and return real results. Respond ONLY as JSON array, no other text: [{\"performerName\":\"Full Name\",\"videoTitle\":\"exact video title\",\"videoId\":\"youtube_video_id_if_known\",\"thumbnail\":\"\"}]. If you cannot find a specific videoId, leave it as empty string but still include the performer if they have performed this work. Max 4 results.";
+  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) { showDropdownStatus("Type a performer name to search"); return; }
+      var results = JSON.parse(match[0]);
+      if (!Array.isArray(results) || !results.length) {
+        showDropdownStatus("No recordings found — try another spelling");
+        return;
+      }
+      renderDropdownResults(results);
+    } catch(e) {
+      showDropdownStatus("Search error — try again");
+    }
+  });
 }
 
 function renderDropdownResults(results) {
@@ -2306,57 +2322,53 @@ function loadAnalysis() {
   if(!piece) return;
   document.getElementById("context-banner").style.display = "none";
   var content = document.getElementById("analysis-content");
-  var reqId = ++analysisReqId;
-  var currentTab = tab;
   var pid = piece.id;
+  var currentTab = tab;
+  var reqId = ++analysisReqId;
 
-  if (tab === "story") {
-    var cached = contentCache[cacheKey(pid,"story")];
-    if (cached) { content.innerHTML = cached; return; }
-    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Analyze " + piece.full + " by " + piece.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes the harmonic language distinctive). Then ## for each major section by name and measure range: key harmonic events in Roman numeral analysis, and the direct performance implication. Precise, opinionated, peer-level. No hedging. No bold. No preamble.";
-    callAPI([{role:"user",content:prompt}], function(text) {
-      if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"story")] = html;
-      var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = html;
-    });
+  function tryFromCache() {
+    if (!piece || piece.id !== pid || tab !== currentTab || reqId !== analysisReqId) return;
 
-  } else if (tab === "recording") {
-    var liveRecs = getLiveRecordings(piece);
-    var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
-    var recId = rec ? rec.id : "default";
-    var cached = contentCache[cacheKey(pid,"recording",recId)];
-    if (cached) { content.innerHTML = cached; return; }
-    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    // Use direct YouTube link if we have a real videoId, else fall back to search
-    var ytLink = (rec && rec.videoId)
-      ? "https://www.youtube.com/watch?v=" + rec.videoId
-      : "https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title);
-    var recNameForPrompt = recName || piece.composer;
-    var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence. Use ## for each section: ## Their Approach (what defines their sound and interpretive stance), ## Key Moments (2-3 specific passages with measure references and what they do differently), ## What It Reveals (what their choices expose about the harmonic structure), ## Essential or Skip? (direct verdict). Speak like a brilliant colleague who knows this repertoire cold — opinionated, specific, not academic. 2-3 sentences per section. End with: [Listen on YouTube](" + ytLink + ").";
-    callAPIWithSearch([{role:"user",content:prompt}], function(text) {
-      if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"recording",recId)] = html;
-      var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = html;
-    });
+    if (tab === "story") {
+      var cached = contentCache[cacheKey(pid,"story")];
+      if (cached) { content.innerHTML = cached; return; }
+      // Not ready — show spinner and poll
+      if (content.innerHTML.indexOf("ldots") === -1) {
+        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      }
+      setTimeout(tryFromCache, 350);
 
-  } else { // practice
-    var cached = contentCache[cacheKey(pid,"practice")];
-    if (cached) { content.innerHTML = cached; return; }
-    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Give 3 practice priorities for " + piece.full + " by " + piece.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific technical or interpretive challenge. One sentence: exactly what to do — name a specific rhythmic subdivision, fingering approach, or voicing strategy. Assume conservatory-level technique. Speak like a brilliant colleague, not a textbook. No bold. No preamble.";
-    callAPI([{role:"user",content:prompt}], function(text) {
-      if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"practice")] = html;
-      var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = html;
-    });
+    } else if (tab === "practice") {
+      var cached = contentCache[cacheKey(pid,"practice")];
+      if (cached) { content.innerHTML = cached; return; }
+      if (content.innerHTML.indexOf("ldots") === -1) {
+        content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      }
+      setTimeout(tryFromCache, 350);
+
+    } else if (tab === "recording") {
+      var liveRecs = getLiveRecordings(piece);
+      var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
+      var recId = rec ? rec.id : "default";
+      var cached = contentCache[cacheKey(pid,"recording",recId)];
+      if (cached) { content.innerHTML = cached; return; }
+      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+      var ytLink = (rec && rec.videoId)
+        ? "https://www.youtube.com/watch?v=" + rec.videoId
+        : "https://www.youtube.com/results?search_query=" + encodeURIComponent((recName || piece.composer) + " " + piece.title);
+      var recNameForPrompt = recName || piece.composer;
+      var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence — this pianist is known for performing this piece. Use ## for each section: ## Their Approach, ## Key Moments (2-3 passages with measure refs), ## What It Reveals, ## Essential or Skip?. Opinionated, specific, peer-level. 2-3 sentences each. End with: [Listen on YouTube](" + ytLink + "). No bold. No preamble.";
+      callAPIWithSearch([{role:"user",content:prompt}], function(text) {
+        if (reqId !== analysisReqId || tab !== currentTab) return;
+        var html = renderSectioned(text);
+        contentCache[cacheKey(pid,"recording",recId)] = html;
+        var el = document.getElementById("analysis-content");
+        if (el) el.innerHTML = html;
+      });
+    }
   }
+
+  tryFromCache();
 }
 
 function renderSectioned(text) {
@@ -2449,19 +2461,19 @@ function loadStudy() {
   if(!piece) return;
   var content = document.getElementById("study-content");
   var pid = piece.id;
-  var cached = contentCache[cacheKey(pid,"study",studyTab)];
-  if (cached) { content.innerHTML = cached; return; }
-  content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var ps = {
-    history: "Write a structured historical overview of " + piece.full + " by " + piece.composer + " like serious concert program notes. Use ## to mark each section heading. Sections: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. Each 2-3 sentences. Authoritative, direct, no preamble.",
-    scholarship: "Write a structured overview of musicological scholarship on " + piece.full + " by " + piece.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
-    interviews: "Write a structured compilation of documented statements about " + piece.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
-  };
-  callAPI([{role:"user",content:ps[studyTab]}], function(text) {
-    var html = renderSectioned(text);
-    contentCache[cacheKey(pid,"study",studyTab)] = html;
-    if (piece && piece.id === pid) content.innerHTML = html;
-  });
+  var currentStudyTab = studyTab;
+
+  function tryStudyCache() {
+    if (!piece || piece.id !== pid || studyTab !== currentStudyTab) return;
+    var cached = contentCache[cacheKey(pid,"study",studyTab)];
+    if (cached) { content.innerHTML = cached; return; }
+    if (content.innerHTML.indexOf("ldots") === -1) {
+      content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
+    }
+    setTimeout(tryStudyCache, 350);
+  }
+
+  tryStudyCache();
 }
 
 /* CHAT */
