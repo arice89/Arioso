@@ -2863,10 +2863,24 @@ function loadAnalysis() {
           didInvalidate = true;
           delete contentCache[cacheKey(pid,"practice")];
           cached = null;
-          prefetchAll(piece, true); // force=true bypasses debounce
+          prefetchAll(piece, true);
         }
       }
       if (cached) { content.innerHTML = scrubLegacy(cached); return; }
+      // Fire practice on-demand if not already in flight
+      if (tryCount === 1 && piece) {
+        var mCtx2 = getMeasureContext();
+        var mPfx2 = mCtx2 ? ("\n\nMEASURE CONTEXT: " + mCtx2) : "\n\nNo measure numbers labeled -- use structural language only.";
+        var practiceOnDemand = "Give 3 practice priorities for " + piece.full + " by " + piece.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPfx2;
+        var pcKey = cacheKey(pid, "practice");
+        callAPI([{role:"user",content:practiceOnDemand}], function(text) {
+          if (!piece || piece.id !== pid || tab !== "practice") return;
+          if (!text || text.length < 50) return;
+          contentCache[pcKey] = renderSectioned(text);
+          var el2 = document.getElementById("full-analysis");
+          if (el2) el2.innerHTML = scrubLegacy(contentCache[pcKey]);
+        }, null, 1500);
+      }
       if (tryCount > 120) {
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
         return;
@@ -3236,7 +3250,10 @@ function sendChat() {
     "premiere","first performed","first published","reception","how was it received",
     "dedicated to","written for","commission","patron"
   ];
-  var isBiographicalQuery = BIOGRAPHICAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
+  var isBiographicalQuery = BIOGRAPHICAL_PATTERNS.some(function(p) {
+    var re = new RegExp("\\b" + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, "\\s+") + "\\b", "i");
+    return re.test(q);
+  });
 
   // Detect emotional/interpretive questions — skip notation description
   var EMOTIONAL_PATTERNS = [
@@ -3248,7 +3265,10 @@ function sendChat() {
     "inner voice","character of","spirit of","atmosphere","poetic","meaning behind",
     "emotionally","approach it","emotionally standpoint","emotional standpoint"
   ];
-  var isEmotionalQuery = !isBiographicalQuery && EMOTIONAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
+  var isEmotionalQuery = !isBiographicalQuery && EMOTIONAL_PATTERNS.some(function(p) {
+    var re = new RegExp("\\b" + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, "\\s+") + "\\b", "i");
+    return re.test(q);
+  });
 
   var fullPrompt;
   if (isBiographicalQuery) {
@@ -3427,7 +3447,7 @@ function detectMeasureQuery(query) {
     // Qualitative passage references
     "opening","opening phrase","opening section","opening passage","opening bars",
     "beginning","start of","start of the",
-    "ending","closing","closing section","closing passage","final bars","final passage",
+    "the ending","closing","closing section","closing passage","final bars","final passage",
     "last section","last passage","last bars",
     "middle section","middle passage","middle part",
     "lyrical section","lyrical passage","lyrical theme",
@@ -3440,7 +3460,9 @@ function detectMeasureQuery(query) {
   ];
   var sectionName = null;
   SECTION_PATTERNS.forEach(function(s) {
-    if (q.indexOf(s) !== -1 && !sectionName) sectionName = s;
+    // Use word boundary check: pattern must appear as whole word(s), not inside another word
+    var re = new RegExp("\\b" + s.replace(/\s+/g, "\\s+") + "\\b", "i");
+    if (re.test(q) && !sectionName) sectionName = s;
   });
 
   // Also catch "the X part/section/phrase/passage" patterns
