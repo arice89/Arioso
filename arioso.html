@@ -885,6 +885,7 @@ function clearDrawings() {
     <div id="context-banner"></div>
     <div id="analysis-content"><span class="empty">Select a piece to begin.</span></div>
     <div id="chat-section">
+      <div id="vision-status" style="font-size:10px;color:var(--text3);padding:4px 2px 6px;display:none;"></div>
       <div id="chat-messages"></div>
       <div id="chat-input-row">
         <input id="chat-input" type="text" placeholder="Ask about what you see in the score…">
@@ -2584,30 +2585,30 @@ function setMode(m) {
 /**
  * Captures the visible score pages into a single base64 JPEG.
  * Composites PDF canvas + draw overlay for each visible page.
- * Returns null if no score is loaded.
+ * Returns null if no score is loaded or capture fails.
  */
 function captureScoreImage() {
-  if (!pdfDoc) return null;
+  if (!pdfDoc) { console.log("[vision] no pdfDoc"); return null; }
 
-  // Collect all rendered page canvases
   var pages = document.getElementById("pdf-pages");
-  if (!pages || pages.style.display === "none") return null;
+  if (!pages || pages.style.display === "none") { console.log("[vision] pdf-pages hidden"); return null; }
 
+  // Collect rendered page canvases
   var pageCanvases = [];
   for (var i = 1; i <= pdfDoc.numPages; i++) {
     var pc = document.getElementById("pc-" + i);
-    if (pc && pc.width > 0) pageCanvases.push({ pdf: pc, draw: document.getElementById("dc-" + i) });
+    if (pc && pc.width > 0 && pc.height > 0) {
+      pageCanvases.push({ pdf: pc, draw: document.getElementById("dc-" + i) });
+    }
   }
-  if (!pageCanvases.length) return null;
 
-  // Determine composite size (stack pages vertically, use first page width)
-  var W = pageCanvases[0].pdf.width;
-  var totalH = 0;
-  pageCanvases.forEach(function(p) { totalH += p.pdf.height; });
+  if (!pageCanvases.length) { console.log("[vision] no rendered canvases found"); return null; }
+  console.log("[vision] found " + pageCanvases.length + " pages to capture");
 
-  // Cap at ~3 pages worth to keep payload reasonable
-  var maxH = W * 4;
-  if (totalH > maxH) totalH = maxH;
+  // Use first 3 pages max to keep payload manageable
+  var toCapture = pageCanvases.slice(0, 3);
+  var W = toCapture[0].pdf.width;
+  var totalH = toCapture.reduce(function(h, p) { return h + p.pdf.height; }, 0);
 
   var composite = document.createElement("canvas");
   composite.width = W;
@@ -2617,24 +2618,27 @@ function captureScoreImage() {
   ctx.fillRect(0, 0, W, totalH);
 
   var y = 0;
-  for (var j = 0; j < pageCanvases.length && y < totalH; j++) {
-    var p = pageCanvases[j];
-    var drawH = Math.min(p.pdf.height, totalH - y);
-    ctx.drawImage(p.pdf, 0, 0, p.pdf.width, drawH, 0, y, W, drawH);
-    // Composite draw layer if present
-    if (p.draw && p.draw.width > 0) {
-      ctx.drawImage(p.draw, 0, 0, p.draw.width, Math.min(p.draw.height, drawH),
-        0, y, W, drawH * (p.draw.height / p.pdf.height));
+  for (var j = 0; j < toCapture.length; j++) {
+    var p = toCapture[j];
+    try {
+      ctx.drawImage(p.pdf, 0, y);
+      if (p.draw && p.draw.width > 0 && p.draw.height > 0) {
+        ctx.drawImage(p.draw, 0, y);
+      }
+    } catch(e) {
+      console.warn("[vision] drawImage failed page " + (j+1) + ":", e);
     }
-    y += drawH;
+    y += p.pdf.height;
   }
 
-  // Return as base64 JPEG (quality 0.85 keeps size reasonable)
   try {
-    var dataUrl = composite.toDataURL("image/jpeg", 0.85);
-    return dataUrl.split(",")[1]; // strip data:image/jpeg;base64,
+    var dataUrl = composite.toDataURL("image/jpeg", 0.82);
+    var b64 = dataUrl.split(",")[1];
+    console.log("[vision] captured image, base64 length:", b64 ? b64.length : 0);
+    return b64 || null;
   } catch(e) {
-    return null; // CORS or other issue
+    console.error("[vision] toDataURL failed (likely CORS):", e);
+    return null;
   }
 }
 
@@ -2644,33 +2648,29 @@ function captureScoreImage() {
  */
 function callAPIWithVision(textPrompt, callback) {
   var imageBase64 = captureScoreImage();
+  var statusEl = document.getElementById("vision-status");
 
   if (!imageBase64) {
-    // No image available — fall back to text only
+    if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⚠ Score not captured — answering from knowledge"; }
     callAPI([{role:"user", content: textPrompt}], callback);
     return;
   }
+
+  if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "✓ Reading from score"; }
 
   var messages = [{
     role: "user",
     content: [
       {
         type: "image",
-        source: {
-          type: "base64",
-          media_type: "image/jpeg",
-          data: imageBase64
-        }
+        source: { type: "base64", media_type: "image/jpeg", data: imageBase64 }
       },
-      {
-        type: "text",
-        text: textPrompt
-      }
+      { type: "text", text: textPrompt }
     ]
   }];
 
   var body = {
-    model: "claude-sonnet-4-20250514", // Sonnet for vision capability
+    model: "claude-sonnet-4-20250514",
     max_tokens: 1500,
     system: SYS,
     messages: messages
@@ -2688,10 +2688,17 @@ function callAPIWithVision(textPrompt, callback) {
           if (block.type === "text") text += block.text;
         });
       }
+      if (!text && data.error) {
+        console.error("[vision] API error:", data.error);
+        if (statusEl) statusEl.textContent = "⚠ Vision error — falling back to knowledge";
+        callAPI([{role:"user", content: textPrompt}], callback);
+        return;
+      }
       callback(text || "Unable to analyze score.");
     })
-    .catch(function() {
-      // Vision failed — fall back to text-only
+    .catch(function(e) {
+      console.error("[vision] fetch failed:", e);
+      if (statusEl) statusEl.textContent = "⚠ Connection error — falling back";
       callAPI([{role:"user", content: textPrompt}], callback);
     });
 }
