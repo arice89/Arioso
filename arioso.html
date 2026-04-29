@@ -607,9 +607,13 @@ function clearDrawings() {
 .chat-msg { font-size: 12px; line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
 .chat-msg.user { color: var(--text); font-weight: 400; }
 .chat-msg.assistant { color: var(--text); font-weight: 300; }
-.chat-msg.thinking-msg { opacity: 0.6; }
-.chat-msg.thinking-msg .ldots { display: inline-flex; gap: 3px; padding: 2px 0; }
-.chat-msg.assistant::before {
+.chat-msg.thinking-msg { opacity: 0.7; }
+.chat-msg.thinking-msg::before { content: "Arioso  —  "; font-weight: 600; color: var(--accent); font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; font-family: 'DM Sans', sans-serif; }
+.chat-msg.thinking-msg .ldots { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 2px; }
+.chat-msg.thinking-msg .ldots span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; opacity: 0.6; }
+.chat-msg.thinking-msg .ldots span:nth-child(2) { animation-delay: 0.2s; }
+.chat-msg.thinking-msg .ldots span:nth-child(3) { animation-delay: 0.4s; }
+.chat-msg.assistant:not(.thinking-msg)::before {
   content: "Arioso  —  "; font-weight: 600; color: var(--accent);
   font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
   font-family: 'DM Sans', sans-serif;
