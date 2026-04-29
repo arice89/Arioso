@@ -1414,15 +1414,42 @@ function init() {
 function selectPiece(i) {
   piece = PIECES[i]; rec = piece.recordings[0]; chatHistory = [];
   currentSection = 0;
+  pdfDoc = null;
+  document.getElementById("pdf-pages").innerHTML = "";
+  document.getElementById("pdf-pages").style.display = "none";
   document.querySelectorAll(".piece-btn").forEach(function(b,j){ b.classList.toggle("active",j===i); });
   var t = document.getElementById("score-title");
   t.textContent = piece.full; t.classList.remove("empty");
   document.getElementById("score-subtitle").textContent = piece.composer + "   .   " + piece.year + "   .   " + piece.key;
-  if(pdfDoc) (function(){var b=document.getElementById("annotate-btn");if(b)b.style.display="block";})();
   document.getElementById("chat-messages").innerHTML = "";
   renderRecs(); loadAnalysis();
   renderChordStrip();
   if(mode==="study") loadStudy();
+
+  // Auto-load PDF from Supabase if not already loaded
+  if (!pdfDoc) {
+    var loadBuffer = function(buffer) {
+      pdfjsLib.getDocument(new Uint8Array(buffer)).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        document.getElementById("upload-zone").style.display = "none";
+        document.getElementById("pdf-pages").style.display = "flex";
+        document.getElementById("clear-pdf-btn").style.display = "block";
+        document.getElementById("draw-btn").style.display = "block";
+        document.getElementById("measure-btn").style.display = "block";
+        renderAllPages();
+      });
+    };
+    var showUploadZone = function() {
+      var uz = document.getElementById("upload-zone");
+      uz.style.display = "block";
+      uz.innerHTML = "<div id='uz-icon' style='font-size:36px;font-weight:300;color:var(--text2);'>+</div>" +
+        "<div id='uz-title'>Upload your score PDF</div>" +
+        "<div id='uz-sub'>Henle, Peters, IMSLP \u2014 any edition works</div>" +
+        "<input type='file' id='file-input' accept='.pdf' onchange='loadPDF(this)' style='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;'>";
+      document.getElementById("pdf-pages").style.display = "none";
+    };
+    loadOrFetchCuratedPDF(piece.id, loadBuffer, showUploadZone);
+  }
 }
 
 /* PDF  --  ALL PAGES */
