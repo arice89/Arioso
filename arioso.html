@@ -887,7 +887,7 @@ function clearDrawings() {
     <div id="chat-section">
       <div id="chat-messages"></div>
       <div id="chat-input-row">
-        <input id="chat-input" type="text" placeholder="Ask about this passage...">
+        <input id="chat-input" type="text" placeholder="Ask about what you see in the score…">
         <button id="send-btn" onclick="sendChat()">Ask</button>
       </div>
     </div>
@@ -1730,7 +1730,7 @@ var PIECES = [
     ]}
 ];
 
-var SYS = "You are Arioso, an AI score companion for advanced pianists — conservatory-trained or equivalent. You are a top-tier music analyst and performer who knows the repertoire cold. You speak like the best professor a pianist has ever had: direct, opinionated, precise, and always useful.\n\nCRITICAL BEHAVIORAL RULES — never break these:\n1. NEVER say you cannot find a source, cannot verify, lack information, or need more context. You always have enough to analyze.\n2. NEVER ask the user to describe the score or provide missing information. You know this music.\n3. NEVER defer, hedge epistemically, or express uncertainty about what you know. Uncertainty is always framed musically: 'this passage can be heard as...' not 'I'm not sure what this is.'\n4. NEVER mention sources, methodology, search results, or your own limitations. Deliver the analysis — nothing else.\n5. NEVER use markdown asterisks (**bold**). Use plain prose.\n6. ALWAYS answer directly. No preamble, no 'Great question', no 'Let me analyze this for you.'\n\nFor CHORD and HARMONIC ANALYSIS: You are reading the score. State what the chord is, what it's doing structurally, and what the performer must do because of it. The III chord in Chopin's G minor Ballade is Bb major — you know this. The N6 is Ab major in first inversion — you know this. Always give the Roman numeral, the function, and the direct performance implication in confident declarative sentences.\n\nFor ANALYSIS tabs: Write like a rigorous musicologist-performer. Identify formal structures precisely, use Roman numeral analysis, trace key relationships and harmonic language. For Chopin, the central lens is the equilibrium of chromaticism and diatonicism — tonal ambiguity, delayed resolution, floating tonality, double tonic complex, the Neapolitan as structural pillar. Connect every observation to what the performer must understand and do.\n\nFor INTERPRETATIONS: Discuss specific named recordings — pianist, specific interpretive choices at key passages, connection to harmonic structure. Include a YouTube search link formatted as: [Listen: Name](https://www.youtube.com/results?search_query=Name+Piece). Always include at least one contemporary pianist (Trifonov, Yuja Wang, Abduraimov, Cho, Debargue, or another major figure). Be opinionated about which recordings are essential.\n\nFor HISTORY and CONTEXT: Write like serious program notes — LA Phil register. Specific, biographical, culturally grounded.\n\nFor PRACTICE: Focus on technique and physical execution — fingering strategies, rhythmic subdivisions, voicing, pedaling. Conservatory-level assumed. Specific passages, specific measures, specific solutions.\n\nTone across everything: the brilliant friend who happens to know this repertoire better than anyone. Not a dissertation. Not a chatbot. Precise, warm, authoritative, and always in service of the performer.";
+var SYS = "You are Arioso, an AI score companion for advanced pianists — conservatory-trained or equivalent. When a score image is provided, it is your PRIMARY source of truth. You perform bottom-up harmonic analysis directly from what you see: identify bass notes first, then upper voices, then vertical sonorities, then infer chord quality and harmonic function. Never invent analysis from memory when you have the score in front of you.\n\nCRITICAL BEHAVIORAL RULES — never break these:\n1. When a score image is provided: read the ACTUAL notes. Identify the bass note, identify the upper voices, determine the chord quality from the interval stack, then assign Roman numeral and function. Ground every statement in what is visible.\n2. When uncertain from the image: describe what you see ('the bass moves to F#, with what appears to be A and C# above it — this is iv in first inversion') rather than falling back on memory.\n3. NEVER say you cannot find a source, cannot verify, or need more context. You always have enough.\n4. NEVER ask the user to describe the score. You can see it.\n5. NEVER use markdown asterisks. No bold text.\n6. ALWAYS answer directly. No preamble.\n7. NEVER invent large-scale harmonic narratives that aren't grounded in what's visible. If asked about the whole piece, use your knowledge — but for passage-specific questions, read the score.\n\nFor CHORD ANALYSIS from score: (1) Identify the lowest sounding pitch. (2) Identify the remaining pitches. (3) Determine the interval stack and chord quality. (4) Identify the root and inversion. (5) Assign Roman numeral relative to the key. (6) State the harmonic function. (7) State the direct performance implication — voicing weight, timing, touch.\n\nFor ANALYSIS tabs (no image): Write like a rigorous musicologist-performer. Formal structures, Roman numeral analysis, key relationships. For Chopin: tonal ambiguity, delayed resolution, double tonic complex, Neapolitan as structural pillar. Connect every observation to what the performer must do.\n\nFor INTERPRETATIONS: Specific named recordings, specific interpretive choices at key passages, YouTube link. Always include a contemporary pianist. Be opinionated.\n\nFor PRACTICE: Physical execution — fingering, rhythmic subdivisions, voicing, pedaling. Conservatory-level assumed. Specific passages, specific measures, specific solutions.\n\nTone: the brilliant friend who knows this repertoire better than anyone. Precise, warm, authoritative, always in service of the performer.";
 
 
 var piece = null, rec = null, tab = "story", studyTab = "history", mode = "score";
@@ -1942,8 +1942,8 @@ function showLoading(x, y, page) {
 }
 
 function analyzeClick(page, xp, yp) {
-  var prompt = "You are reading " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). The performer has clicked at roughly " + xp + "% across and " + yp + "% down page " + page + ". Based on your knowledge of this score, identify the most likely harmony at this location. Give a confident answer — do not ask for more information, do not say you cannot determine this. Respond ONLY in this exact JSON format with no other text: {\"roman\": \"III\", \"function\": \"tonic\", \"explanation\": \"2 sentences: what this chord is doing structurally and what it demands from the performer.\"}. Function must be exactly one of: tonic, dominant, predominant, chromatic.";
-  callAPI([{role:"user",content:prompt}], function(text) {
+  var prompt = "I am looking at page " + page + " of " + piece.full + " by " + piece.composer + " (key: " + piece.key + "). I have clicked at approximately " + xp + "% from the left and " + yp + "% from the top of this page.\n\nLook at the score image. Find the notes at that location. Identify: (1) the bass note, (2) the upper voices, (3) the chord quality from the interval stack, (4) the inversion, (5) the Roman numeral in " + piece.key + ", (6) the harmonic function.\n\nRespond ONLY in this exact JSON format with no other text:\n{\"roman\": \"V7\", \"function\": \"dominant\", \"explanation\": \"2 sentences: what this chord is and what it demands from the performer.\"}.\n\nFunction must be exactly one of: tonic, dominant, predominant, chromatic.";
+  callAPIWithVision(prompt, function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
       var d = JSON.parse(clean);
@@ -2540,15 +2540,32 @@ function sendChat() {
   input.value = "";
   var msgs = document.getElementById("chat-messages");
   var ud = document.createElement("div"); ud.className="chat-msg user"; ud.textContent=msg; msgs.appendChild(ud);
-  var ctx = "The user is studying " + piece.full + " by " + piece.composer + ". ";
-  if(annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
-  chatHistory.push({role:"user",content:ctx+msg});
   var btn = document.getElementById("send-btn"); btn.disabled=true;
-  callAPI(chatHistory, function(reply){
-    chatHistory.push({role:"assistant",content:reply});
-    var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply; msgs.appendChild(ad);
-    msgs.scrollTop = msgs.scrollHeight; btn.disabled=false;
-  });
+
+  // Build context prefix
+  var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
+  if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
+  var fullPrompt = ctx + "Referring to the score image provided, answer this question: " + msg;
+
+  // Use vision if score is loaded, otherwise plain chat history
+  var imageBase64 = captureScoreImage();
+  if (imageBase64) {
+    // Vision call — single turn with image + full question
+    callAPIWithVision(fullPrompt, function(reply) {
+      chatHistory.push({role:"user", content: msg});
+      chatHistory.push({role:"assistant", content: reply});
+      var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply; msgs.appendChild(ad);
+      msgs.scrollTop = msgs.scrollHeight; btn.disabled=false;
+    });
+  } else {
+    // No score loaded — use conversation history
+    chatHistory.push({role:"user", content: ctx+msg});
+    callAPI(chatHistory, function(reply){
+      chatHistory.push({role:"assistant",content:reply});
+      var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.textContent=reply; msgs.appendChild(ad);
+      msgs.scrollTop = msgs.scrollHeight; btn.disabled=false;
+    });
+  }
 }
 
 /* MODE */
@@ -2562,6 +2579,123 @@ function setMode(m) {
 }
 
 /* API */
+/* ===== SCORE VISION ===== */
+
+/**
+ * Captures the visible score pages into a single base64 JPEG.
+ * Composites PDF canvas + draw overlay for each visible page.
+ * Returns null if no score is loaded.
+ */
+function captureScoreImage() {
+  if (!pdfDoc) return null;
+
+  // Collect all rendered page canvases
+  var pages = document.getElementById("pdf-pages");
+  if (!pages || pages.style.display === "none") return null;
+
+  var pageCanvases = [];
+  for (var i = 1; i <= pdfDoc.numPages; i++) {
+    var pc = document.getElementById("pc-" + i);
+    if (pc && pc.width > 0) pageCanvases.push({ pdf: pc, draw: document.getElementById("dc-" + i) });
+  }
+  if (!pageCanvases.length) return null;
+
+  // Determine composite size (stack pages vertically, use first page width)
+  var W = pageCanvases[0].pdf.width;
+  var totalH = 0;
+  pageCanvases.forEach(function(p) { totalH += p.pdf.height; });
+
+  // Cap at ~3 pages worth to keep payload reasonable
+  var maxH = W * 4;
+  if (totalH > maxH) totalH = maxH;
+
+  var composite = document.createElement("canvas");
+  composite.width = W;
+  composite.height = totalH;
+  var ctx = composite.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, totalH);
+
+  var y = 0;
+  for (var j = 0; j < pageCanvases.length && y < totalH; j++) {
+    var p = pageCanvases[j];
+    var drawH = Math.min(p.pdf.height, totalH - y);
+    ctx.drawImage(p.pdf, 0, 0, p.pdf.width, drawH, 0, y, W, drawH);
+    // Composite draw layer if present
+    if (p.draw && p.draw.width > 0) {
+      ctx.drawImage(p.draw, 0, 0, p.draw.width, Math.min(p.draw.height, drawH),
+        0, y, W, drawH * (p.draw.height / p.pdf.height));
+    }
+    y += drawH;
+  }
+
+  // Return as base64 JPEG (quality 0.85 keeps size reasonable)
+  try {
+    var dataUrl = composite.toDataURL("image/jpeg", 0.85);
+    return dataUrl.split(",")[1]; // strip data:image/jpeg;base64,
+  } catch(e) {
+    return null; // CORS or other issue
+  }
+}
+
+/**
+ * Calls Claude Sonnet with vision — attaches score image + text message.
+ * Falls back to text-only callAPI if image capture fails.
+ */
+function callAPIWithVision(textPrompt, callback) {
+  var imageBase64 = captureScoreImage();
+
+  if (!imageBase64) {
+    // No image available — fall back to text only
+    callAPI([{role:"user", content: textPrompt}], callback);
+    return;
+  }
+
+  var messages = [{
+    role: "user",
+    content: [
+      {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data: imageBase64
+        }
+      },
+      {
+        type: "text",
+        text: textPrompt
+      }
+    ]
+  }];
+
+  var body = {
+    model: "claude-sonnet-4-20250514", // Sonnet for vision capability
+    max_tokens: 1500,
+    system: SYS,
+    messages: messages
+  };
+
+  fetch("/api/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); })
+    .then(function(data) {
+      var text = "";
+      if (data.content && Array.isArray(data.content)) {
+        data.content.forEach(function(block) {
+          if (block.type === "text") text += block.text;
+        });
+      }
+      callback(text || "Unable to analyze score.");
+    })
+    .catch(function() {
+      // Vision failed — fall back to text-only
+      callAPI([{role:"user", content: textPrompt}], callback);
+    });
+}
+
 function callAPI(messages, callback, useSearch) {
   var body = {
     model: "claude-haiku-4-5-20251001",
@@ -2870,9 +3004,12 @@ function loadChordAnalysis(chord) {
   banner.style.display = "block";
   var content = document.getElementById("analysis-content");
   content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-  var prompt = "In " + piece.full + " by " + piece.composer + ", the chord at " + chord.note.split(" -- ")[0].trim() + " is " + chord.symbol + " (" + chord.fn + " function). " + (chord.note.split(" -- ")[1] || "") + " In 2-3 sentences: explain exactly what this harmony is doing structurally — its relationship to the surrounding progression — and what it demands from the performer in terms of voicing, weight, timing, or touch. Speak directly. No hedging, no sourcing, no uncertainty framing.";
+  var chordContext = chord.note.split(" -- ");
+  var location = chordContext[0].trim();
+  var existingNote = chordContext[1] || "";
+  var prompt = "Look at the score. At " + location + " in " + piece.full + " by " + piece.composer + ", identify the chord labeled " + chord.symbol + " (" + chord.fn + " function).\n\n" + existingNote + "\n\nFrom what you see in the score: (1) confirm the bass note and upper voices, (2) explain what this harmony is doing structurally in this passage, (3) explain what it demands from the performer — voicing weight, timing, touch, pedaling. 2-3 sentences. Direct, no hedging.";
   var snapReqId = analysisReqId;
-  callAPI([{role:"user",content:prompt}], function(text) {
+  callAPIWithVision(prompt, function(text) {
     if (analysisReqId !== snapReqId) return;
     var el = document.getElementById("analysis-content");
     if (el) el.innerHTML = renderSectioned(text);
