@@ -2739,8 +2739,8 @@ function loadAnalysis() {
         }
       }
       if (cached) { content.innerHTML = cached; return; }
-      if (tryCount > 40) { // ~14 seconds
-        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
+      if (tryCount > 120) { // ~42 seconds — only show error after extended wait
+        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
         return;
       }
       if (content.innerHTML.indexOf("ldots") === -1) {
@@ -2760,8 +2760,8 @@ function loadAnalysis() {
         }
       }
       if (cached) { content.innerHTML = cached; return; }
-      if (tryCount > 40) {
-        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
+      if (tryCount > 120) {
+        content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Taking longer than expected. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
         return;
       }
       if (content.innerHTML.indexOf("ldots") === -1) {
