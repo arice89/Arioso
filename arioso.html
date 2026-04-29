@@ -498,72 +498,74 @@ function clearDrawings() {
 #drag-divider:hover { background: var(--text3); }
 #drag-divider.dragging { background: var(--text2); }
 #analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-#analysis-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#analysis-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
 .analysis-tab {
-  padding: 10px 15px; font-size: 12px; cursor: pointer; color: var(--text2);
-  border-bottom: 2px solid transparent; transition: all 0.12s;
+  padding: 13px 18px; font-size: 10px; cursor: pointer; color: var(--text3);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
   background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
 }
-.analysis-tab:hover { color: var(--text); }
-.analysis-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
+.analysis-tab:hover { color: var(--text2); }
+.analysis-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 #recording-selector {
-  padding: 8px 14px; border-bottom: 1px solid var(--border);
-  display: none; flex-wrap: wrap; gap: 5px; flex-shrink: 0;
+  padding: 8px 16px; border-bottom: 1px solid var(--border);
+  display: none; flex-wrap: wrap; gap: 5px; flex-shrink: 0; background: var(--bg);
 }
 .rec-btn {
-  padding: 3px 10px; border-radius: 20px; font-size: 11px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--bg2); color: var(--text2);
-  transition: all 0.12s; font-family: inherit;
+  padding: 3px 10px; border-radius: 3px; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--border2); background: transparent; color: var(--text3);
+  transition: all 0.15s; font-family: inherit; letter-spacing: 0.3px;
 }
-.rec-btn:hover { color: var(--text); }
+.rec-btn:hover { color: var(--text); border-color: var(--border3); }
 .rec-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 #context-banner {
-  padding: 7px 14px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  font-size: 11px; color: var(--text2); display: none; flex-shrink: 0;
+  padding: 8px 18px; background: rgba(139,94,60,0.06);
+  border-bottom: 1px solid rgba(139,94,60,0.12);
+  font-size: 11px; color: var(--accent); display: none; flex-shrink: 0;
 }
-#context-banner strong { color: var(--text); }
+#context-banner strong { color: var(--accent); font-weight: 600; }
 #analysis-content {
-  flex: 1; overflow-y: auto; padding: 20px 22px;
-  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  flex: 1; overflow-y: auto; padding: 24px 26px;
+  font-family: 'DM Sans', sans-serif; line-height: 1.8;
   -webkit-overflow-scrolling: touch;
 }
-#chat-section { border-top: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; }
-#chat-messages { max-height: 100px; overflow-y: auto; margin-bottom: 8px; }
-.chat-msg { font-size: 12px; line-height: 1.55; margin-bottom: 5px; }
-.chat-msg.user { color: var(--text); font-weight: 600; }
+#chat-section { border-top: 1px solid var(--border); padding: 12px 16px; flex-shrink: 0; background: var(--bg); }
+#chat-messages { max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+.chat-msg { font-size: 12px; line-height: 1.6; margin-bottom: 5px; }
+.chat-msg.user { color: var(--text); font-weight: 500; }
 .chat-msg.assistant { color: var(--text2); }
-.chat-msg.assistant::before { content: "Arioso  --  "; font-weight: 700; color: var(--text); }
+.chat-msg.assistant::before { content: "Arioso  —  "; font-weight: 600; color: var(--accent); font-family: 'DM Sans', sans-serif; }
 #chat-input-row { display: flex; gap: 7px; }
 #chat-input {
-  flex: 1; padding: 7px 11px; border-radius: var(--radius); font-size: 12px;
-  border: 1px solid var(--border); background: var(--bg2); color: var(--text);
-  outline: none; font-family: inherit;
+  flex: 1; padding: 8px 12px; border-radius: 4px; font-size: 12px;
+  border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+  outline: none; font-family: inherit; transition: border-color 0.15s;
 }
-#chat-input:focus { border-color: var(--text2); }
+#chat-input:focus { border-color: var(--accent); }
 #chat-input::placeholder { color: var(--text3); }
 #send-btn {
-  padding: 7px 13px; border-radius: var(--radius); font-size: 12px; font-weight: 600;
+  padding: 8px 14px; border-radius: 4px; font-size: 10px; font-weight: 500;
+  letter-spacing: 0.8px; text-transform: uppercase;
   border: none; cursor: pointer; background: var(--text); color: var(--bg);
-  font-family: inherit; transition: opacity 0.12s;
+  font-family: inherit; transition: opacity 0.15s;
 }
-#send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-#study-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; background: var(--bg); }
-#study-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+#study-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; background: var(--panel); }
+#study-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
 .study-tab {
-  padding: 10px 15px; font-size: 12px; cursor: pointer; color: var(--text2);
-  border-bottom: 2px solid transparent; transition: all 0.12s;
+  padding: 13px 18px; font-size: 10px; cursor: pointer; color: var(--text3);
+  border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
   background: transparent; border-top: none; border-left: none; border-right: none; font-family: inherit;
 }
-.study-tab:hover { color: var(--text); }
-.study-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
+.study-tab:hover { color: var(--text2); }
+.study-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 #study-content {
-  flex: 1; overflow-y: auto; padding: 20px 22px;
-  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  flex: 1; overflow-y: auto; padding: 24px 26px;
+  font-family: 'DM Sans', sans-serif; line-height: 1.8;
   -webkit-overflow-scrolling: touch;
 }
 #study-content p { margin-bottom: 14px; }
-.loading-wrap { display: flex; align-items: center; justify-content: center; padding: 40px; }
-.empty { color: var(--text3); font-size: 13px; }
+.loading-wrap { display: flex; align-items: center; justify-content: center; padding: 48px; }
+.empty { color: var(--text3); font-size: 13px; font-weight: 300; letter-spacing: 0.3px; }
 </style>
 </head>
 <body>
@@ -572,7 +574,7 @@ function clearDrawings() {
 <div id="welcome-screen">
   <div id="welcome-inner">
     <h1>Arioso</h1>
-    <p>Your AI score companion.<br>What should we call you?</p>
+    <p>AI Score Companion</p>
     <input id="welcome-input" type="text" placeholder="First name" maxlength="40">
     <button id="welcome-btn" onclick="submitWelcome()">Get started</button>
   </div>
@@ -582,7 +584,10 @@ function clearDrawings() {
 <div id="library-screen">
   <div id="library-header">
     <div id="library-header-top">
-      <div id="library-greeting">Welcome back <span id="greeting-name"></span></div>
+      <div>
+        <div id="library-greeting">Good evening, <span id="greeting-name"></span></div>
+        <div id="library-subtitle">Your practice studio</div>
+      </div>
       <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
     </div>
     <div id="library-tabs">
@@ -1059,22 +1064,25 @@ function saveLibrary() {
 }
 
 function makeScorePreview() {
-  // Generates a decorative score-preview SVG that mimics sheet music staff lines + notes
-  var staffY = [8, 16, 24, 32, 40];
+  // Staff lines + noteheads as valid SVG (no calc, pure px)
+  var w = 220; // viewBox width
+  var staffY = [10, 18, 26, 34, 42];
   var lines = staffY.map(function(y) {
-    return '<line x1="0" y1="' + y + '" x2="100%" y2="' + y + '" stroke="var(--border2)" stroke-width="0.8"/>';
-  }).join("");
-  // Random-ish note positions that look musical
-  var noteData = [
-    {x:8,y:12,stemH:16},{x:18,y:20,stemH:14},{x:28,y:8,stemH:18},{x:38,y:16,stemH:16},
-    {x:50,y:24,stemH:12},{x:60,y:12,stemH:16},{x:70,y:20,stemH:14},{x:80,y:8,stemH:18},
-    {x:90,y:16,stemH:16}
+    return '<line x1="0" y1="' + y + '" x2="' + w + '" y2="' + y + '" stroke="var(--border2)" stroke-width="0.8"/>';
+  }).join('');
+  // Note positions: [x, y, stemDir(1=up,-1=down)]
+  var notes = [
+    [12,26,1],[28,18,1],[42,30,1],[58,14,1],[74,22,1],
+    [90,34,1],[106,18,1],[122,26,1],[138,10,1],[154,22,1],[170,30,1],[186,18,1],[202,26,1]
   ];
-  var notes = noteData.map(function(n) {
-    return '<ellipse cx="' + n.x + '%" cy="' + n.y + '" rx="3.5" ry="2.5" fill="var(--text3)" transform="rotate(-12,' + n.x + '%,' + n.y + ')"/>' +
-      '<line x1="calc(' + n.x + '% + 3px)" y1="' + n.y + '" x2="calc(' + n.x + '% + 3px)" y2="' + (n.y - n.stemH) + '" stroke="var(--text3)" stroke-width="0.9"/>';
-  }).join("");
-  return '<svg width="100%" height="44" style="display:block;opacity:0.28;">' + lines + notes + '</svg>';
+  var notesSvg = notes.map(function(n) {
+    var x=n[0], y=n[1], dir=n[2];
+    var stemY1 = y, stemY2 = dir===1 ? y-14 : y+14;
+    return '<ellipse cx="' + x + '" cy="' + y + '" rx="4" ry="2.8" fill="var(--text3)" transform="rotate(-12 ' + x + ' ' + y + ')"/>' +
+      '<line x1="' + (x+3.5) + '" y1="' + stemY1 + '" x2="' + (x+3.5) + '" y2="' + stemY2 + '" stroke="var(--text3)" stroke-width="0.9"/>';
+  }).join('');
+  return '<svg viewBox="0 0 ' + w + ' 52" width="100%" height="44" preserveAspectRatio="xMidYMid meet" ' +
+    'style="display:block;opacity:0.22;margin:14px 0 16px;">' + lines + notesSvg + '</svg>';
 }
 
 function renderLibrary() {
@@ -1553,9 +1561,8 @@ function init() {
   var savedName = localStorage.getItem("arioso-name");
   if (savedName) {
     userName = savedName;
-    document.getElementById("greeting-name").textContent = userName;
     showScreen("library");
-    loadLibrary();
+    loadLibrary(); // renderLibrary() inside sets the greeting
   } else {
     showScreen("welcome");
   }
