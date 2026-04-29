@@ -1777,7 +1777,7 @@ function getLiveRecordings(p) {
 /* Async API wrappers returning Promises */
 function callAPIAsync(messages) {
   return new Promise(function(resolve) {
-    callAPI(messages, resolve);
+    callOpenAI(messages, resolve);
   });
 }
 function callAPIWithSearchAsync(messages) {
@@ -1932,20 +1932,35 @@ function loadAnalysis() {
   var currentTab = tab;
   var pid = piece.id;
 
-  if(tab==="story") {
-    var cached = contentCache[cacheKey(pid,"story")];
+  if (tab === "story" || tab === "practice") {
+    var key = cacheKey(pid, tab);
+    var cached = contentCache[key];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with a section labeled Overview covering the formal structure, key architecture, and harmonic language. Then one paragraph per major section labeled with name and measure range, covering key harmonic events and what they demand from the performer. Use Roman numeral terminology. Be precise, analytical, and direct. No preamble.";
-    callAPI([{role:"user",content:prompt}], function(text) {
-      if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"story")] = html;
-      var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = html;
-    });
+    var attempts = 0;
+    var poll = setInterval(function() {
+      if (reqId !== analysisReqId || tab !== currentTab) { clearInterval(poll); return; }
+      var c = contentCache[key];
+      if (c) { clearInterval(poll); var el = document.getElementById("analysis-content"); if (el) el.innerHTML = c; return; }
+      attempts++;
+      if (attempts > 16) {
+        clearInterval(poll);
+        var prompt = tab === "story"
+          ? "Write a structured analytical overview of " + piece.full + " by " + piece.composer + ". Start with Overview covering formal structure, key architecture, harmonic language. Then one paragraph per major section with name and measure range. Use Roman numeral terminology. No preamble."
+          : "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each: name a passage or measure range, the challenge, what to do. Ground in harmonic structure. No generic advice. No preamble.";
+        callOpenAI([{role:"user",content:prompt}], function(text) {
+          if (reqId !== analysisReqId || tab !== currentTab) return;
+          var html = renderSectioned(text);
+          contentCache[key] = html;
+          var el = document.getElementById("analysis-content");
+          if (el) el.innerHTML = html;
+        });
+      }
+    }, 500);
+    return;
+  }
 
-  } else if(tab==="recording") {
+  if (tab === "recording") {
     var liveRecs = getLiveRecordings(piece);
     var recName = rec ? rec.full : (liveRecs && liveRecs[0] ? liveRecs[0].full : piece.composer);
     var recId = rec ? rec.id : "default";
@@ -1957,19 +1972,6 @@ function loadAnalysis() {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
       contentCache[cacheKey(pid,"recording",recId)] = html;
-      var el = document.getElementById("analysis-content");
-      if (el) el.innerHTML = html;
-    });
-
-  } else {
-    var cached = contentCache[cacheKey(pid,"practice")];
-    if (cached) { content.innerHTML = cached; return; }
-    content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Give 3 specific practice priorities for " + piece.full + " by " + piece.composer + ". Each should name a specific passage or measure range, the challenge, and what to do about it. Ground everything in the harmonic structure. No generic advice. No preamble.";
-    callAPI([{role:"user",content:prompt}], function(text) {
-      if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"practice")] = html;
       var el = document.getElementById("analysis-content");
       if (el) el.innerHTML = html;
     });
@@ -2079,7 +2081,7 @@ function loadStudy() {
     scholarship: "Write a structured overview of musicological scholarship on " + piece.full + " by " + piece.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
     interviews: "Write a structured compilation of documented statements about " + piece.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
   };
-  callAPIWithSearch([{role:"user",content:ps[studyTab]}], function(text) {
+  callOpenAI([{role:"user",content:ps[studyTab]}], function(text) {
     var html = renderSectioned(text);
     contentCache[cacheKey(pid,"study",studyTab)] = html;
     if (piece && piece.id === pid) content.innerHTML = html;
@@ -2122,14 +2124,12 @@ function callAPI(messages, callback, useSearch) {
     system: SYS,
     messages: messages
   };
-  if (useSearch) body.useSearch = true;
 
   fetch("/api/chat", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify(body)
   }).then(function(r) { return r.json(); }).then(function(data) {
-    // Extract text from all content blocks (handles tool_use + text responses)
     var text = "";
     if (data.content && Array.isArray(data.content)) {
       data.content.forEach(function(block) {
@@ -2138,6 +2138,41 @@ function callAPI(messages, callback, useSearch) {
     }
     callback(text || "Unable to load.");
   }).catch(function() { callback("Connection error."); });
+}
+
+// OpenAI GPT-4o-mini — faster for Analysis, Practice, Study
+function callOpenAI(messages, callback) {
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 15000);
+  fetch("/api/openai", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ messages: messages, system: SYS }),
+    signal: controller.signal
+  }).then(function(r) {
+    clearTimeout(timeout);
+    return r.json();
+  }).then(function(data) {
+    console.log("OpenAI response:", data);
+    var text = "";
+    if (data.content && Array.isArray(data.content)) {
+      data.content.forEach(function(block) {
+        if (block.type === "text") text += block.text;
+      });
+    }
+    if (text) { callback(text); return; }
+    // If empty, fall back to Claude
+    console.warn("OpenAI empty response, falling back to Claude");
+    callAPI(messages, callback);
+  }).catch(function(err) {
+    clearTimeout(timeout);
+    console.warn("OpenAI failed:", err, "— falling back to Claude");
+    callAPI(messages, callback);
+  });
+}
+
+function callOpenAIAsync(messages) {
+  return new Promise(function(resolve) { callOpenAI(messages, resolve); });
 }
 
 // Search-enabled version — uses web_search tool
