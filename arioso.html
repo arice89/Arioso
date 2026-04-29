@@ -2668,14 +2668,23 @@ function loadAnalysis() {
   var pid = piece.id;
   var currentTab = tab;
   var reqId = ++analysisReqId;
-
   var tryCount = 0;
+
   function tryFromCache() {
     if (!piece || piece.id !== pid || tab !== currentTab || reqId !== analysisReqId) return;
     tryCount++;
 
     if (tab === "story") {
       var cached = contentCache[cacheKey(pid,"story")];
+      // If cached but has no measure numbers and we now have labels, invalidate
+      if (cached && getMeasureContext()) {
+        var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
+        if (!hasMeasures) {
+          delete contentCache[cacheKey(pid,"story")];
+          cached = null;
+          prefetchAll(piece);
+        }
+      }
       if (cached) { content.innerHTML = cached; return; }
       if (tryCount > 40) { // ~14 seconds
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
@@ -2688,6 +2697,14 @@ function loadAnalysis() {
 
     } else if (tab === "practice") {
       var cached = contentCache[cacheKey(pid,"practice")];
+      if (cached && getMeasureContext()) {
+        var hasMeasures = cached.indexOf("mm.") !== -1 || cached.indexOf("m. ") !== -1 || cached.indexOf("m.1") !== -1;
+        if (!hasMeasures) {
+          delete contentCache[cacheKey(pid,"practice")];
+          cached = null;
+          prefetchAll(piece);
+        }
+      }
       if (cached) { content.innerHTML = cached; return; }
       if (tryCount > 40) {
         content.innerHTML = "<p style='color:var(--text3);font-size:13px;'>Analysis unavailable. <a href='#' onclick='loadAnalysis();return false;' style='color:var(--accent);'>Retry</a></p>";
