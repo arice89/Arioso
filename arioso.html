@@ -2346,9 +2346,10 @@ var prefetchLastRun = {}; // pieceId -> timestamp
 function prefetchAll(p, force) {
   if (!p) return;
   var pid = p.id;
-  // Debounce: don't re-prefetch the same piece more than once per 30 seconds
   var now = Date.now();
-  if (!force && prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < 30000) {
+  // Normal: 30s debounce. Force: 5s debounce (prevents double-fire but allows measure-aware refresh)
+  var debounceMs = force ? 5000 : 30000;
+  if (prefetchLastRun[pid] && (now - prefetchLastRun[pid]) < debounceMs) {
     console.log("[prefetch] skipping -- ran", Math.round((now - prefetchLastRun[pid])/1000), "s ago");
     return;
   }
@@ -2735,7 +2736,7 @@ function loadAnalysis() {
           didInvalidate = true;
           delete contentCache[cacheKey(pid,"story")];
           cached = null;
-          prefetchAll(piece);
+          prefetchAll(piece, true); // force=true bypasses debounce
         }
       }
       if (cached) { content.innerHTML = cached; return; }
@@ -2756,7 +2757,7 @@ function loadAnalysis() {
           didInvalidate = true;
           delete contentCache[cacheKey(pid,"practice")];
           cached = null;
-          prefetchAll(piece);
+          prefetchAll(piece, true); // force=true bypasses debounce
         }
       }
       if (cached) { content.innerHTML = cached; return; }
@@ -2816,8 +2817,14 @@ function renderSectioned(text) {
     "Priority 1","Priority 2","Priority 3"
   ];
   KNOWN_HEADERS.forEach(function(h) {
-    var re = new RegExp("(^|\\n)(" + h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ")\\s*\\n", "g");
+    var escaped = h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match at start of string or after newline, with any trailing whitespace/newlines
+    var re = new RegExp("(^|\\n)(" + escaped + ")[ \\t]*\\n", "g");
     text = text.replace(re, "$1## $2\n\n");
+    // Also catch if it appears as the very first thing with no preceding newline context
+    if (text.indexOf("## " + h) === -1 && text.indexOf(h) === 0) {
+      text = "## " + text;
+    }
   });
 
   // Collect all YTLINK placeholders before block splitting so they survive as own blocks
@@ -3099,27 +3106,59 @@ function sendChat() {
   var ctx = "The performer is studying " + piece.full + " by " + piece.composer + ". ";
   if (annotations.length) ctx += "They have annotated: " + annotations.map(function(a){ return a.roman+"(p."+a.page+")"; }).join(", ") + ". ";
   ctx += (getMeasureContext() || getNoMeasureContext()) + " ";
-  // Detect if this is an emotional/interpretive question — skip notation description
+
+  var q = msg.toLowerCase();
+
+  // Detect biographical/historical questions — don't need score image at all
+  var BIOGRAPHICAL_PATTERNS = [
+    // Composer state questions
+    "was chopin","was beethoven","was ravel","was scriabin","was brahms","was liszt",
+    "was the composer","what was he thinking","what was she thinking","what was the composer",
+    "was he","was she","did he","did she","why did he","why did she",
+    // Biographical
+    "what happened","when was","where was","who was","composer's life","composer's state",
+    "wrote this","composed this","why chopin","why beethoven","chopin's life","chopin's relationship",
+    "what inspired","what influenced","about the composer","historical context of",
+    // Historical context
+    "historical context","history of","historical background","historical significance",
+    "when was this written","when was this composed","what year","what period",
+    "romantic period","romantic era","what era","musical period","time period",
+    "political context","cultural context","social context","world was happening",
+    "what was happening","at the time","during this time","contemporaries",
+    "premiere","first performed","first published","reception","how was it received",
+    "dedicated to","written for","commission","patron"
+  ];
+  var isBiographicalQuery = BIOGRAPHICAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
+
+  // Detect emotional/interpretive questions — skip notation description
   var EMOTIONAL_PATTERNS = [
     "emotional","emotion","feel","feeling","mood","character","express","expression",
     "story","narrative","imagine","imagin","what is it about","what's it about",
     "what should i think","what should i feel","how do i convey","how should i play it emotionally",
     "sad","happy","tragic","joyful","dark","light","heavy","tender","fierce","longing",
     "what to think","playing attitude","interpretive","interpretation","musically mean",
-    "inner voice","character of","spirit of","atmosphere","poetic","meaning behind"
+    "inner voice","character of","spirit of","atmosphere","poetic","meaning behind",
+    "emotionally","approach it","emotionally standpoint","emotional standpoint"
   ];
-  var q = msg.toLowerCase();
-  var isEmotionalQuery = EMOTIONAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
+  var isEmotionalQuery = !isBiographicalQuery && EMOTIONAL_PATTERNS.some(function(p) { return q.indexOf(p) !== -1; });
 
   var fullPrompt;
-  if (isEmotionalQuery) {
+  if (isBiographicalQuery) {
+    // Pure knowledge question — answer directly from training, no score needed
+    fullPrompt = "The performer is studying " + piece.full + " by " + piece.composer + " (" + piece.year + "). " +
+      "They are asking a biographical or historical question. Answer it directly and specifically. " +
+      "Cover: what the composer was going through at the time, the historical and cultural moment the piece was born into, " +
+      "what it meant to its first audiences, and how that context should shape the performer's approach today. " +
+      "Be vivid and specific — dates, names, real events. Not 'the Romantic period was a time of...' but 'Chopin had just...' " +
+      "End with one sentence connecting the historical context directly to something physical at the piano. " +
+      "150-250 words. No hedging, no 'I cannot determine from the score'. Question: " + msg;
+  } else if (isEmotionalQuery) {
     fullPrompt = ctx + "The performer is asking an emotional and interpretive question about this passage. " +
-      "Skip notation description entirely. Answer directly with: " +
-      "(1) What emotional world this passage lives in -- give it a specific feeling, not a vague label. Use metaphor, analogy, a human situation. " +
-      "(2) How that translates into physical playing choices -- tempo character, weight of touch, pedal feel, balance between hands, where to lean in and where to hold back. Be specific: 'keep the left hand heavy on beat one, like footsteps', not 'play expressively'. " +
-      "(3) What the performer should be imagining or telling themselves while playing -- one sentence they can actually hold in their head at the piano. " +
-      "Speak like a brilliant colleague who performs this repertoire, not a theory teacher. Direct and vivid. 150-250 words. " +
-      "Question: " + msg;
+      "Do NOT re-describe notation. Answer directly with: " +
+      "(1) The specific emotional world of this passage — use a metaphor, a human situation, a vivid image. Not 'melancholy' — something concrete. " +
+      "(2) How that translates into physical playing: weight of touch, left vs right hand balance, pedal character, tempo feel, where to lean in and where to recede. Name specific hands and specific moments. " +
+      "(3) One sentence the performer can hold in their head while playing. " +
+      "Speak like a brilliant colleague. Direct, vivid, 150-200 words. Question: " + msg;
   } else {
     fullPrompt = ctx + "Look at the score image. Describe only what the notation shows -- do not name textures or patterns from memory. Then answer: " + msg;
   }
@@ -3150,7 +3189,12 @@ function sendChat() {
   }
 
   if (!needsScrollHint) {
-    executeCapture(fullPrompt, targetPages, onReply, detected);
+    if (isBiographicalQuery) {
+      // No score image needed — pure knowledge question
+      callAPI([{role:"user", content: fullPrompt}], onReply, SYS_KNOWLEDGE);
+    } else {
+      executeCapture(fullPrompt, targetPages, onReply, detected);
+    }
   }
 }
 
