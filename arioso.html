@@ -1739,8 +1739,8 @@ function prefetchAll(p) {
   if (!p) return;
   var pid = p.id;
 
-  var analysisPrompt = "Write an analytical overview of " + p.full + " by " + p.composer + ". Use ## for each section heading. Start with ## Overview (3 sentences on formal structure and harmonic language). Then ## for each major section by name and measure range. Under each heading: 2 sentences max on harmonic events and performance demands. Roman numerals. No bold. No preamble.";
-  var practicePrompt = "3 practice priorities for " + p.full + " by " + p.composer + ". Format as ## Priority 1: Passage Name (mm. X-Y) then 2 sentences: the technical challenge and exactly what to do including rhythmic strategies. No theory. Actionable only. No bold. No preamble.";
+  var analysisPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes this piece harmonically distinctive — 2-3 sentences). Then ## for each major section by name and measure range: what's happening harmonically and what it means for how you play it. Precise and specific. Speak like a brilliant colleague who performs this repertoire, not like a dissertation. No bold. No preamble.";
+  var practicePrompt = "3 practice priorities for " + p.full + " by " + p.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific challenge. One sentence: exactly what to do — name a rhythmic subdivision, fingering, or voicing strategy. Conservatory-level technique assumed. Speak like a brilliant colleague, not a textbook. No bold. No preamble.";
   var studyPrompts = {
     history: "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
     scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
@@ -1896,64 +1896,65 @@ function showAddPerformerInput() {
 }
 
 function addCustomPerformer(pianistName) {
-  // First ask Arioso for famous recordings of this piece by this pianist
   var wrap = document.getElementById("performer-input-wrap");
-  if (wrap) {
-    wrap.innerHTML = "<span style='font-size:12px;color:var(--text3);padding:4px 8px;'>Finding recordings...</span>";
-  }
-  var prompt = "List the most famous and important recordings of " + piece.full + " by the pianist " + pianistName + ". For each recording give: the year, the label/album if known, and one sentence on what makes it distinctive. Format each as: YEAR | LABEL | Description. List up to 4 recordings. If this pianist has not recorded this piece, say so clearly and suggest a different piece they are known for.";
-  callAPI([{role:"user",content:prompt}], function(text) {
-    // Show results as selectable options
+  if (wrap) wrap.innerHTML = "<span style='font-size:12px;color:var(--text3);padding:4px 8px;'>Searching...</span>";
+
+  var prompt = "Does the pianist " + pianistName + " have any known recordings or performances of " + piece.full + " by " + piece.composer + "? Include studio recordings, live concerts, and YouTube performances. Respond ONLY as JSON with no other text: {\"found\": true/false, \"fullName\": \"Full Name\", \"performances\": [{\"decade\": \"2010s\", \"context\": \"one sentence on what makes it notable\"}]}. Max 3 performances. If not found, set found to false.";
+
+  callAPIWithSearch([{role:"user",content:prompt}], function(text) {
     var sel = document.getElementById("recording-selector");
     if (wrap) wrap.remove();
-    // Parse lines that match YEAR | LABEL | Description
-    var lines = text.split("\n").filter(function(l){ return l.trim(); });
-    var found = [];
-    lines.forEach(function(line) {
-      var match = line.match(/(\d{4})\s*\|\s*([^|]+)\|\s*(.+)/);
-      if (match) {
-        found.push({ year: match[1].trim(), label: match[2].trim(), desc: match[3].trim() });
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var match = clean.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("no json");
+      var data = JSON.parse(match[0]);
+
+      if (!data.found || !data.performances || !data.performances.length) {
+        var msg = document.createElement("div");
+        msg.style.cssText = "font-size:12px;color:var(--text3);padding:6px 10px;";
+        msg.textContent = "No known performances of this piece found for " + (data.fullName || pianistName) + ".";
+        sel.appendChild(msg);
+        setTimeout(function(){ if (msg.parentNode) msg.remove(); }, 3000);
+        return;
       }
-    });
-    if (found.length === 0) {
-      // Show raw response as a message
+
+      var fullName = data.fullName || pianistName;
+      var picker = document.createElement("div");
+      picker.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:4px 0;width:100%;";
+
+      data.performances.forEach(function(perf) {
+        var btn = document.createElement("button");
+        btn.style.cssText = "text-align:left;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);";
+        btn.innerHTML = "<strong>" + fullName + "</strong> <span style='color:var(--text3);font-size:11px;'>" + perf.decade + "</span><br><span style='color:var(--text2);font-size:11px;'>" + perf.context + "</span>";
+        btn.onclick = (function(p, fn) { return function() {
+          var id = "custom-" + fn.replace(/\s+/g,"-").toLowerCase() + "-" + p.decade;
+          var newRec = { id: id, label: fn.split(" ").pop() + " (" + p.decade + ")", full: fn + ", " + p.decade };
+          var customKey = "custom-performers-" + piece.id;
+          var existing = [];
+          try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
+          if (!existing.find(function(r){ return r.id === id; })) { existing.push(newRec); localStorage.setItem(customKey, JSON.stringify(existing)); }
+          picker.remove();
+          rec = newRec;
+          renderRecs();
+          loadAnalysis();
+        }; })(perf, fullName);
+        picker.appendChild(btn);
+      });
+
+      var cancel = document.createElement("button");
+      cancel.textContent = "Cancel";
+      cancel.style.cssText = "font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:inherit;color:var(--text3);margin-top:2px;";
+      cancel.onclick = function() { picker.remove(); };
+      picker.appendChild(cancel);
+      sel.appendChild(picker);
+    } catch(e) {
       var msg = document.createElement("div");
-      msg.style.cssText = "font-size:12px;color:var(--text2);padding:6px 10px;max-width:400px;";
-      msg.textContent = text.substring(0, 200);
+      msg.style.cssText = "font-size:12px;color:var(--text3);padding:6px 10px;";
+      msg.textContent = "Could not find recordings. Try a different name.";
       sel.appendChild(msg);
-      return;
+      setTimeout(function(){ if (msg.parentNode) msg.remove(); }, 3000);
     }
-    // Show each recording as a selectable option
-    var picker = document.createElement("div");
-    picker.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:6px 0;width:100%;";
-    found.forEach(function(rec_opt) {
-      var btn = document.createElement("button");
-      var shortName = pianistName.split(" ").pop();
-      btn.style.cssText = "text-align:left;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);";
-      btn.innerHTML = "<strong>" + shortName + " " + rec_opt.year + "</strong> <span style='color:var(--text3);font-size:11px;'>" + rec_opt.label + "</span><br><span style='color:var(--text2);font-size:11px;'>" + rec_opt.desc + "</span>";
-      btn.onclick = (function(opt) { return function() {
-        var id = "custom-" + pianistName.replace(/\s+/g, "-").toLowerCase() + "-" + opt.year;
-        var newRec = { id: id, label: shortName + " " + opt.year, full: pianistName + ", " + opt.year };
-        var customKey = "custom-performers-" + piece.id;
-        var existing = [];
-        try { existing = JSON.parse(localStorage.getItem(customKey) || "[]"); } catch(e) {}
-        if (!existing.find(function(r){ return r.id === id; })) {
-          existing.push(newRec);
-          localStorage.setItem(customKey, JSON.stringify(existing));
-        }
-        picker.remove();
-        rec = newRec;
-        renderRecs();
-        loadAnalysis();
-      }; })(rec_opt);
-      picker.appendChild(btn);
-    });
-    var cancel = document.createElement("button");
-    cancel.textContent = "Cancel";
-    cancel.style.cssText = "font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:inherit;color:var(--text3);margin-top:2px;";
-    cancel.onclick = function() { picker.remove(); };
-    picker.appendChild(cancel);
-    sel.appendChild(picker);
   });
 }
 
@@ -1969,7 +1970,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"story")];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "Write an analytical overview of " + piece.full + " by " + piece.composer + ". Use ## for each section heading. Start with ## Overview (3 sentences on formal structure and harmonic language). Then ## for each major section by name and measure range. Under each heading: 2 sentences max on harmonic events and what they demand from the performer. Roman numerals. No bold text. No preamble.";
+    var prompt = "Analyze " + piece.full + " by " + piece.composer + " for an advanced pianist. Use ## for each section. Start with ## Overview (form, key architecture, what makes the harmonic language distinctive). Then ## for each major section by name and measure range: key harmonic events in Roman numeral analysis, and the direct performance implication. Precise, opinionated, peer-level. No hedging. No bold. No preamble.";
     callAPI([{role:"user",content:prompt}], function(text) {
       console.log("RAW GPT ANALYSIS:", JSON.stringify(text.substring(0,300)));
       if (reqId !== analysisReqId || tab !== currentTab) return;
@@ -1984,9 +1985,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"recording",recId)];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    // Strip year from recName for prompt to avoid Claude questioning specific dates
-    var recNameForPrompt = recName.replace(/,?\s*\d{4}$/, "").trim();
-    var prompt = "Analyze " + recNameForPrompt + "'s interpretive approach to " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). This is a real, well-documented work by a canonical composer. Do not question the recording's existence or ask for verification — just deliver the analysis. Cover their specific interpretive choices, how those connect to the harmonic structure, and what makes this pianist's approach distinctive. Opinionated, specific, peer-level register. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recNameForPrompt + " " + piece.title) + "). 3-4 sentences then link.";
+    var prompt = "Analyze " + recNameForPrompt + "'s interpretation of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). Do not question the recording's existence. Use ## for each section: ## Their Approach (what defines their sound and interpretive stance), ## Key Moments (2-3 specific passages with measure references and what they do differently), ## What It Reveals (what their choices expose about the harmonic structure), ## Essential or Skip? (direct verdict). Speak like a brilliant colleague who knows this repertoire cold — opinionated, specific, not academic. 2-3 sentences per section. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recNameForPrompt + " " + piece.title) + ").";
     callAPIWithSearch([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
@@ -1999,7 +1998,7 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"practice")];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "3 practice priorities for " + piece.full + " by " + piece.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). Then 2 sentences: the specific technical challenge, and exactly what to do — including rhythmic practice strategies for fast passages. No harmonic theory. Short and actionable.";
+    var prompt = "Give 3 practice priorities for " + piece.full + " by " + piece.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). One sentence: the specific technical or interpretive challenge. One sentence: exactly what to do — name a specific rhythmic subdivision, fingering approach, or voicing strategy. Assume conservatory-level technique. Speak like a brilliant colleague, not a textbook. No bold. No preamble.";
     callAPI([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
