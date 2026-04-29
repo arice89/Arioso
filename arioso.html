@@ -1737,7 +1737,42 @@ function cacheKey(pieceId, tabName, extra) {
 
 function prefetchAll(p) {
   if (!p) return;
-  // Only fetch recordings in background — everything else on-demand with cache
+  var pid = p.id;
+
+  var analysisPrompt = "Write an analytical overview of " + p.full + " by " + p.composer + ". Use ## for each section heading. Start with ## Overview (3 sentences on formal structure and harmonic language). Then ## for each major section by name and measure range. Under each heading: 2 sentences max on harmonic events and performance demands. Roman numerals. No bold. No preamble.";
+  var practicePrompt = "3 practice priorities for " + p.full + " by " + p.composer + ". Format as ## Priority 1: Passage Name (mm. X-Y) then 2 sentences: the technical challenge and exactly what to do including rhythmic strategies. No theory. Actionable only. No bold. No preamble.";
+  var studyPrompts = {
+    history: "Historical overview of " + p.full + " by " + p.composer + " like serious program notes. Use ## for: ## Origins, ## Composer at the Time, ## Cultural Moment, ## Reception and Legacy. 2-3 sentences each. No bold. No preamble.",
+    scholarship: "Musicological scholarship on " + p.full + " by " + p.composer + ". Use ## for: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. 2-3 sentences each. Name specific analysts. No bold. No preamble.",
+    interviews: "Documented statements about " + p.full + ". Use ## for: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. 2-3 sentences each. Name specific people. No bold. No preamble."
+  };
+
+  // Chain: Analysis → Practice → History → Scholarship → Interviews
+  callAPI([{role:"user",content:analysisPrompt}], function(text) {
+    contentCache[cacheKey(pid,"story")] = renderSectioned(text);
+    if (piece && piece.id === pid && tab === "story") {
+      var el = document.getElementById("analysis-content");
+      if (el) el.innerHTML = contentCache[cacheKey(pid,"story")];
+    }
+
+    callAPI([{role:"user",content:practicePrompt}], function(text) {
+      contentCache[cacheKey(pid,"practice")] = renderSectioned(text);
+
+      callAPI([{role:"user",content:studyPrompts.history}], function(text) {
+        contentCache[cacheKey(pid,"study","history")] = renderSectioned(text);
+
+        callAPI([{role:"user",content:studyPrompts.scholarship}], function(text) {
+          contentCache[cacheKey(pid,"study","scholarship")] = renderSectioned(text);
+
+          callAPI([{role:"user",content:studyPrompts.interviews}], function(text) {
+            contentCache[cacheKey(pid,"study","interviews")] = renderSectioned(text);
+          });
+        });
+      });
+    });
+  });
+
+  // Recordings fetch in parallel — doesn't block anything
   fetchRecordings(p);
 }
 
@@ -1775,7 +1810,7 @@ function getLiveRecordings(p) {
 /* Async API wrappers returning Promises */
 function callAPIAsync(messages) {
   return new Promise(function(resolve) {
-    callOpenAI(messages, resolve);
+    callAPI(messages, resolve);
   });
 }
 function callAPIWithSearchAsync(messages) {
@@ -1935,10 +1970,9 @@ function loadAnalysis() {
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
     var prompt = "Write an analytical overview of " + piece.full + " by " + piece.composer + ". Use ## for each section heading. Start with ## Overview (3 sentences on formal structure and harmonic language). Then ## for each major section by name and measure range. Under each heading: 2 sentences max on harmonic events and what they demand from the performer. Roman numerals. No bold text. No preamble.";
-    callOpenAI([{role:"user",content:prompt}], function(text) {
+    callAPI([{role:"user",content:prompt}], function(text) {
+      console.log("RAW GPT ANALYSIS:", JSON.stringify(text.substring(0,300)));
       if (reqId !== analysisReqId || tab !== currentTab) return;
-      var html = renderSectioned(text);
-      contentCache[cacheKey(pid,"story")] = html;
       var el = document.getElementById("analysis-content");
       if (el) el.innerHTML = html;
     });
@@ -1966,7 +2000,7 @@ function loadAnalysis() {
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
     var prompt = "3 practice priorities for " + piece.full + " by " + piece.composer + ". Format each as: ## Priority N: Passage Name (mm. X-Y). Then 2 sentences: the specific technical challenge, and exactly what to do — including rhythmic practice strategies for fast passages. No harmonic theory. Short and actionable.";
-    callOpenAI([{role:"user",content:prompt}], function(text) {
+    callAPI([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
       contentCache[cacheKey(pid,"practice")] = html;
@@ -2074,7 +2108,7 @@ function loadStudy() {
     scholarship: "Write a structured overview of musicological scholarship on " + piece.full + " by " + piece.composer + ". Use ## to mark each section heading. Sections: ## Formal Analysis, ## Harmonic Language, ## Programmatic Content, ## Performance Practice. Each 2-3 sentences. Name specific analysts and works. No preamble.",
     interviews: "Write a structured compilation of documented statements about " + piece.full + ". Use ## to mark each section heading. Sections: ## The Composer's Voice, ## Contemporary Reactions, ## The Great Interpreters. Each 2-3 sentences. Name specific people, quote or paraphrase specifically. No preamble."
   };
-  callOpenAI([{role:"user",content:ps[studyTab]}], function(text) {
+  callAPI([{role:"user",content:ps[studyTab]}], function(text) {
     var html = renderSectioned(text);
     contentCache[cacheKey(pid,"study",studyTab)] = html;
     if (piece && piece.id === pid) content.innerHTML = html;
@@ -2165,7 +2199,7 @@ function callOpenAI(messages, callback) {
 }
 
 function callOpenAIAsync(messages) {
-  return new Promise(function(resolve) { callOpenAI(messages, resolve); });
+  return new Promise(function(resolve) { callAPI(messages, resolve); });
 }
 
 // Search-enabled version — uses web_search tool
@@ -2310,7 +2344,7 @@ function generateChordSections(p, callback) {
     "(4) note must start with 'm.X -- ' where X is the measure number. " +
     "(5) Be specific about performance implications. " +
     "Return only valid JSON, no markdown, no explanation.";
-  callOpenAI([{role:"user",content:prompt}], function(text) {
+  callAPI([{role:"user",content:prompt}], function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
       var match = clean.match(/\[[\s\S]*\]/);
@@ -2357,7 +2391,7 @@ function renderChords() {
       ". Return ONLY a JSON array of chord objects: [{\"symbol\":\"I\",\"fn\":\"tonic\",\"note\":\"m.X -- description\"}]. " +
       "fn must be one of: tonic, dominant, predominant, chromatic. Include 10-15 chords. No markdown, no explanation.";
     var idx = currentSection;
-    callOpenAI([{role:"user",content:prompt}], function(text) {
+    callAPI([{role:"user",content:prompt}], function(text) {
       try {
         var clean = text.replace(/```json|```/g,"").trim();
         var match = clean.match(/\[[\s\S]*\]/);
