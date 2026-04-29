@@ -2834,7 +2834,7 @@ function renderSectioned(text) {
 
   // Collect all YTLINK placeholders before block splitting so they survive as own blocks
   var ytLinks = [];
-  text = text.replace(/YTLINK:(https?:\/\/[^\s:]+)::([^\n]+)/g, function(match, url, label) {
+  text = text.replace(/YTLINK:(https?:\/\/[^\s]+?)::([^\n]+)/g, function(match, url, label) {
     ytLinks.push({ url: url, label: label.trim() });
     return "\n\n__YTBLOCK_" + (ytLinks.length - 1) + "__\n\n";
   });
@@ -2864,8 +2864,9 @@ function renderSectioned(text) {
     var isShort = trimmed.length > 0 && trimmed.length <= 80;
     var noTrailingPunct = !/[.,;:!?]$/.test(trimmed);
     var notBullet = !/^[-•\d]/.test(trimmed);
+    var notSentinel = !/^__/.test(trimmed); // exclude __HDR__ and __YTBLOCK__ sentinels
     var followedByBlank = nextLine === "";
-    if (isShort && noTrailingPunct && notBullet && followedByBlank && trimmed.length > 8) {
+    if (isShort && noTrailingPunct && notBullet && notSentinel && followedByBlank && trimmed.length > 8) {
       processed.push("## " + trimmed);
     } else {
       processed.push(line);
