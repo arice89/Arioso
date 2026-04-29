@@ -196,6 +196,15 @@ body {
 .piece-card:hover .resume-cta { opacity: 1; transform: translateY(0); }
 
 /* Add card -- refined, no dashes */
+.lib-delete-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(180,60,60,0.85); color: white; border: none;
+  border-radius: 50%; width: 22px; height: 22px;
+  font-size: 11px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  line-height: 1; z-index: 10;
+}
+.lib-delete-btn:hover { background: #c0392b; }
 .add-card {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 8px; padding: 22px 22px 18px; cursor: pointer;
@@ -804,6 +813,7 @@ function clearDrawings() {
         <span id="library-logo-sub">AI Score Companion</span>
       </div>
       <button id="add-piece-btn" onclick="openAddModal()">+ Add piece</button>
+      <button id="edit-library-btn" onclick="toggleEditLibrary()" style="background:none;border:1px solid var(--border2);color:var(--text3);padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:8px;">Edit</button>
     </div>
     <div id="library-header-top">
       <div>
@@ -1534,6 +1544,36 @@ function makeScorePreview() {
     'style="display:block;opacity:0.5;margin:14px 0 18px;">' + lines + clef + barline + notesSvg + '</svg>';
 }
 
+var libraryEditMode = false;
+
+function toggleEditLibrary() {
+  libraryEditMode = !libraryEditMode;
+  var btn = document.getElementById("edit-library-btn");
+  if (btn) btn.textContent = libraryEditMode ? "Done" : "Edit";
+  if (btn) btn.style.color = libraryEditMode ? "var(--accent)" : "var(--text3)";
+  renderLibrary();
+}
+
+function deletePiece(idx, e) {
+  e.stopPropagation();
+  var p = libraryPieces[idx];
+  if (!p) return;
+  if (!confirm("Remove \"" + p.title + "\" from your library?")) return;
+  // Clear stored data
+  if (p.pdfKey) {
+    openDB(function(db) {
+      db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).delete(p.pdfKey);
+    });
+  }
+  // Clear localStorage annotations/measures
+  Object.keys(localStorage).forEach(function(k) {
+    if (k.indexOf(p.id) !== -1) localStorage.removeItem(k);
+  });
+  libraryPieces.splice(idx, 1);
+  saveLibrary();
+  renderLibrary();
+}
+
 function renderLibrary() {
   var grid = document.getElementById("library-grid");
   grid.innerHTML = "";
@@ -1560,6 +1600,7 @@ function renderLibrary() {
   libraryPieces.forEach(function(p, i) {
     var card = document.createElement("div");
     card.className = "piece-card";
+    card.style.position = "relative";
     card.innerHTML =
       "<div class='piece-card-composer'>" + p.composer + "</div>" +
       "<div class='piece-card-title'>" + p.title + "</div>" +
@@ -1567,9 +1608,21 @@ function renderLibrary() {
       makeScorePreview() +
       "<div class='piece-card-footer'>" +
         "<div class='piece-card-badge " + (p.curated ? "curated" : "") + "'>" + (p.curated ? "Curated" : "My score") + "</div>" +
-        "<div class='resume-cta'>Resume &#8594;</div>" +
-      "</div>";
-    card.onclick = (function(idx) { return function() { openPiece(idx); }; })(i);
+        "<div class='resume-cta'>" + (libraryEditMode ? "" : "Resume &#8594;") + "</div>" +
+      "</div>" +
+      (libraryEditMode ? "<button class='lib-delete-btn' title='Remove'>&#x2715;</button>" : "");
+    if (!libraryEditMode) {
+      card.onclick = (function(idx) { return function() { openPiece(idx); }; })(i);
+    }
+    // Wire delete button
+    if (libraryEditMode) {
+      var deleteBtn = card.querySelector(".lib-delete-btn");
+      if (deleteBtn) {
+        (function(idx) {
+          deleteBtn.addEventListener("click", function(e) { deletePiece(idx, e); });
+        })(i);
+      }
+    }
     grid.appendChild(card);
   });
 
@@ -1609,7 +1662,7 @@ function openPiece(libIdx) {
     };
     rec = null;
     chatHistory = [];
-    var titleDisplay = (libPiece.title || "Unknown piece") + (libPiece.opus ? ", " + libPiece.opus : "");
+    var titleDisplay = libPiece.title || "Unknown piece";
     document.getElementById("score-title").textContent = titleDisplay;
     document.getElementById("score-title").classList.remove("empty");
     document.getElementById("score-subtitle").textContent = libPiece.composer + (libPiece.year ? "   .   " + libPiece.year : "");
@@ -1619,7 +1672,7 @@ function openPiece(libIdx) {
     var cs = document.getElementById("chord-strip");
     if (cs) cs.style.display = "none";
     renderRecs();
-    prefetchAll(piece); // generate analysis for custom piece
+    prefetchAll(piece, true); // force=true — always generate for custom pieces
     loadAnalysis();
   }
 
@@ -2428,6 +2481,10 @@ function prefetchAll(p, force) {
     var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
     if (contentCache[cKey]) return;
 
+    // Token limits per tab — story needs room, others are naturally short
+    var tokenLimits = { story: 2500, practice: 1500, history: 2000, scholarship: 2000, interviews: 2000 };
+    var tokens = tokenLimits[key] || 2500;
+
     function attemptFetch(retryDelay) {
       if (!piece || piece.id !== pid) return;
       if (contentCache[cKey]) return;
@@ -2451,7 +2508,7 @@ function prefetchAll(p, force) {
         }
         var sc = document.getElementById("study-content");
         if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = scrubLegacy(contentCache[cKey]);
-      });
+      }, null, tokens);
     }
 
     // story fires instantly, practice after 500ms, study tabs at 1.5s intervals
@@ -3697,10 +3754,10 @@ function callAPIWithVision(textPrompt, callback, skipTitlePageCheck) {
   });
 }
 
-function callAPI(messages, callback, sysOverride) {
+function callAPI(messages, callback, sysOverride, maxTokens) {
   var body = {
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 1500,
+    max_tokens: maxTokens || 2500,
     system: sysOverride || SYS_KNOWLEDGE,
     messages: messages
   };
