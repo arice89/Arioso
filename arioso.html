@@ -1296,6 +1296,30 @@ var PIECES = [
         {symbol:"N6",fn:"chromatic",note:"m.40  --  D major in first inversion. The Neapolitan — maximum harmonic pressure at the emotional peak."},
         {symbol:"V7",fn:"dominant",note:"m.44  --  G#7. The movement closes with unresolved longing."},
         {symbol:"i",fn:"tonic",note:"m.50  --  C# minor. The final cadence — not resolution, only settling."}
+      ]},
+      {label:"III — Scherzo",measures:"mm. 1-68",chords:[
+        {symbol:"Bb I",fn:"tonic",note:"m.1  --  Bb major, Allegro vivace. The Scherzo erupts after the slow movement's C# minor — the return to Bb is a relief, but Schubert makes it rough and angular, not warm."},
+        {symbol:"v",fn:"tonic",note:"m.8  --  F minor. The parallel minor intrudes immediately — Schubert refuses to let Bb be simple."},
+        {symbol:"IV",fn:"predominant",note:"m.16  --  Eb major. The subdominant broadens the phrase."},
+        {symbol:"V",fn:"dominant",note:"m.24  --  F major. The dominant prepares the repeat."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The Scherzo section closes — the Trio follows."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.36  --  Gb major, the Trio. The same flat-VI from the first movement opening trill — now a full section. Schubert is obsessed with this relationship."},
+        {symbol:"Db I",fn:"chromatic",note:"m.44  --  Db major. A third below Gb — Schubert's third-chain harmonic world again."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.52  --  Gb major returns. The Trio breathes in these remote flat keys."},
+        {symbol:"V",fn:"dominant",note:"m.60  --  F major. The dominant prepares the Scherzo da capo."},
+        {symbol:"I",fn:"tonic",note:"m.68  --  Bb major. Scherzo returns. D.C. al Fine."}
+      ]},
+      {label:"IV — Allegro",measures:"mm. 1-360",chords:[
+        {symbol:"I",fn:"tonic",note:"m.1  --  Bb major, the Rondo theme. Gentle, song-like — almost too simple after everything that came before. Schubert is lulling the listener."},
+        {symbol:"V",fn:"dominant",note:"m.16  --  F major. The dominant, perfectly placed. The Rondo has classical clarity Schubert allows himself rarely."},
+        {symbol:"I",fn:"tonic",note:"m.32  --  Bb major. The theme returns — the first rondo refrain."},
+        {symbol:"f i",fn:"chromatic",note:"m.48  --  F minor. The first episode — the parallel minor darkens the texture without warning."},
+        {symbol:"Db I",fn:"chromatic",note:"m.64  --  Db major. The third-relation again. Schubert cannot help himself — the flat mediant appears in every movement."},
+        {symbol:"I",fn:"tonic",note:"m.96  --  Bb major. The Rondo theme returns — but something has shifted."},
+        {symbol:"b i",fn:"chromatic",note:"m.128  --  Bb minor. The parallel minor, this time sustained. The darkness that has been circling since the first movement finally arrives in the home key."},
+        {symbol:"Gb I",fn:"chromatic",note:"m.160  --  Gb major. The flat-VI trill pitch from the opening — now a full harmonic area in the final movement. The circle closes."},
+        {symbol:"V7",fn:"dominant",note:"m.280  --  F7. The long dominant preparation for the final return. Schubert extends it mercilessly."},
+        {symbol:"I",fn:"tonic",note:"m.320  --  Bb major. The final Rondo statement — but played as if returning from very far away. The coda is not triumphant. It is acceptance."}
       ]}
     ]},
   { id:"ravel-gaspard", composer:"Ravel", title:"Gaspard de la Nuit", full:"Gaspard de la Nuit", year:"1908", key:"C# (Ondine)",
@@ -1995,14 +2019,14 @@ function renderSectioned(text) {
       continue;
     }
 
-    // GPT movement headings: "I. Name (mm. X-Y) Text..." or "Overview Text..."
-    // Split heading from body if they're on the same block
-    var mvtMatch = flat.match(/^((?:[IVX]+\.|Overview|Introduction|Exposition|Development|Recapitulation|Coda)\s+[^.]*?(?:\([^)]*\))?)\s+([A-Z].+)$/);
-    if (mvtMatch) {
-      out += makeHeader(mvtMatch[1].trim(), firstBlock);
+    // GPT movement headings: "Overview Text..." or "I. Name (mm.) Text..." or "**Overview** Text..."
+    // Aggressively split any line starting with a known header word from its body
+    var headMatch = flat.match(/^(\*\*)?((Overview|Introduction|Exposition|Development|Recapitulation|Coda|[IVX]+\.\s+[A-Za-z ,:()\d-]+?))\1?[:\s]+([A-Z].+)$/);
+    if (headMatch && headMatch[4] && headMatch[4].length > 20) {
+      out += makeHeader(headMatch[2].replace(/\*\*/g,"").trim(), firstBlock);
       firstBlock = false;
-      flat = mvtMatch[2].trim();
-      // fall through to render as paragraph
+      flat = headMatch[4].trim();
+      // fall through to render body as paragraph
     }
 
     // Regular paragraph
