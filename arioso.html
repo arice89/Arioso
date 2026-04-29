@@ -2932,16 +2932,27 @@ function renderChordStrip() {
   }
 }
 
+// Valid Roman numeral symbols — used for validation
+var VALID_CHORD_SYMBOLS = /^(i|ii|iii|iv|v|vi|vii|I|II|III|IV|V|VI|VII)(°|ø|o|0|dim|aug|\+)?(7|9|13|6|64|43|42|2|65)?(\/[IVivi]+)?(\([^)]*\))?$|^(N|N6|Ger|Fr|It)(6)?$|^(\+6|bII|bVI|bVII|#IV)$/;
+
+function validateChordSymbol(sym) {
+  if (!sym || typeof sym !== "string") return false;
+  var s = sym.trim().replace(/\s+/g, ""); // strip spaces like "A I"
+  return VALID_CHORD_SYMBOLS.test(s);
+}
+
 function generateChordSections(p, callback) {
-  var prompt = "Generate a harmonic analysis for " + p.full + " by " + p.composer +
-    ". Return ONLY a JSON array with no other text, matching this exact schema: " +
-    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"I\",\"fn\":\"tonic\",\"note\":\"m.X -- description of what this chord does and why it matters to the performer\"}]}]. " +
-    "Rules: (1) fn must be one of: tonic, dominant, predominant, chromatic. " +
-    "(2) Include 4-6 sections covering the full piece. " +
-    "(3) Each section needs 8-15 chords. " +
-    "(4) note must start with 'm.X -- ' where X is the measure number. " +
-    "(5) Be specific about performance implications. " +
-    "Return only valid JSON, no markdown, no explanation.";
+  var prompt = "You are generating a harmonic analysis for " + p.full + " by " + p.composer + ".\n\n" +
+    "RULES — follow exactly:\n" +
+    "1. Only include a chord if you are confident it appears in the score. If uncertain, omit it — do not fill space.\n" +
+    "2. Use ONLY standard Roman numeral symbols. Allowed: I ii III iv V vi vii° with optional 7/6/64/65/43/42 suffixes, /V secondary dominants, N6, Ger6, Fr6, It6, bVI, bVII. No other symbols.\n" +
+    "3. Do NOT invent labels like 'AI', 'A I', 'Eb I', or key-name prefixes. If you want to show a key area, use a section label.\n" +
+    "4. fn must be exactly one of: tonic, dominant, predominant, chromatic.\n" +
+    "5. Include 4-6 sections covering distinct formal areas. Each section needs 5-10 chords — fewer confident chords is better than more uncertain ones.\n" +
+    "6. note must start with 'm.X — ' where X is the measure number, followed by one sentence on performance implication.\n\n" +
+    "Return ONLY a JSON array, no markdown, no explanation:\n" +
+    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 — the dominant seventh arrives without preparation; give the bass D full weight.\"}]}]";
+
   callAPI([{role:"user",content:prompt}], function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -2949,11 +2960,29 @@ function generateChordSections(p, callback) {
       if (!match) { callback(null); return; }
       var sections = JSON.parse(match[0]);
       if (!Array.isArray(sections) || !sections.length) { callback(null); return; }
-      sections = sections.filter(function(s) {
-        return s.label && s.chords && Array.isArray(s.chords) && s.chords.length > 0;
-      });
+
+      // Validate and filter each section
+      sections = sections
+        .filter(function(s) { return s.label && s.chords && Array.isArray(s.chords); })
+        .map(function(s) {
+          // Strip invalid chord symbols
+          s.chords = s.chords.filter(function(c) {
+            if (!c.symbol || !c.fn) return false;
+            var sym = c.symbol.trim().replace(/\s+/g,"");
+            if (!validateChordSymbol(sym)) {
+              console.warn("[harmony] rejected symbol:", c.symbol);
+              return false;
+            }
+            c.symbol = sym; // normalised
+            return true;
+          });
+          return s;
+        })
+        .filter(function(s) { return s.chords.length >= 2; }); // need at least 2 valid chords
+
+      if (!sections.length) { callback(null); return; }
       callback(sections);
-    } catch(e) { callback(null); }
+    } catch(e) { console.error("[harmony] parse error:", e); callback(null); }
   }, SYS_KNOWLEDGE);
 }
 
@@ -2984,9 +3013,11 @@ function renderChords() {
     section._generating = true;
     row.innerHTML = "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
       "<div class='ldots'><span></span><span></span><span></span></div> Filling in analysis...</div>";
-    var prompt = "Generate a detailed harmonic analysis for the " + section.label + " section (" + section.measures + ") of " + piece.full + " by " + piece.composer +
-      ". Return ONLY a JSON array of chord objects: [{\"symbol\":\"I\",\"fn\":\"tonic\",\"note\":\"m.X -- description\"}]. " +
-      "fn must be one of: tonic, dominant, predominant, chromatic. Include 10-15 chords. No markdown, no explanation.";
+    var prompt = "Harmonic analysis for the " + section.label + " section (" + section.measures + ") of " + piece.full + " by " + piece.composer + ".\n\n" +
+      "Return ONLY a JSON array of chord objects. Only include chords you are confident about — fewer correct chords is better than more uncertain ones.\n" +
+      "Use ONLY standard Roman numeral symbols (I ii III IV V vi vii° with 7/6/64 suffixes, N6, Ger6, bVI, bVII, secondary dominants like V7/IV). No key-name prefixes, no invented labels.\n" +
+      "Format: [{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.X — one sentence on performance implication\"}]\n" +
+      "fn must be one of: tonic, dominant, predominant, chromatic. Include 5-10 chords. No markdown.";
     var idx = currentSection;
     callAPI([{role:"user",content:prompt}], function(text) {
       try {
@@ -2995,9 +3026,18 @@ function renderChords() {
         if (match) {
           var chords = JSON.parse(match[0]);
           if (Array.isArray(chords) && chords.length > 0) {
-            piece.sections[idx].chords = chords;
-            // Save updated sections to cache
-            try { localStorage.setItem("chord-sections-" + piece.id, JSON.stringify(piece.sections)); } catch(e) {}
+            // Validate symbols before saving
+            chords = chords.filter(function(c) {
+              if (!c.symbol || !c.fn) return false;
+              var sym = c.symbol.trim().replace(/\s+/g,"");
+              if (!validateChordSymbol(sym)) { console.warn("[harmony] fill rejected:", c.symbol); return false; }
+              c.symbol = sym;
+              return true;
+            });
+            if (chords.length > 0) {
+              piece.sections[idx].chords = chords;
+              try { localStorage.setItem("chord-sections-" + piece.id, JSON.stringify(piece.sections)); } catch(e) {}
+            }
           }
         }
       } catch(e) {}
