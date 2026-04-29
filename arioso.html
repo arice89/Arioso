@@ -573,13 +573,22 @@ function clearDrawings() {
 
 /* CHAT — integrated pill design */
 #chat-section {
-  border-top: 1px solid var(--border); padding: 11px 16px 13px;
-  flex-shrink: 0; background: var(--bg);
+  border-top: 2px solid var(--border2);
+  padding: 14px 18px 16px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  box-shadow: inset 0 1px 0 var(--bg3);
 }
-#chat-messages { max-height: 100px; overflow-y: auto; margin-bottom: 9px; padding: 0 1px; }
+#chat-messages {
+  max-height: 160px; overflow-y: auto;
+  margin-bottom: 10px; padding: 0 2px;
+}
+#chat-messages:not(:empty) {
+  min-height: 32px;
+}
 #chat-messages::-webkit-scrollbar { width: 3px; }
-#chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-.chat-msg { font-size: 12px; line-height: 1.65; margin-bottom: 6px; font-weight: 300; }
+#chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.chat-msg { font-size: 12px; line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
 .chat-msg.user { color: var(--text); font-weight: 400; }
 .chat-msg.assistant { color: var(--text2); }
 .chat-msg.assistant::before {
@@ -590,7 +599,7 @@ function clearDrawings() {
 #chat-input-row { display: flex; gap: 7px; align-items: center; }
 #chat-input {
   flex: 1; padding: 9px 16px; border-radius: 22px; font-size: 12px;
-  border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text);
   outline: none; font-family: inherit; transition: all 0.2s; font-weight: 300;
 }
 #chat-input:focus {
@@ -761,9 +770,11 @@ function clearDrawings() {
       </div>
       <div id="score-header-actions">
         <button class="hdr-btn" id="draw-btn" onclick="toggleDraw()" style="display:none;">Annotate Score</button>
-        <button class="hdr-btn" onclick="zoomOut()">−</button>
-        <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:34px;text-align:center;">100%</span>
-        <button class="hdr-btn" onclick="zoomIn()">+</button>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:0 2px;">
+          <button class="hdr-btn" onclick="zoomOut()" style="border:none;padding:4px 10px;border-radius:0;">−</button>
+          <span id="zoom-label" style="font-size:11px;color:var(--text2);min-width:36px;text-align:center;line-height:1;padding:0 2px;">100%</span>
+          <button class="hdr-btn" onclick="zoomIn()" style="border:none;padding:4px 10px;border-radius:0;">+</button>
+        </div>
         <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">Add measures</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
