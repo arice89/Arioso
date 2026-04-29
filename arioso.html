@@ -1977,6 +1977,10 @@ function loadAnalysis() {
 }
 
 function renderSectioned(text) {
+  // If GPT has bolded entire paragraphs (wraps whole block in **), strip those outer markers
+  // but keep inline **bold** for actual emphasis within sentences
+  text = text.replace(/^\*\*([^*].+[^*])\*\*$/gm, "$1");
+
   // Strip preamble lines
   var lines = text.split("\n");
   var cleaned = [];
@@ -2268,13 +2272,67 @@ document.addEventListener("keydown", function(e) {
 /* CHORD STRIP */
 
 function renderChordStrip() {
-  if (!piece || !piece.sections || !piece.sections.length) {
-    document.getElementById("chord-strip-container").style.display = "none";
-    return;
+  if (!piece) { document.getElementById("chord-strip-container").style.display = "none"; return; }
+
+  // Check localStorage cache first
+  var cacheKey = "chord-sections-" + piece.id;
+  if (!piece.sections || !piece.sections.length) {
+    try {
+      var cached = localStorage.getItem(cacheKey);
+      if (cached) piece.sections = JSON.parse(cached);
+    } catch(e) {}
   }
-  document.getElementById("chord-strip-container").style.display = "block";
-  renderSectionTabs();
-  renderChords();
+
+  if (piece.sections && piece.sections.length) {
+    document.getElementById("chord-strip-container").style.display = "block";
+    renderSectionTabs();
+    renderChords();
+  } else {
+    // No sections — generate dynamically
+    document.getElementById("chord-strip-container").style.display = "block";
+    document.getElementById("section-tabs").innerHTML = "";
+    document.getElementById("chord-row").innerHTML =
+      "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
+      "<div class='ldots'><span></span><span></span><span></span></div> Generating harmonic analysis...</div>";
+    generateChordSections(piece, function(sections) {
+      if (!sections || !sections.length) {
+        document.getElementById("chord-row").innerHTML =
+          "<div style='font-size:11px;color:var(--text3);padding:6px 4px;'>Could not generate analysis for this piece.</div>";
+        return;
+      }
+      piece.sections = sections;
+      try { localStorage.setItem(cacheKey, JSON.stringify(sections)); } catch(e) {}
+      currentSection = 0;
+      renderSectionTabs();
+      renderChords();
+    });
+  }
+}
+
+function generateChordSections(p, callback) {
+  var prompt = "Generate a harmonic analysis for " + p.full + " by " + p.composer +
+    ". Return ONLY a JSON array with no other text, matching this exact schema: " +
+    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"I\",\"fn\":\"tonic\",\"note\":\"m.X -- description of what this chord does and why it matters to the performer\"}]}]. " +
+    "Rules: (1) fn must be one of: tonic, dominant, predominant, chromatic. " +
+    "(2) Include 4-6 sections covering the full piece. " +
+    "(3) Each section needs 8-15 chords. " +
+    "(4) note must start with 'm.X -- ' where X is the measure number. " +
+    "(5) Be specific about performance implications. " +
+    "Return only valid JSON, no markdown, no explanation.";
+  callOpenAI([{role:"user",content:prompt}], function(text) {
+    try {
+      var clean = text.replace(/```json|```/g,"").trim();
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (!match) { callback(null); return; }
+      var sections = JSON.parse(match[0]);
+      if (!Array.isArray(sections) || !sections.length) { callback(null); return; }
+      // Validate structure
+      sections = sections.filter(function(s) {
+        return s.label && s.chords && Array.isArray(s.chords) && s.chords.length > 0;
+      });
+      callback(sections);
+    } catch(e) { callback(null); }
+  });
 }
 
 function renderSectionTabs() {
@@ -2297,6 +2355,36 @@ function renderChords() {
   var row = document.getElementById("chord-row");
   row.innerHTML = "";
   var section = piece.sections[currentSection];
+  if (!section) return;
+
+  // If section has fewer than 5 chords, auto-generate more
+  if (section.chords.length < 5 && !section._generating) {
+    section._generating = true;
+    row.innerHTML = "<div style='padding:6px 4px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;'>" +
+      "<div class='ldots'><span></span><span></span><span></span></div> Filling in analysis...</div>";
+    var prompt = "Generate a detailed harmonic analysis for the " + section.label + " section (" + section.measures + ") of " + piece.full + " by " + piece.composer +
+      ". Return ONLY a JSON array of chord objects: [{\"symbol\":\"I\",\"fn\":\"tonic\",\"note\":\"m.X -- description\"}]. " +
+      "fn must be one of: tonic, dominant, predominant, chromatic. Include 10-15 chords. No markdown, no explanation.";
+    var idx = currentSection;
+    callOpenAI([{role:"user",content:prompt}], function(text) {
+      try {
+        var clean = text.replace(/```json|```/g,"").trim();
+        var match = clean.match(/\[[\s\S]*\]/);
+        if (match) {
+          var chords = JSON.parse(match[0]);
+          if (Array.isArray(chords) && chords.length > 0) {
+            piece.sections[idx].chords = chords;
+            // Save updated sections to cache
+            try { localStorage.setItem("chord-sections-" + piece.id, JSON.stringify(piece.sections)); } catch(e) {}
+          }
+        }
+      } catch(e) {}
+      piece.sections[idx]._generating = false;
+      if (currentSection === idx) renderChords();
+    });
+    return;
+  }
+
   section.chords.forEach(function(c) {
     var chip = document.createElement("div");
     chip.className = "chord-chip " + c.fn;
