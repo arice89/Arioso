@@ -1718,7 +1718,7 @@ function prefetchAll(p) {
 }
 
 function fetchRecordings(p) {
-  var prompt = "Search for the 5 most famous, critically acclaimed, and historically important recordings of " + p.full + " by " + p.composer + ". Include a mix of historic and contemporary pianists. For each, respond ONLY in this JSON array format with no other text: [{\"id\":\"lastname-year\",\"label\":\"Lastname Year\",\"full\":\"Full Name, Year\"}]. Only include recordings that actually exist and are well-documented.";
+  var prompt = "List the 5 most celebrated recordings of " + p.full + " by " + p.composer + ". Include historic and contemporary. For each, give the pianist's full name and the approximate decade of their most famous recording of this work. Respond ONLY as a JSON array: [{\"id\":\"lastname-decade\",\"label\":\"Lastname (decade)\",\"full\":\"Full Name, approximate decade e.g. 1970s\"}]. Only include pianists who have definitively recorded this work.";
   callAPIWithSearchAsync([{role:"user",content:prompt}]).then(function(text) {
     try {
       var clean = text.replace(/```json|```/g,"").trim();
@@ -1926,7 +1926,9 @@ function loadAnalysis() {
     var cached = contentCache[cacheKey(pid,"recording",recId)];
     if (cached) { content.innerHTML = cached; return; }
     content.innerHTML = "<div class='loading-wrap'><div class='ldots'><span></span><span></span><span></span></div></div>";
-    var prompt = "You are analyzing " + recName + "'s recording of " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). This is a real, well-documented work. Analyze the recording directly — do not question or comment on the piece title or existence. Cover their specific interpretive choices at key passages, connection to harmonic structure, what this recording uniquely reveals. Opinionated, specific, peer-level. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recName + " " + piece.title) + "). 3-4 sentences then link.";
+    // Strip year from recName for prompt to avoid Claude questioning specific dates
+    var recNameForPrompt = recName.replace(/,?\s*\d{4}$/, "").trim();
+    var prompt = "Analyze " + recNameForPrompt + "'s interpretive approach to " + piece.full + " by " + piece.composer + " (composed " + piece.year + "). This is a real, well-documented work by a canonical composer. Do not question the recording's existence or ask for verification — just deliver the analysis. Cover their specific interpretive choices, how those connect to the harmonic structure, and what makes this pianist's approach distinctive. Opinionated, specific, peer-level register. End with: [Listen on YouTube](https://www.youtube.com/results?search_query=" + encodeURIComponent(recNameForPrompt + " " + piece.title) + "). 3-4 sentences then link.";
     callAPIWithSearch([{role:"user",content:prompt}], function(text) {
       if (reqId !== analysisReqId || tab !== currentTab) return;
       var html = renderSectioned(text);
@@ -1975,36 +1977,36 @@ function renderSectioned(text) {
     var block = blocks[i].trim();
     if (!block) continue;
 
-    // Collapse single newlines into spaces
     var flat = block.replace(/\n/g, " ").trim();
 
-    // ## heading -> large section header
+    // ## heading
     if (flat.match(/^#{1,3}\s/)) {
       var headText = flat.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").trim();
-      out += "<div style='" +
-        "font-size:15px;font-weight:700;color:var(--text);" +
-        "margin-top:" + (firstBlock ? "4px" : "28px") + ";margin-bottom:8px;" +
-        "padding-bottom:6px;border-bottom:2px solid var(--border);" +
-        "letter-spacing:-0.2px;line-height:1.3;" +
-        "'>" + headText + "</div>";
+      out += makeHeader(headText, firstBlock);
       firstBlock = false;
       continue;
     }
 
-    // Standalone **bold line** -> sub-header
-    if (flat.startsWith("**") && flat.endsWith("**") && flat.slice(2,-2).indexOf("**") === -1) {
-      var boldText = flat.slice(2, -2).trim();
-      out += "<div style='" +
-        "font-size:13px;font-weight:600;color:var(--text);" +
-        "margin-top:16px;margin-bottom:5px;line-height:1.4;" +
-        "'>" + boldText + "</div>";
+    // **Bold line** standalone -> header
+    if (flat.match(/^\*\*[^*]+\*\*\s*$/) || flat.match(/^\*\*[^*]+\*\*:?\s*$/)) {
+      var headText = flat.replace(/\*\*/g, "").replace(/:$/, "").trim();
+      out += makeHeader(headText, firstBlock);
       firstBlock = false;
       continue;
+    }
+
+    // GPT movement headings: "I. Name (mm. X-Y) Text..." or "Overview Text..."
+    // Split heading from body if they're on the same block
+    var mvtMatch = flat.match(/^((?:[IVX]+\.|Overview|Introduction|Exposition|Development|Recapitulation|Coda)\s+[^.]*?(?:\([^)]*\))?)\s+([A-Z].+)$/);
+    if (mvtMatch) {
+      out += makeHeader(mvtMatch[1].trim(), firstBlock);
+      firstBlock = false;
+      flat = mvtMatch[2].trim();
+      // fall through to render as paragraph
     }
 
     // Regular paragraph
     var para = flat;
-    // Convert [text](url) links -> YouTube button or regular link
     para = para.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
       if (url.indexOf("youtube") !== -1) {
         return "<a href='" + url + "' target='_blank' style='" +
@@ -2017,21 +2019,21 @@ function renderSectioned(text) {
       }
       return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
     });
-    // Strip loose leading/trailing brackets
     para = para.replace(/^\[\s*|\s*\]$/g, "");
-    // Inline **bold**
     para = para.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    // Capitalize first letter
     if (para.length > 0) para = para.charAt(0).toUpperCase() + para.slice(1);
 
-    out += "<p style='" +
-      "margin-bottom:14px;line-height:1.75;" +
-      "font-size:13px;color:var(--text2);" +
-      (firstBlock ? "margin-top:4px;" : "") +
-      "'>" + para + "</p>";
+    out += "<p style='margin-bottom:14px;line-height:1.75;font-size:13px;color:var(--text2);" + (firstBlock ? "margin-top:4px;" : "") + "'>" + para + "</p>";
     firstBlock = false;
   }
   return out || "<p style='font-size:13px;color:var(--text2);'>" + text + "</p>";
+}
+
+function makeHeader(text, isFirst) {
+  return "<div style='font-size:14px;font-weight:700;color:var(--text);" +
+    "margin-top:" + (isFirst ? "4px" : "24px") + ";margin-bottom:6px;" +
+    "padding-bottom:5px;border-bottom:1.5px solid var(--border);" +
+    "letter-spacing:-0.2px;line-height:1.3;'>" + text + "</div>";
 }
 
 function setStudyTab(t) {
