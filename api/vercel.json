@@ -1,5 +1,10 @@
 {
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/arioso.html" }
-  ]
+  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  }
 }
