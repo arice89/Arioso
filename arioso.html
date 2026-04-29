@@ -871,6 +871,7 @@ function clearDrawings() {
           <button class="hdr-btn" onclick="zoomIn()" style="border:none;border-radius:0;padding:6px 11px;background:transparent;">+</button>
         </div>
         <button class="hdr-btn" id="measure-btn" onclick="toggleMeasureMode()" style="display:none;">Add measures</button>
+        <button class="hdr-btn" id="measure-undo-btn" onclick="undoLastMeasureRow()" style="display:none;opacity:0.7;" title="Undo last row">&#x21B6; Undo row</button>
         <button class="hdr-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
         <button class="hdr-btn" onclick="clearSavedPDF()" id="clear-pdf-btn" style="display:none;">Clear PDF</button>
       </div>
@@ -1050,8 +1051,32 @@ function clearDrawings() {
 /* MEASURE NUMBERS */
 var measureMode = false;
 var pendingMeasureX = 0, pendingMeasureY = 0, pendingMeasurePage = 0;
-var lastMeasureStart = 1; // remember last starting measure for convenience
-var measureRowHistory = []; // for undo: [{page, labels:[el,...]}]
+var lastMeasureStart = 1;
+var measureRowHistory = []; // undo stack: [{page, labels:[el,...], rowY}]
+
+// Explicit row registry per page: { pageNum: [y1, y2, y3...] }
+// Rows are stored as actual Y pixel values, not computed from a grid.
+var measureRows = {};
+
+var ROW_SNAP_THRESHOLD = 50; // px — if click is within this of an existing row, snap to it
+
+function getOrCreateRow(pageNum, clickY) {
+  if (!measureRows[pageNum]) measureRows[pageNum] = [];
+  var rows = measureRows[pageNum];
+  // Find closest existing row within threshold
+  var closest = null, closestDist = Infinity;
+  rows.forEach(function(rowY) {
+    var dist = Math.abs(clickY - rowY);
+    if (dist < closestDist) { closestDist = dist; closest = rowY; }
+  });
+  if (closest !== null && closestDist <= ROW_SNAP_THRESHOLD) {
+    return closest; // snap to existing row
+  }
+  // New row — store at click Y with a small upward offset to sit above the staff
+  var newY = clickY - 18;
+  rows.push(newY);
+  return newY;
+}
 
 function toggleMeasureMode() {
   measureMode = !measureMode;
@@ -1060,6 +1085,9 @@ function toggleMeasureMode() {
   var btn = document.getElementById("measure-btn");
   btn.classList.toggle("toggled", measureMode);
   btn.textContent = measureMode ? "Done" : "Add measures";
+  // Show/hide undo button
+  var undoBtn = document.getElementById("measure-undo-btn");
+  if (undoBtn) undoBtn.style.display = measureMode ? "inline-flex" : "none";
   var panel = document.getElementById("score-panel");
   if (panel) panel.classList.toggle("measure-mode", measureMode);
   document.querySelectorAll(".pdf-page-wrapper").forEach(function(w) {
@@ -1077,20 +1105,11 @@ function handleMeasureClick(e, pageNum) {
   pendingMeasureY = e.clientY - rect.top;
   pendingMeasurePage = pageNum;
   var popup = document.getElementById("measure-popup");
-  // Pre-fill starting measure = last used + last row count
   document.getElementById("measure-input").value = lastMeasureStart;
   popup.style.display = "block";
   popup.style.left = Math.min(e.clientX + 10, window.innerWidth - 220) + "px";
   popup.style.top = Math.min(e.clientY - 80, window.innerHeight - 180) + "px";
   setTimeout(function() { document.getElementById("measure-input").focus(); }, 50);
-}
-
-// Row band size — snap Y so labels in same row share a Y position
-var ROW_BAND = 120;
-
-function snapToRow(y) {
-  var band = Math.floor(y / ROW_BAND);
-  return band * ROW_BAND + 28;
 }
 
 function placeMeasureRow() {
@@ -1102,7 +1121,8 @@ function placeMeasureRow() {
   var wrapper = document.getElementById("pw-" + pendingMeasurePage);
   if (!wrapper) return;
 
-  var snappedY = snapToRow(pendingMeasureY);
+  // Use explicit row registry — don't recompute from grid math
+  var rowY = getOrCreateRow(pendingMeasurePage, pendingMeasureY);
   var rowLabels = [];
 
   for (var i = 0; i < count; i++) {
@@ -1111,45 +1131,37 @@ function placeMeasureRow() {
     label.className = "measure-label";
     label.textContent = "m." + mNum;
     label.dataset.measureNum = mNum;
-    var xPos = pendingMeasureX + (i * spacing);
-    label.style.left = xPos + "px";
-    label.style.top = snappedY + "px";
+    label.style.left = (pendingMeasureX + i * spacing) + "px";
+    label.style.top = rowY + "px";
 
-    // Click to delete in measure mode; drag to adjust X position
-    (function(lbl) {
+    (function(lbl, pg) {
       lbl.addEventListener("click", function(e) {
         e.stopPropagation();
-        if (measureMode) { lbl.remove(); saveMeasureLabels(pendingMeasurePage); }
+        if (measureMode) { lbl.remove(); saveMeasureLabels(pg); }
       });
-      // Allow horizontal drag to fine-tune position
       lbl.addEventListener("mousedown", function(e) {
         if (!measureMode) return;
         e.stopPropagation();
         var startX = e.clientX;
         var origLeft = parseInt(lbl.style.left);
-        function onMove(ev) {
-          lbl.style.left = (origLeft + ev.clientX - startX) + "px";
-        }
+        function onMove(ev) { lbl.style.left = (origLeft + ev.clientX - startX) + "px"; }
         function onUp() {
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
-          saveMeasureLabels(pendingMeasurePage);
+          saveMeasureLabels(pg);
         }
         document.addEventListener("mousemove", onMove);
         document.addEventListener("mouseup", onUp);
       });
-    })(label);
+    })(label, pendingMeasurePage);
 
     wrapper.appendChild(label);
     rowLabels.push(label);
   }
 
-  // Save for undo
-  measureRowHistory.push({ page: pendingMeasurePage, labels: rowLabels });
-  // Remember for next placement
+  measureRowHistory.push({ page: pendingMeasurePage, labels: rowLabels, rowY: rowY });
   lastMeasureStart = startVal + count;
   document.getElementById("measure-input").value = lastMeasureStart;
-
   saveMeasureLabels(pendingMeasurePage);
   closeMeasurePopup();
 }
@@ -1158,11 +1170,22 @@ function undoLastMeasureRow() {
   if (!measureRowHistory.length) return;
   var last = measureRowHistory.pop();
   last.labels.forEach(function(lbl) { lbl.remove(); });
+  // Remove row from registry if no more labels at that Y
+  if (measureRows[last.page]) {
+    var remaining = last.page ? document.getElementById("pw-" + last.page) : null;
+    var stillUsed = remaining && Array.from(remaining.querySelectorAll(".measure-label"))
+      .some(function(l) { return Math.abs(parseInt(l.style.top) - last.rowY) < 5; });
+    if (!stillUsed) {
+      measureRows[last.page] = measureRows[last.page].filter(function(y) {
+        return Math.abs(y - last.rowY) >= 5;
+      });
+    }
+  }
   saveMeasureLabels(last.page);
-  // Update start field to previous value
   var startField = document.getElementById("measure-input");
   if (startField && last.labels.length) {
-    startField.value = parseInt(last.labels[0].dataset.measureNum) || "";
+    lastMeasureStart = parseInt(last.labels[0].dataset.measureNum) || lastMeasureStart;
+    startField.value = lastMeasureStart;
   }
 }
 
