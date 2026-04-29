@@ -1245,22 +1245,36 @@ function restoreMeasureLabels(pageNum) {
     wrapper.appendChild(label);
   });
 
-  // Labels just restored — if this is the first page with labels, re-prefetch with measure context
-  // Use a small delay so all pages can restore before we re-prefetch
+  // Labels just restored — re-generate measure-sensitive tabs with measure context
+  // Use a small delay so all pages can restore before we re-fetch
   if (piece && !restoreMeasureLabels._scheduled) {
     restoreMeasureLabels._scheduled = true;
     setTimeout(function() {
       restoreMeasureLabels._scheduled = false;
       if (!piece) return;
-      var ctx = getMeasureContext();
-      if (!ctx) return; // no labels, skip
-      // Only invalidate measure-sensitive tabs — history/scholarship/interviews
-      // don't use measure numbers so no need to regenerate them
-      ["story", "practice"].forEach(function(t) {
-        delete contentCache[piece.id + ":" + t];
+      var mCtx = getMeasureContext();
+      if (!mCtx) return; // no labels, skip
+      var p = piece;
+      var pid = p.id;
+      var mPrefix = "\n\nMEASURE CONTEXT: " + mCtx +
+        " Use these measure numbers for the sections they cover. For ALL sections beyond the last labeled measure, continue using descriptive structural names -- never stop the analysis early, never invent measure numbers beyond this list.";
+
+      // Directly fetch story + practice with measure context — bypass prefetchAll debounce
+      var storyPrompt = "Analyze " + p.full + " by " + p.composer + " for an advanced pianist. Use ## for each section header. IMPORTANT: cover the ENTIRE piece from beginning to end. Start with ## Overview. Then ## for each major section. For sections with labeled measures use those numbers. For sections beyond labeled measures use descriptive names (## The Closing Section, ## The Coda) -- never invent measure numbers. No section left out. No bold. No preamble." + mPrefix;
+      var practicePrompt = "Give 3 practice priorities for " + p.full + " by " + p.composer + ". For each use: ## Priority N on its own line, then the passage name, then ## What's hard (one sentence on the physical challenge), then ## What to do (2-3 numbered steps starting with verbs), then ## What to listen for (one sentence). Keep each priority concise. Sound like a teacher next to the student." + mPrefix;
+
+      [["story", storyPrompt], ["practice", practicePrompt]].forEach(function(pair) {
+        var key = pair[0], prompt = pair[1];
+        var cKey = cacheKey(pid, key);
+        delete contentCache[cKey]; // clear stale no-measure version
+        callAPI([{role:"user", content: prompt}], function(text) {
+          if (!piece || piece.id !== pid) return;
+          if (!text || text.length < 50) { console.warn("[measure-restore] empty response for", key); return; }
+          contentCache[cKey] = renderSectioned(text);
+          var el = document.getElementById("full-analysis");
+          if (el && tab === key) el.innerHTML = contentCache[cKey];
+        });
       });
-      prefetchAll(piece, true);
-      loadAnalysis();
     }, 800);
   }
 }
@@ -2805,10 +2819,10 @@ function renderSectioned(text) {
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
   text = text.replace(/\*([^*\n]+)\*/g, "$1");
 
-  // Process markdown links early — before block detection — so they always render
+  // Convert YouTube links directly to red buttons before anything else processes them
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(match, linkText, url) {
-    if (url.indexOf("youtube") !== -1) {
-      return "\n\nYTLINK:" + url + "::" + linkText + "\n\n";
+    if (url.indexOf("youtube") !== -1 || url.indexOf("youtu.be") !== -1) {
+      return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;margin:8px 0 8px 0;vertical-align:middle;'>&#9654; " + linkText + "</a>";
     }
     return "<a href='" + url + "' target='_blank' style='color:var(--text);text-decoration:underline;'>" + linkText + "</a>";
   });
@@ -2832,12 +2846,11 @@ function renderSectioned(text) {
     }
   });
 
-  // Collect all YTLINK placeholders before block splitting so they survive as own blocks
-  var ytLinks = [];
-  text = text.replace(/YTLINK:(https?:\/\/[^\s]+?)::([^\n]+)/g, function(match, url, label) {
-    ytLinks.push({ url: url, label: label.trim() });
-    return "\n\n__YTBLOCK_" + (ytLinks.length - 1) + "__\n\n";
+  // Also convert any bare YTLINK: format from older cached content
+  text = text.replace(/YTLINK:(https?:\/\/[^\s]+?)::([^\n<]+)/g, function(m, url, label) {
+    return "<a href='" + url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;margin:8px 0 8px 0;vertical-align:middle;'>&#9654; " + label.trim() + "</a>";
   });
+  var ytLinks = []; // keep for legacy block renderer compatibility
 
   // Convert ## headers to a sentinel that survives block splitting
   // "## Label" → "\n\n__HDR__Label__HDR__\n\n"
@@ -2924,19 +2937,11 @@ function renderSectioned(text) {
       continue;
     }
 
-    // YouTube link placeholder (both old YTLINK: format and new __YTBLOCK_N__ format)
-    var ytBlockMatch = flat.match(/^__YTBLOCK_(\d+)__$/);
-    if (ytBlockMatch && ytLinks[parseInt(ytBlockMatch[1])]) {
-      var ytEntry = ytLinks[parseInt(ytBlockMatch[1])];
-      out += "<div style='margin:12px 0;'><a href='" + ytEntry.url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytEntry.label + "</a></div>";
-      firstBlock = false;
-      continue;
-    }
+    // YTLINK fallback for any remaining unprocessed links
     if (flat.match(/YTLINK:/)) {
-      var ytMatch = flat.match(/YTLINK:(https?:\/\/[^\s:]+)::(.+)/);
-      if (ytMatch) {
-        var ytUrl = ytMatch[1], ytText = ytMatch[2].trim() || "Listen on YouTube";
-        out += "<div style='margin:12px 0;'><a href='" + ytUrl + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytText + "</a></div>";
+      var ytMatch2 = flat.match(/YTLINK:(https?:\/\/\S+?)::(.+)/);
+      if (ytMatch2) {
+        out += "<div style='margin:8px 0;'><a href='" + ytMatch2[1] + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytMatch2[2].trim() + "</a></div>";
         firstBlock = false;
         continue;
       }
@@ -3002,8 +3007,6 @@ function renderSectioned(text) {
     firstBlock = false;
   }
   if (!out) out = "<p style='font-size:13px;color:var(--text);'>" + text + "</p>";
-  // Strip any unresolved YTBLOCK placeholders
-  out = out.replace(/__YTBLOCK_\d+__/g, "");
   return '<div class="analysis-inner">' + out + '</div>';
 }
 
