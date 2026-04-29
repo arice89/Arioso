@@ -2773,6 +2773,12 @@ function renderSectioned(text) {
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
   text = text.replace(/\*([^*\n]+)\*/g, "$1");
 
+  // Strip ALL ## occurrences — inline or standalone — and treat what follows as a label
+  // Convert "text ## Label" -> "text\n\nLabel"
+  text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
+    return "\n\n" + label.trim();
+  });
+
   // Convert ## headers explicitly marked
   // Also detect freeform section headers: short line (≤80 chars), no trailing period,
   // followed by a blank line or content — treat as section header
@@ -3577,14 +3583,14 @@ function validateChordSymbol(sym) {
 function generateChordSections(p, callback) {
   var prompt = "You are generating a harmonic analysis for " + p.full + " by " + p.composer + ".\n\n" +
     "RULES -- follow exactly:\n" +
-    "1. Only include a chord if you are confident it appears in the score. If uncertain, omit it -- do not fill space.\n" +
-    "2. Use ONLY standard Roman numeral symbols. Allowed: I ii III iv V vi vii° with optional 7/6/64/65/43/42 suffixes, /V secondary dominants, N6, Ger6, Fr6, It6, bVI, bVII. No other symbols.\n" +
-    "3. Do NOT invent labels like 'AI', 'A I', 'Eb I', or key-name prefixes. If you want to show a key area, use a section label.\n" +
-    "4. fn must be exactly one of: tonic, dominant, predominant, chromatic.\n" +
-    "5. Include 4-6 sections covering distinct formal areas. Each section needs 5-10 chords -- fewer confident chords is better than more uncertain ones.\n" +
-    "6. note field format: 'm.X -- Bass: [note], tones: [note-note-note]. One sentence on harmonic function or performance implication.'\n\n" +
-    "Return ONLY a JSON array, no markdown, no explanation:\n" +
-    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 -- the dominant seventh arrives without preparation; give the bass D full weight.\"}]}]";
+    "1. Only include a chord if you are confident it appears in the score.\n" +
+    "2. Use ONLY standard Roman numeral symbols: I ii III iv V vi vii° with optional 7/6/64/65/43/42 suffixes, /V secondary dominants, N6, Ger6, Fr6, It6, bVI, bVII.\n" +
+    "3. fn must be exactly one of: tonic, dominant, predominant, chromatic.\n" +
+    "4. Include 4-6 sections. CRITICAL: sections must cover the piece sequentially with NO overlapping measure ranges. Each section picks up where the last one ended. Example: mm. 1-20, mm. 21-45, mm. 46-80. Never repeat a measure number.\n" +
+    "5. Each section needs 5-10 chords.\n" +
+    "6. note field: 'm.X -- Bass: [note], tones: [note-note-note]. One sentence on performance implication.'\n\n" +
+    "Return ONLY a JSON array:\n" +
+    "[{\"label\":\"Section Name\",\"measures\":\"mm. X-Y\",\"chords\":[{\"symbol\":\"V7\",\"fn\":\"dominant\",\"note\":\"m.5 -- Bass: D, tones: F#-A-C. The dominant seventh drives urgently to tonic.\"}]}]";
 
   callAPI([{role:"user",content:prompt}], function(text) {
     try {
@@ -3594,24 +3600,59 @@ function generateChordSections(p, callback) {
       var sections = JSON.parse(match[0]);
       if (!Array.isArray(sections) || !sections.length) { callback(null); return; }
 
-      // Validate and filter each section
+      // Validate chord symbols
       sections = sections
         .filter(function(s) { return s.label && s.chords && Array.isArray(s.chords); })
         .map(function(s) {
-          // Strip invalid chord symbols
           s.chords = s.chords.filter(function(c) {
             if (!c.symbol || !c.fn) return false;
             var sym = c.symbol.trim().replace(/\s+/g,"");
-            if (!validateChordSymbol(sym)) {
-              console.warn("[harmony] rejected symbol:", c.symbol);
-              return false;
-            }
-            c.symbol = sym; // normalised
+            if (!validateChordSymbol(sym)) { console.warn("[harmony] rejected:", c.symbol); return false; }
+            c.symbol = sym;
             return true;
           });
           return s;
         })
-        .filter(function(s) { return s.chords.length >= 2; }); // need at least 2 valid chords
+        .filter(function(s) { return s.chords.length >= 2; });
+
+      if (!sections.length) { callback(null); return; }
+
+      // Validate non-overlapping measure ranges
+      var lastEnd = -1;
+      var valid = true;
+      sections.forEach(function(s) {
+        var mRange = s.measures && s.measures.match(/(\d+)[^\d]+(\d+)/);
+        if (mRange) {
+          var start = parseInt(mRange[1]);
+          var end = parseInt(mRange[2]);
+          if (start <= lastEnd) {
+            console.warn("[harmony] overlapping section rejected:", s.label, s.measures, "starts at", start, "but last ended at", lastEnd);
+            valid = false;
+          }
+          lastEnd = end;
+        }
+      });
+
+      if (!valid) {
+        // Sort by start measure and re-validate — if still overlapping, reject all
+        sections.sort(function(a, b) {
+          var aM = a.measures && a.measures.match(/(\d+)/);
+          var bM = b.measures && b.measures.match(/(\d+)/);
+          return (aM ? parseInt(aM[1]) : 0) - (bM ? parseInt(bM[1]) : 0);
+        });
+        // Remove overlapping sections
+        var filtered = [];
+        var prevEnd = -1;
+        sections.forEach(function(s) {
+          var mRange = s.measures && s.measures.match(/(\d+)[^\d]+(\d+)/);
+          if (mRange) {
+            var start = parseInt(mRange[1]);
+            var end = parseInt(mRange[2]);
+            if (start > prevEnd) { filtered.push(s); prevEnd = end; }
+          } else { filtered.push(s); }
+        });
+        sections = filtered;
+      }
 
       if (!sections.length) { callback(null); return; }
       callback(sections);
