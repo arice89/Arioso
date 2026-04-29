@@ -2387,12 +2387,19 @@ function prefetchAll(p, force) {
     var isStudy = (key === "history" || key === "scholarship" || key === "interviews");
     var cKey = isStudy ? cacheKey(pid,"study",key) : cacheKey(pid,key);
     if (contentCache[cKey]) return;
-    setTimeout(function() {
+
+    function attemptFetch(retryDelay) {
       if (!piece || piece.id !== pid) return;
       if (contentCache[cKey]) return;
       callAPI([{role:"user",content:prompts[key]}], function(text) {
         if (!text || text.length < 50) {
-          console.warn("[prefetch] empty response for", key, "-- not caching");
+          // Rate limit or error — retry once after a longer delay
+          if (retryDelay < 30000) {
+            console.warn("[prefetch]", key, "failed, retrying in", retryDelay/1000 + "s");
+            setTimeout(function() { attemptFetch(retryDelay * 2); }, retryDelay);
+          } else {
+            console.warn("[prefetch]", key, "gave up after retries");
+          }
           return;
         }
         contentCache[cKey] = renderSectioned(text);
@@ -2403,7 +2410,9 @@ function prefetchAll(p, force) {
         var sc = document.getElementById("study-content");
         if (isStudy && key === studyTab && mode === "study" && sc) sc.innerHTML = contentCache[cKey];
       });
-    }, idx * 400); // 0, 400, 800, 1200, 1600ms — one call at a time
+    }
+
+    setTimeout(function() { attemptFetch(10000); }, idx * 400);
   });
 
   // Recordings fetch in parallel
@@ -2811,6 +2820,13 @@ function renderSectioned(text) {
     text = text.replace(re, "$1## $2\n\n");
   });
 
+  // Collect all YTLINK placeholders before block splitting so they survive as own blocks
+  var ytLinks = [];
+  text = text.replace(/YTLINK:(https?:\/\/[^\s:]+)::([^\n]+)/g, function(match, url, label) {
+    ytLinks.push({ url: url, label: label.trim() });
+    return "\n\n__YTBLOCK_" + (ytLinks.length - 1) + "__\n\n";
+  });
+
   // Strip ALL ## occurrences — inline or standalone — and treat what follows as a label
   // Convert "text ## Label" -> "text\n\nLabel"
   text = text.replace(/\s*##\s*([^\n]+)/g, function(match, label) {
@@ -2887,13 +2903,22 @@ function renderSectioned(text) {
 
     var flat = block.replace(/\n/g, " ").trim();
 
-    // YouTube link placeholder
-    if (flat.match(/^YTLINK:/)) {
-      var parts = flat.replace("YTLINK:", "").split("::");
-      var ytUrl = parts[0], ytText = parts[1] || "Listen on YouTube";
-      out += "<div style='margin:12px 0;'><a href='" + ytUrl + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytText + "</a></div>";
+    // YouTube link placeholder (both old YTLINK: format and new __YTBLOCK_N__ format)
+    var ytBlockMatch = flat.match(/^__YTBLOCK_(\d+)__$/);
+    if (ytBlockMatch && ytLinks[parseInt(ytBlockMatch[1])]) {
+      var ytEntry = ytLinks[parseInt(ytBlockMatch[1])];
+      out += "<div style='margin:12px 0;'><a href='" + ytEntry.url + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytEntry.label + "</a></div>";
       firstBlock = false;
       continue;
+    }
+    if (flat.match(/YTLINK:/)) {
+      var ytMatch = flat.match(/YTLINK:(https?:\/\/[^\s:]+)::(.+)/);
+      if (ytMatch) {
+        var ytUrl = ytMatch[1], ytText = ytMatch[2].trim() || "Listen on YouTube";
+        out += "<div style='margin:12px 0;'><a href='" + ytUrl + "' target='_blank' style='display:inline-flex;align-items:center;gap:5px;background:#ff0000;color:white;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;'>&#9654; " + ytText + "</a></div>";
+        firstBlock = false;
+        continue;
+      }
     }
 
     // "Measures: X-Y" line — render as small measure badge
