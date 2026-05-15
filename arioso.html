@@ -2091,7 +2091,7 @@ var PIECES = [
 /* ===== SYSTEM PROMPTS -- two modes ===== */
 
 // MODE 1: Score-grounded -- used for chord clicks, chord popup, chat, practice tab
-var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Describe and analyze what the notation shows, reasoning like a skilled musician reading a slightly unclear score — interpreting intelligently, not refusing.\n\nSTEP 1 -- OBSERVE LITERALLY:\n- Right hand: single line, chords, or figuration? How many notes per beat?\n- Left hand: single line, chords, octaves, or repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value? Even, syncopated, or mixed?\n- Markings: any dynamics, tempo words, articulation, pedal marks visible?\n\nSTEP 2 -- DESCRIBE WITHOUT NAMING:\nDo not use: waltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy -- unless printed in the score. Say what the notes are doing.\n\nSTEP 3 -- PRACTICE ADVICE (when asked):\nUse this structure for each point:\nWhat is hard: one sentence naming the physical challenge from what you see.\nWhat to do: 1. [verb] action  2. [verb] action  3. [verb] action\nWhat to listen for: one sentence on the sound that confirms it is working.\nUse verbs: Play, Count, Listen, Isolate, Repeat, Voice, Release. Direct, immediate, no theory lectures.\n\nREASONING UNDER UNCERTAINTY -- follow this always:\nWhen the image is imperfect or notation is dense, do NOT refuse or list everything you cannot verify. Instead:\n- Acknowledge ambiguity briefly in one clause: \"the accidentals are hard to read, but...\"\n- Then proceed with the most plausible interpretation based on visible structure, register, and musical context\n- Use phrases like: \"this suggests...\", \"this likely functions as...\", \"the voicing appears to imply...\", \"reading the bass as X gives...\"\n- A skilled musician sight-reading a slightly blurry score does not stop and refuse -- they make the best reading available and note where they are uncertain\n- NEVER say: \"I cannot confirm\", \"I cannot reliably read\", \"I cannot provide\", \"I cannot verify\" as a reason to withhold analysis\n\nPROHIBITIONS: No theme or section labels unless in score. No dynamics unless visible. No abstract phrases. No preamble. Never refuse analysis due to image quality alone.\n\nFor harmony: identify bass note (or best estimate) -> upper voices -> interval stack -> chord quality -> Roman numeral -> function -> one performance implication. If pitch is ambiguous, give the most plausible reading and note the uncertainty in one phrase.\n\nRESPONSE LENGTH: 200-350 words. Complete every sentence. Drop the last point rather than truncating.\n\nFORMATTING: No bold, no headers. Section labels on their own line. Numbered steps for practice. Dash bullets for observations.";
+var SYS_SCORE = "You are reading a score image. Treat it as if you have never heard this piece before. Describe and analyze what the notation shows, reasoning like a skilled musician reading a slightly unclear score — interpreting intelligently, not refusing.\n\nSTEP 1 -- OBSERVE LITERALLY:\n- Right hand: single line, chords, or figuration? How many notes per beat?\n- Left hand: single line, chords, octaves, or repeated pattern? How many notes per beat?\n- Rhythm: what is the smallest note value? Even, syncopated, or mixed?\n- Markings: any dynamics, tempo words, articulation, pedal marks visible?\n\nSTEP 2 -- DESCRIBE WITHOUT NAMING:\nDo not use: waltz / cantabile / agitato / melodic / accompaniment / main theme / second theme / development / lyrical / dramatic / stormy -- unless printed in the score. Say what the notes are doing.\n\nSTEP 3 -- PRACTICE ADVICE (when asked):\nUse this structure for each point:\nWhat is hard: one sentence naming the physical challenge from what you see.\nWhat to do: 1. [verb] action  2. [verb] action  3. [verb] action\nWhat to listen for: one sentence on the sound that confirms it is working.\nUse verbs: Play, Count, Listen, Isolate, Repeat, Voice, Release. Direct, immediate, no theory lectures.\n\nREASONING UNDER UNCERTAINTY -- follow this always:\nWhen the image is imperfect or notation is dense, do NOT refuse or list everything you cannot verify. Instead:\n- Acknowledge ambiguity briefly in one clause: \"the accidentals are hard to read, but...\"\n- Then proceed with the most plausible interpretation based on visible structure, register, and musical context\n- Use phrases like: \"this suggests...\", \"this likely functions as...\", \"the voicing appears to imply...\", \"reading the bass as X gives...\"\n- A skilled musician sight-reading a slightly blurry score does not stop and refuse -- they make the best reading available and note where they are uncertain\n- NEVER say: \"I cannot confirm\", \"I cannot reliably read\", \"I cannot provide\", \"I cannot verify\" as a reason to withhold analysis\n\nPROHIBITIONS: No theme or section labels unless in score. No dynamics unless visible. No abstract phrases. No preamble. Never refuse analysis due to image quality alone. CRITICAL: NEVER use the phrases 'not present in this score image', 'not among the labeled measures', 'no analysis of it is possible', or any variant that refuses to analyze because a measure is not visible. If the requested measure is not shown, describe what IS visible and what passage it appears to be from.\n\nFor harmony: identify bass note (or best estimate) -> upper voices -> interval stack -> chord quality -> Roman numeral -> function -> one performance implication. If pitch is ambiguous, give the most plausible reading and note the uncertainty in one phrase.\n\nRESPONSE LENGTH: 200-350 words. Complete every sentence. Drop the last point rather than truncating.\n\nFORMATTING: No bold, no headers. Section labels on their own line. Numbered steps for practice. Dash bullets for observations.";
 
 
 // MODE 2: Knowledge-driven -- used for Analysis tab, Interpretations tab, Study tabs
@@ -3213,6 +3213,82 @@ function sendChat() {
   function onReply(reply) {
     thinking.remove();
     chatHistory.push({role:"assistant", content: reply});
+
+    // ── POST-RESPONSE DISCLAIMER HANDLER ──────────────────────────────────
+    // If the model says the requested measure isn't in the image, intercept it:
+    // strip the disclaimer, show whatever useful content remains, then offer
+    // a scroll hint so the user can navigate and retry.
+    var DISCLAIMER_PHRASES = [
+      "not present in this score image",
+      "not among the labeled measures",
+      "not visible in",
+      "cannot see measure",
+      "that measure is not",
+      "no analysis of it is possible",
+      "measure is not shown",
+      "not in the captured",
+      "outside the captured",
+      "not in this image"
+    ];
+    var replyLower = reply.toLowerCase();
+    var hasDisclaimer = DISCLAIMER_PHRASES.some(function(p){ return replyLower.indexOf(p) !== -1; });
+
+    if (hasDisclaimer) {
+      // Strip sentences containing disclaimer language
+      var sentences = reply.split(/(?<=[.!?])\s+/);
+      var cleanSentences = sentences.filter(function(s){
+        var sl = s.toLowerCase();
+        return !DISCLAIMER_PHRASES.some(function(p){ return sl.indexOf(p) !== -1; });
+      });
+      var cleanReply = cleanSentences.join(" ").trim();
+
+      // Show useful content (if any survived stripping)
+      if (cleanReply.length > 20) {
+        var ad0 = document.createElement("div"); ad0.className = "chat-msg assistant";
+        ad0.innerHTML = formatChatReply(cleanReply);
+        msgs.appendChild(ad0);
+      }
+
+      // Find the measure number mentioned in either the query or the reply
+      var mentionedMeasure = null;
+      var mPatterns = [/(?:measure|bar)\s+(\d+)/i, /\bmm?\.\s*(\d+)/i];
+      var searchTexts = [msg, reply];
+      outer: for (var _si = 0; _si < searchTexts.length; _si++) {
+        for (var _pi2 = 0; _pi2 < mPatterns.length; _pi2++) {
+          var _mref = searchTexts[_si].match(mPatterns[_pi2]);
+          if (_mref) { mentionedMeasure = parseInt(_mref[1]); break outer; }
+        }
+      }
+
+      var hintMsg = mentionedMeasure
+        ? "m." + mentionedMeasure + " isn\u2019t in the current view \u2014 scroll there, then click Analyze"
+        : "That passage isn\u2019t in the current view \u2014 scroll there, then click Analyze";
+
+      var retryAction = (mentionedMeasure && pdfDoc) ? function() {
+        var pages = findPagesForMeasure(mentionedMeasure);
+        if (!pages) return;
+        scrollToPage(pages[0]);
+        setTimeout(function() {
+          var th2 = document.createElement("div"); th2.className = "chat-msg assistant thinking-msg";
+          th2.innerHTML = "<div class='ldots'><span></span><span></span><span></span></div>";
+          msgs.appendChild(th2); msgs.scrollTop = msgs.scrollHeight;
+          executeCapture(fullPrompt, pages, function(retryReply) {
+            th2.remove();
+            var ad2 = document.createElement("div"); ad2.className = "chat-msg assistant";
+            ad2.innerHTML = formatChatReply(retryReply);
+            msgs.appendChild(ad2); msgs.scrollTop = msgs.scrollHeight;
+            btn.disabled = false;
+          }, {measureNum: mentionedMeasure});
+        }, 700);
+      } : null;
+
+      showScrollHintWithAction(hintMsg, retryAction);
+      msgs.scrollTop = msgs.scrollHeight;
+      btn.disabled = false;
+      return;
+    }
+    // ── END DISCLAIMER HANDLER ─────────────────────────────────────────────
+
     var ad = document.createElement("div"); ad.className="chat-msg assistant"; ad.innerHTML=formatChatReply(reply);
     msgs.appendChild(ad);
     msgs.scrollTop = msgs.scrollHeight;
@@ -3424,9 +3500,22 @@ function setMode(m) {
  */
 function detectMeasureQuery(query) {
   var q = query.toLowerCase();
-  // Match "measure 200", "m. 200", "m.200", "mm. 45", "bar 12"
-  var mMatch = q.match(/(?:measure|bar|m\.?\s*)(\d+)/);
-  var measureNum = mMatch ? parseInt(mMatch[1]) : null;
+
+  // Wider measure number detection — catches all common phrasings:
+  // "measure 100", "bar 12", "m.100", "m100", "mm.100", "mm. 100",
+  // "m. 100", "at m.100", "around measure 50", "in measure 100", "measure #100"
+  var measureNum = null;
+  var measurePatterns = [
+    /(?:measures?|bars?)\s+(\d+)/,              // "measure 100", "bar 12", "bars 40"
+    /\bmm?\.?\s*(\d+)/,                         // "m100", "m.100", "mm100", "mm.100", "mm. 100"
+    /(?:measure|bar)\s*#?\s*(\d+)/,             // "measure #100"
+    /(?:at|around|near|from)\s+m\.?\s*(\d+)/,  // "at m.100", "around measure 50"
+    /(?:in|on)\s+(?:measure|bar)\s+(\d+)/,     // "in measure 100"
+  ];
+  for (var _pi = 0; _pi < measurePatterns.length; _pi++) {
+    var _mm = q.match(measurePatterns[_pi]);
+    if (_mm) { measureNum = parseInt(_mm[1]); break; }
+  }
 
   // Normalize common typos before detection
   q = q.replace(/opnening|opneing|openning/g, "opening");
@@ -3465,6 +3554,19 @@ function detectMeasureQuery(query) {
   if (partMatch && !sectionName) sectionName = partMatch[0];
 
   return { measureNum: measureNum, sectionName: sectionName };
+}
+
+/**
+ * Scrolls the score panel to a specific PDF page number.
+ */
+function scrollToPage(pageNum) {
+  var wrapper = document.getElementById("pw-" + pageNum);
+  if (!wrapper) return;
+  var scoreDisplay = document.getElementById("score-display");
+  if (!scoreDisplay) return;
+  var wRect = wrapper.getBoundingClientRect();
+  var sdRect = scoreDisplay.getBoundingClientRect();
+  scoreDisplay.scrollTop += (wRect.top - sdRect.top) - 40;
 }
 
 /**
